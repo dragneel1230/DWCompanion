@@ -1,7 +1,8 @@
 <script lang="ts">
   // Paste an Overframe "Copy" link -> build saved locally. Unknown Overframe ids are resolved by hand once.
   import { goto } from "$app/navigation";
-  import { iconUrl } from "$lib/db";
+  import ModCard from "./ModCard.svelte";
+  import ArcaneCard from "./ArcaneCard.svelte";
   import { assembleImport, searchModsAndArcanes, type FramesDb } from "$lib/frames";
   import { decodeOverframe, overframeIds } from "$lib/overframe.svelte";
   import { userBuilds } from "$lib/userBuilds.svelte";
@@ -66,7 +67,10 @@
         <div class="options">
           {#each searchModsAndArcanes(db, pick[ofId] ?? "") as m (m.id)}
             <button onclick={() => resolve(ofId, m.en)}>
-              <img src={iconUrl(m.icon)} alt="" />{m.ru} <small>{m.en}</small>
+              <span class="thumb">
+                {#if db.mods[m.id]}<ModCard mod={db.mods[m.id]} scale={0.18} bare />{:else if db.arcanes[m.id]}<ArcaneCard arcane={db.arcanes[m.id]} scale={0.1} bare />{/if}
+              </span>
+              {m.ru} <small>{m.en}</small>
             </button>
           {/each}
         </div>
@@ -152,11 +156,11 @@
   .options button:hover {
     background: var(--surface-2);
   }
-  .options img {
-    width: 26px;
-    height: 26px;
-    object-fit: cover;
-    border-radius: 4px;
+  .thumb {
+    width: 54px;
+    flex: none;
+    display: flex;
+    justify-content: center;
   }
   .options small {
     color: var(--text-faint);

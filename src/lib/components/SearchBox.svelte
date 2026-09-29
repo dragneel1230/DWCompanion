@@ -1,15 +1,21 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
   import { search, iconUrl, type Entry } from "$lib/db";
+  import { loadFrames, type FramesDb } from "$lib/frames";
+  import ModCard from "./ModCard.svelte";
+  import ArcaneCard from "./ArcaneCard.svelte";
 
   let { onpick, autofocus = false }: { onpick?: () => void; autofocus?: boolean } = $props();
 
   let query = $state("");
   let active = $state(0);
   let input: HTMLInputElement;
+  // Mods and arcanes are drawn in their game frames, not as bare art.
+  let frames = $state<FramesDb | null>(null);
+  loadFrames().then((f) => (frames = f));
 
   const results = $derived(search(query));
-  const KIND_LABEL = { set: "Набор", item: "Предмет", relic: "Реликвия" } as const;
+  const KIND_LABEL = { set: "Набор", item: "Предмет", relic: "Реликвия", frame: "Варфрейм", mod: "Мод", arcane: "Мистификатор" } as const;
 
   $effect(() => {
     query;
@@ -21,7 +27,9 @@
   });
 
   function href(e: Entry): string {
-    return `/${e.kind}?id=${encodeURIComponent(e.id)}`;
+    // Mods and arcanes have their own page only for the market.
+    const route = e.kind === "mod" || e.kind === "arcane" ? "market" : e.kind;
+    return `/${route}?id=${encodeURIComponent(e.id)}`;
   }
 
   function pick(e: Entry) {
@@ -56,7 +64,15 @@
       {#each results as e, i (e.kind + e.id)}
         <li>
           <button class:active={i === active} onmouseenter={() => (active = i)} onclick={() => pick(e)}>
-            <img src={iconUrl(e.icon)} alt="" loading="lazy" />
+            <span class="thumb">
+              {#if e.kind === "mod" && frames?.mods[e.id]}
+                <ModCard mod={frames.mods[e.id]} scale={0.22} bare />
+              {:else if e.kind === "arcane" && frames?.arcanes[e.id]}
+                <ArcaneCard arcane={frames.arcanes[e.id]} scale={0.12} bare />
+              {:else}
+                <img src={iconUrl(e.icon)} alt="" loading="lazy" />
+              {/if}
+            </span>
             <span class="name">
               {e.ru}
               <small>{e.en}</small>
@@ -108,6 +124,12 @@
   li button.active {
     background: var(--surface-2);
   }
+  .thumb {
+    width: 64px;
+    flex: none;
+    display: flex;
+    justify-content: center;
+  }
   img {
     width: 34px;
     height: 34px;
@@ -124,9 +146,10 @@
     font-size: 12px;
   }
   .kind {
+    flex: none;
     color: var(--text-faint);
     font-size: 12px;
-    width: 70px;
+    white-space: nowrap;
     text-align: right;
   }
   .empty {

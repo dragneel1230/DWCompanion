@@ -8,7 +8,7 @@
 
 <div class="page home">
   <h1>Что ищем?</h1>
-  <p class="muted">Наборы, части, реликвии — по-русски или по-английски. Из любого экрана: <kbd>Ctrl</kbd> + <kbd>K</kbd></p>
+  <p class="muted">Наборы, части, реликвии, варфреймы, моды, мистификаторы — по-русски или по-английски. Из любого экрана: <kbd>Ctrl</kbd> + <kbd>K</kbd></p>
   <SearchBox autofocus />
   <p class="foot">
     База: {Object.keys(db.sets).length} наборов · {Object.keys(db.items).length} наград · {Object.keys(db.relics).length} реликвий · обновлена {built}

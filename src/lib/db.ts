@@ -50,7 +50,7 @@ export interface Db {
   };
 }
 
-export type EntryKind = "set" | "item" | "relic";
+export type EntryKind = "set" | "item" | "relic" | "frame" | "mod" | "arcane";
 
 export interface Entry {
   kind: EntryKind;
@@ -88,6 +88,27 @@ export async function loadDb(): Promise<Db> {
       keys: [normalize(r.ru), normalize(r.en), normalize(`${r.era} ${r.cat}`)],
     });
   }
+  // Warframes, warframe mods and arcanes live in frames.json: added to search once it arrives.
+  // (Imported lazily: frames.ts imports this module.)
+  import("$lib/frames")
+    .then((m) => m.loadFrames())
+    .then((f) => {
+      const add = (kind: EntryKind, table: Record<string, { ru: string; en: string; icon: string | null }>) => {
+        for (const [id, x] of Object.entries(table)) {
+          entries.push({ kind, id, ru: x.ru, en: x.en, icon: x.icon, keys: [normalize(x.ru), normalize(x.en)] });
+        }
+      };
+      // Same-named mods (Conclave versions etc.): keep the one on the market with more ranks.
+      const mods = new Map<string, [string, (typeof f.mods)[string]]>();
+      for (const [id, m] of Object.entries(f.mods)) {
+        const o = mods.get(m.ru)?.[1];
+        if (!o || (!!m.slug > !!o.slug || (!!m.slug === !!o.slug && m.max > o.max))) mods.set(m.ru, [id, m]);
+      }
+      add("frame", f.frames);
+      add("mod", Object.fromEntries(mods.values()));
+      add("arcane", f.arcanes);
+    })
+    .catch(() => {});
   return db;
 }
 
@@ -101,7 +122,7 @@ export function itemName(it: Item): string {
   return it.main ? `${it.ru}: чертёж` : it.ru;
 }
 
-const KIND_WEIGHT: Record<EntryKind, number> = { set: 3, item: 2, relic: 1 };
+const KIND_WEIGHT: Record<EntryKind, number> = { set: 3, frame: 2.5, item: 2, mod: 2, arcane: 2, relic: 1 };
 
 // Every query word must be a prefix of some word in the key (any order).
 // Falls back to a one-typo match per word so "сорина" still finds "сарина".
