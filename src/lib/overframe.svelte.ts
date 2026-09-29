@@ -5,18 +5,32 @@
 // already checked by hand, plus ids the user resolved in the app (saved locally).
 
 const SEED: Record<number, string> = {
+  // warframes
+  20: "Excalibur Umbra",
   53: "Saryn Prime",
+  // mods
   65: "Cunning Drift",
+  67: "Power Drift",
+  110: "Chromatic Blade",
   180: "Venom Dose",
   299: "Brief Respite",
+  312: "Steel Charge",
+  693: "Umbral Vitality",
+  694: "Umbral Fiber",
   695: "Umbral Intensify",
   792: "Blind Rage",
+  793: "Transient Fortitude",
   794: "Overextended",
   800: "Primed Continuity",
+  802: "Primed Flow",
   806: "Stretch",
   831: "Equilibrium",
-  5866: "Molt Augmented",
+  1430: "Rolling Guard",
   6284: "Catalyzing Shields",
+  // arcanes
+  2174: "Arcane Fury",
+  2186: "Arcane Strike",
+  5866: "Molt Augmented",
   8004: "Arcane Sculptor",
 };
 

@@ -144,8 +144,8 @@ function byEnName(table: Record<string, { en: string }>): Map<string, string> {
 }
 
 // Third field of an Overframe entry = forma'd slot polarity. Checked on a real build:
-// 1 madurai, 2 vazarin, 3 naramon, 9 zenurik. Unairu / penjaga / umbra codes are not known yet.
-const OVERFRAME_POLARITY: Record<number, Polarity> = { 1: "madurai", 2: "vazarin", 3: "naramon", 9: "zenurik" };
+// 1 madurai, 2 vazarin, 3 naramon, 8 umbra, 9 zenurik. Unairu / penjaga codes are not known yet.
+const OVERFRAME_POLARITY: Record<number, Polarity> = { 1: "madurai", 2: "vazarin", 3: "naramon", 8: "umbra", 9: "zenurik" };
 
 // Warframe capacity with an Orokin Reactor at rank 30.
 export const BASE_CAPACITY = 60;
