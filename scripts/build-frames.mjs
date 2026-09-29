@@ -2,6 +2,8 @@
 // Stats/texts from WFCD @wfcd/items (MIT, has Russian i18n), icons/flags from Public Export Plus.
 // Run: pnpm data
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
+import { createRequire } from "node:module";
+import { resolve as resolvePath } from "node:path";
 
 const read = (p) => JSON.parse(readFileSync(p, "utf8"));
 const WFCD = "node_modules/@wfcd/items/data/json";
@@ -15,6 +17,12 @@ const peFrames = read(`${PE}/ExportWarframes.json`);
 const peUpgrades = read(`${PE}/ExportUpgrades.json`);
 const peArcanes = read(`${PE}/ExportArcanes.json`);
 const pe = (f) => read(`${PE}/${f}`);
+const wfComponents = new Map(read(`${WFCD}/Components.json`).map((c) => [c.uniqueName, c]));
+const dictEn = pe("dict.en.json");
+const dictRu = pe("dict.ru.json");
+const peModSets = pe("ExportModSet.json");
+// DE's own rank scaling (health/shield/energy/armor at rank 30), shipped with Public Export Plus.
+const scaled = createRequire(import.meta.url)(resolvePath(PE, "supplementals/getScaledPowersuitValues.js"));
 
 // Icons: DE's own CDN when ExportImages has a content hash (better quality), else the bare game
 // path, which the app loads from browse.wf.
@@ -37,6 +45,37 @@ const POLARITY = {
   AP_PRECEPT: "penjaga", AP_WARD: "unairu", AP_UMBRA: "umbra", AP_UNIVERSAL: "any", AP_ANY: "any",
 };
 
+// ---------- Drop locations: "Sedna/Merrow (Assassination), Rotation C" -> Russian where the
+// official dictionary knows the node / mission type; anything else stays in English.
+const unshout = (s) => (s && s === s.toUpperCase() ? s[0] + s.slice(1).toLowerCase() : s);
+const nodeRu = new Map();
+for (const r of Object.values(pe("ExportRegions.json"))) {
+  const en = dictEn[r.name], sys = dictEn[r.systemName];
+  if (en && sys) nodeRu.set(`${sys}/${en}`, `${dictRu[r.name] ?? en} (${dictRu[r.systemName] ?? sys})`);
+}
+const missionRu = new Map();
+for (const [key, en] of Object.entries(dictEn)) {
+  if (key.startsWith("/Lotus/Language/Missions/MissionName_") && dictRu[key]) missionRu.set(en.toLowerCase(), unshout(dictRu[key]));
+}
+for (const mt of Object.values(pe("ExportMissionTypes.json"))) {
+  if (dictEn[mt.name] && dictRu[mt.name]) missionRu.set(dictEn[mt.name].toLowerCase(), unshout(dictRu[mt.name]));
+}
+// Railjack drops name the planet ("Pluto/Fenton's Field") while the region says "Pluto Proxima".
+const nodeByName = new Map([...nodeRu].map(([k, v]) => [k.split("/")[1], v]));
+const simarisRu = "Цефалон Симарис";
+function dropLocation(loc) {
+  let [, place, rot] = /^(.*?)(?:, Rotation ([A-C]))?$/.exec(loc);
+  const m = /^([^/()]+)\/([^()]+?) \(([^()]+)\)$/.exec(place);
+  if (m) {
+    const node = nodeRu.get(`${m[1]}/${m[2]}`) ?? nodeByName.get(m[2]);
+    const bounty = /^Level\s+(\d+) - (\d+) .*Bounty$/.exec(m[3]);
+    const what = bounty ? `баунти ${bounty[1]}–${bounty[2]}` : (missionRu.get(m[3].toLowerCase()) ?? m[3]);
+    if (node) place = `${node}, ${what}`;
+  }
+  place = place.replace(/^Cephalon Simaris, Complete (.+)$/, `${simarisRu}: после «$1»`);
+  return rot ? `${place} · ротация ${rot}` : place;
+}
+
 // warframe.market slugs by gameRef (= our uniqueName), for the market page.
 console.log("Fetching warframe.market items...");
 const wfmRes = await fetch("https://api.warframe.market/v2/items");
@@ -51,6 +90,21 @@ for (const f of wfFrames) {
   if (!pe) continue;
   const ru = ruI18n[f.uniqueName] ?? {};
   const ruAbilities = new Map((ru.abilities ?? []).map((a) => [a.abilityUniqueName, a]));
+  const r30 = await scaled(f.uniqueName, 30);
+  // Non-prime parts with drop sources; prime parts come from the relic db (sets) in the app.
+  const parts = f.isPrime
+    ? []
+    : (f.components ?? [])
+        .filter((c) => c.uniqueName.includes("/Recipes/"))
+        .map((c) => {
+          const w = wfComponents.get(c.uniqueName);
+          return {
+            ru: c.uniqueName.endsWith("Blueprint") ? "Чертёж" : (ruI18n[c.uniqueName]?.name ?? w?.name ?? "?"),
+            drops: (w?.drops ?? [])
+              .map((d) => ({ loc: dropLocation(d.location), chance: d.chance }))
+              .sort((a, b) => b.chance - a.chance),
+          };
+        });
   frames[f.uniqueName] = {
     ru: ru.name ?? f.name,
     en: f.name,
@@ -61,6 +115,10 @@ for (const f of wfFrames) {
     armor: f.armor,
     energy: f.power,
     sprint: f.sprintSpeed,
+    r30: { health: r30.health, shield: r30.shield, energy: r30.power, armor: r30.armor },
+    desc: clean(ru.description ?? f.description),
+    parts,
+    bpCost: f.isPrime ? undefined : f.bpCost,
     aura: f.aura ?? null,
     polarities: f.polarities ?? [],
     released: f.releaseDate ?? null,
@@ -77,6 +135,36 @@ for (const f of wfFrames) {
   };
 }
 
+// Numeric effects the stat panel understands, parsed from the English level texts.
+const FX = [
+  [/^([+-]?[\d.]+)% Ability Strength$/, "str"],
+  [/^([+-]?[\d.]+)% Ability Duration$/, "dur"],
+  [/^([+-]?[\d.]+)% Ability Range$/, "rng"],
+  [/^([+-]?[\d.]+)% Ability Efficiency$/, "eff"],
+  [/^([+-]?[\d.]+)% Health$/, "hp"],
+  [/^([+-]?[\d.]+) Health$/, "hpFlat"],
+  [/^([+-]?[\d.]+)% Shield Capacity$/, "sh"],
+  [/^([+-]?[\d.]+) Shield Capacity$/, "shFlat"],
+  [/^x([\d.]+) Max Shield Capacity$/, "shMul"],
+  [/^([+-]?[\d.]+)% Armor$/, "arm"],
+  [/^([+-]?[\d.]+)% Energy Max$/, "en"],
+  [/^([+-]?[\d.]+)% Sprint Speed$/, "spd"],
+];
+function parseFx(levels) {
+  const fx = {};
+  levels.forEach((lv, rank) => {
+    for (const line of lv.stats ?? []) {
+      for (const [re, key] of FX) {
+        const m = re.exec(line.trim());
+        if (m) (fx[key] ??= Array(levels.length).fill(0))[rank] = Number(m[1]);
+      }
+    }
+  });
+  return Object.keys(fx).length ? fx : undefined;
+}
+
+const sets = {};
+
 // ---------- Mods usable on warframes: generic, aura, augments (compatName = frame name).
 const frameCompat = new Set(wfFrames.map((f) => f.name.replace(/ Prime$/, "").toUpperCase()));
 const mods = {};
@@ -88,6 +176,10 @@ for (const m of wfMods) {
   if (!forFrames) continue;
   const ru = ruI18n[m.uniqueName] ?? {};
   const stats = ru.levelStats ?? m.levelStats ?? [];
+  if (m.modSet && !sets[m.modSet]) {
+    const ps = peModSets[m.modSet];
+    sets[m.modSet] = { desc: clean(dictRu[ps?.description] ?? ""), n: ps?.numUpgradesInSet ?? 0, values: m.modSetValues ?? [] };
+  }
   mods[m.uniqueName] = {
     ru: ru.name ?? m.name,
     en: m.name,
@@ -97,6 +189,9 @@ for (const m of wfMods) {
     drain: m.baseDrain ?? 0,
     max: m.fusionLimit ?? 0,
     stats: clean((stats[stats.length - 1]?.stats ?? []).join("\n")),
+    levels: stats.map((l) => clean((l.stats ?? []).join("\n"))),
+    fx: parseFx(m.levelStats ?? []),
+    set: m.modSet,
     aura: isAura || undefined,
     exilus: pe.isUtility || undefined,
     augment: m.isAugment && frameCompat.has(m.compatName) ? m.compatName : undefined,
@@ -118,6 +213,8 @@ for (const a of wfArcanes) {
     rarity: a.rarity,
     max: stats.length - 1,
     stats: clean((stats[stats.length - 1]?.stats ?? []).join("\n")),
+    levels: stats.map((l) => clean((l.stats ?? []).join("\n"))),
+    wf: a.type === "Warframe Arcane" || a.type === "Arcane" || undefined,
     slug: wfm.get(a.uniqueName)?.slug,
     mname: wfm.get(a.uniqueName)?.i18n?.en?.name,
   };
@@ -162,7 +259,7 @@ if (existsSync(seedFile)) {
 }
 
 mkdirSync("static/data", { recursive: true });
-writeFileSync("static/data/frames.json", JSON.stringify({ frames, mods, arcanes, builds }));
+writeFileSync("static/data/frames.json", JSON.stringify({ frames, mods, arcanes, builds, sets }));
 console.log(
   `frames ${Object.keys(frames).length}, mods ${Object.keys(mods).length}, arcanes ${Object.keys(arcanes).length}, ` +
   `builds ${Object.keys(builds).length}`,

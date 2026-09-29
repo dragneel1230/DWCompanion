@@ -14,7 +14,10 @@
     owned = false,
     scale = 0.72,
     bare = false,
+    rank = undefined,
+    polRow = true,
     onclick,
+    onhover,
   }: {
     mod?: Mod | null;
     slotPol?: Polarity | null;
@@ -22,7 +25,10 @@
     owned?: boolean;
     scale?: number;
     bare?: boolean; // thumbnail: no slot polarity row, not clickable
+    rank?: number; // default: max rank
+    polRow?: boolean; // false when the parent draws its own slot polarity control
     onclick?: () => void;
+    onhover?: (el: HTMLElement | null) => void;
   } = $props();
 
   const FRAME: Record<string, string> = {
@@ -33,22 +39,31 @@
     Peculiar: "Legendary",
   };
   const frame = $derived(mod ? (mod.pol === "umbra" ? "Legendary" : (FRAME[mod.rarity] ?? "Bronze")) : "Bronze");
-  const cost = $derived(mod ? modCost(mod, slotPol) : 0);
+  const r = $derived(mod ? Math.min(rank ?? mod.max, mod.max) : 0);
+  const cost = $derived(mod ? modCost(mod, slotPol, r) : 0);
   const match = $derived(!!mod && !!slotPol && (slotPol === mod.pol || slotPol === "any"));
   const mismatch = $derived(!!mod && !!slotPol && !match && !mod.aura);
   const ranks = $derived(Math.min(mod?.max ?? 0, 10));
+  const active = $derived(Math.min(r, 10));
   const kindIcon = $derived(label === "Аура" ? "/modframe/SilverAura.png" : label === "Эксилус" ? "/modframe/GoldExilus.png" : null);
 </script>
 
 <div class="slot" style:--s={scale}>
-  {#if !bare}
+  {#if !bare && polRow}
     <div class="slot-pol" class:match>
       {#if slotPol}<PolIcon pol={slotPol} size={13} />{/if}
     </div>
   {/if}
 
   {#if mod}
-    <svelte:element this={bare ? "div" : "button"} class="card" {onclick} title={bare ? undefined : mod.stats} role={bare ? undefined : "button"}>
+    <svelte:element
+      this={bare ? "div" : "button"}
+      class="card"
+      {onclick}
+      role={bare ? undefined : "button"}
+      onmouseenter={(e: MouseEvent) => onhover?.(e.currentTarget as HTMLElement)}
+      onmouseleave={() => onhover?.(null)}
+    >
       <div class="native">
         <div class="bg" style:background-image="url(/modframe/{frame}Background.png)"></div>
         <div class="art" style:background-image="url({iconUrl(mod.icon)})"></div>
@@ -62,14 +77,16 @@
         </div>
         <div class="name">{mod.ru}</div>
         <div class="stars">
-          {#each { length: ranks } as _}<img src="/modframe/RankSlotActive.png" alt="" />{/each}
+          {#each { length: ranks } as _, i}<img class:off={i >= active} src="/modframe/RankSlotActive.png" alt="" />{/each}
         </div>
         <img class="line" src="/modframe/RankCompleteLine.png" alt="" />
         {#if owned}<div class="own" title="Есть у меня">✓</div>{/if}
       </div>
     </svelte:element>
   {:else}
-    <div class="card empty"><span>{label || "Пусто"}</span></div>
+    <svelte:element this={onclick && !bare ? "button" : "div"} class="card empty" class:add={!!onclick} {onclick} role={onclick ? "button" : undefined}>
+      <span>{#if onclick}<b>+</b>{/if}{label || (onclick ? "Мод" : "Пусто")}</span>
+    </svelte:element>
   {/if}
 </div>
 
@@ -202,6 +219,10 @@
     width: 13px;
     height: 13px;
   }
+  .stars img.off {
+    opacity: 0.22;
+    filter: grayscale(1);
+  }
   .line {
     position: absolute;
     left: 18px;
@@ -223,6 +244,14 @@
     background: var(--good);
   }
 
+  .empty.add:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .empty b {
+    font-weight: 400;
+    margin-right: 4px;
+  }
   .empty {
     display: grid;
     place-items: center;

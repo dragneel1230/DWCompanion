@@ -1,18 +1,31 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { goto } from "$app/navigation";
-  import { loadFrames, getBuild, modCost, BASE_CAPACITY, POLARITY_RU, RARITY_RU, type FramesDb, type Mod, type Arcane, type Polarity } from "$lib/frames";
+  import { loadFrames, getBuild, formaInfo, buildEndo, rankOf, POLARITY_RU, RARITY_RU, type Build, type FramesDb, type Mod, type Arcane, type Polarity } from "$lib/frames";
   import { userBuilds } from "$lib/userBuilds.svelte";
   import { iconUrl } from "$lib/db";
   import { owned } from "$lib/owned.svelte";
   import ModCard from "$lib/components/ModCard.svelte";
   import ArcaneCard from "$lib/components/ArcaneCard.svelte";
+  import BuildBoard from "$lib/components/BuildBoard.svelte";
 
   let db = $state<FramesDb | null>(null);
   loadFrames().then((d) => (db = d));
 
   const id = $derived(page.url.searchParams.get("id") ?? "");
   const build = $derived(db ? getBuild(db, id) : undefined);
+  const frame = $derived(build && db ? db.frames[build.frame] : null);
+  const own = $derived(!!userBuilds.all[id]);
+
+  // Read-only copy for the board (it takes a bindable build).
+  let view = $state<Build | null>(null);
+  $effect(() => {
+    view = build ? $state.snapshot(build) : null;
+  });
+
+  const forma = $derived(frame && build ? formaInfo(frame, build.pols).count : 0);
+  const endo = $derived(db && build ? buildEndo(db, build) : 0);
+  const editUrl = $derived(build ? `/frame?id=${encodeURIComponent(build.frame)}&build=${encodeURIComponent(id)}` : "");
 
   function remove() {
     if (!build) return;
@@ -20,93 +33,60 @@
     userBuilds.remove(id);
     goto(`/frame?id=${encodeURIComponent(frameId)}`);
   }
-  const frame = $derived(build && db ? db.frames[build.frame] : null);
 
-  type Line = { id: string; kind: "mod" | "arcane"; slot: string; mod?: Mod; arcane?: Arcane; pol?: Polarity | null };
+  type Line = { id: string; kind: "mod" | "arcane"; slot: string; mod?: Mod; arcane?: Arcane; pol?: Polarity | null; rank?: number };
 
   // Everything the build needs, in grid order, for the "do I have it" list.
   const lines = $derived.by<Line[]>(() => {
     if (!build || !db) return [];
     const out: Line[] = [];
     const p = build.pols;
-    const addMod = (mid: string | null, slot: string, pol?: Polarity | null) =>
-      mid && out.push({ id: mid, kind: "mod", slot, mod: db!.mods[mid], pol });
-    addMod(build.aura, "Аура", p?.aura);
-    addMod(build.exilus, "Эксилус", p?.exilus);
-    build.slots.forEach((m, i) => addMod(m, `Слот ${i + 1}`, p?.slots[i]));
-    build.arcanes.forEach((a, i) => out.push({ id: a, kind: "arcane", slot: `Мистификатор ${i + 1}`, arcane: db!.arcanes[a] }));
+    const r = build.ranks;
+    const addMod = (mid: string | null, slot: string, pol?: Polarity | null, rank?: number | null) =>
+      mid && db!.mods[mid] && out.push({ id: mid, kind: "mod", slot, mod: db!.mods[mid], pol, rank: rankOf(db!.mods[mid], rank) });
+    addMod(build.aura, "Аура", p?.aura, r?.aura);
+    addMod(build.exilus, "Эксилус", p?.exilus, r?.exilus);
+    build.slots.forEach((m, i) => addMod(m, `Слот ${i + 1}`, p?.slots[i], r?.slots[i]));
+    build.arcanes.forEach((a, i) => db!.arcanes[a] && out.push({ id: a, kind: "arcane", slot: `Мистификатор ${i + 1}`, arcane: db!.arcanes[a] }));
     return out;
-  });
-
-  // Capacity like the in-game counter: 60 with reactor + aura bonus, minus every mod's drain.
-  const capacity = $derived.by(() => {
-    if (!build || !db) return null;
-    const p = build.pols;
-    const auraMod = build.aura ? db.mods[build.aura] : null;
-    const total = BASE_CAPACITY + (auraMod ? -modCost(auraMod, p?.aura) : 0);
-    let used = build.exilus ? modCost(db.mods[build.exilus], p?.exilus) : 0;
-    build.slots.forEach((m, i) => m && (used += modCost(db!.mods[m], p?.slots[i])));
-    return { used, total };
   });
 
   const have = $derived(lines.filter((l) => owned.has(l.id)).length);
   const ring = $derived(lines.length ? have / lines.length : 0);
-
-  function focus(lid: string) {
-    document.getElementById(`line-${lid}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
 </script>
 
-{#if build && frame && db}
+{#if build && frame && db && view}
   <div class="page wide">
-    <header class="hero">
-      <a href="/frame?id={encodeURIComponent(build.frame)}"><img src={iconUrl(frame.icon)} alt="" /></a>
-      <div>
-        <h1>{build.title}</h1>
-        <div class="sub">
-          <a class="frame-link" href="/frame?id={encodeURIComponent(build.frame)}">{frame.ru}</a>
-          <span>· {build.author}</span>
-          {#if build.source !== "overframe"}<span>· ▲ {build.votes}</span>{/if}
-          {#each build.tags as t}<span class="tag">{t}</span>{/each}
+    <header class="top">
+      <a href="/frame?id={encodeURIComponent(build.frame)}"><img class="portrait" src={iconUrl(frame.icon)} alt="" /></a>
+      <div class="head">
+        <div class="title-row">
+          <div>
+            <h1>{build.title}</h1>
+            <div class="sub">
+              <a class="frame-link" href="/frame?id={encodeURIComponent(build.frame)}">{frame.ru}</a>
+              <span>· {build.author}</span>
+              {#if build.source !== "overframe" && !own}<span>· ▲ {build.votes}</span>{/if}
+              {#each build.tags as t}<span class="tag">{t}</span>{/each}
+            </div>
+          </div>
+          <div class="actions">
+            {#if build.url}<a class="act" href={build.url} target="_blank" rel="noreferrer">Overframe ↗</a>{/if}
+            {#if own}<button class="act danger" onclick={remove}>Удалить</button>{/if}
+            <a class="act primary" href={editUrl}>{own ? "Изменить" : "Скопировать и изменить"}</a>
+          </div>
         </div>
+        <div class="costs">
+          <span title="Форм нужно (изменённые полярности)"><img src="/icons/forma.png" alt="Форма" /> {forma}</span>
+          <span title="Эндо на прокачку всех модов с 0"><img src="/icons/endo.png" alt="Эндо" /> {endo.toLocaleString("ru-RU")}</span>
+        </div>
+        {#if build.demo || build.note}
+          <p class="note" class:demo={build.demo}>{build.note}</p>
+        {/if}
       </div>
     </header>
 
-    {#if build.source === "overframe"}
-      <div class="actions">
-        {#if build.url}<a class="act" href={build.url} target="_blank" rel="noreferrer">Открыть на Overframe ↗</a>{/if}
-        <button class="act danger" onclick={remove}>Удалить импорт</button>
-      </div>
-    {/if}
-
-    {#if build.demo || build.note}
-      <p class="note" class:demo={build.demo}>{build.note}</p>
-    {/if}
-
-    <section class="board">
-      {#if capacity}
-        <div class="capacity" class:over={capacity.used > capacity.total}>
-          Вместимость <b>{capacity.used}</b> / {capacity.total}
-          {#if !build.pols}<span class="muted" title="Полярности слотов неизвестны — стоимость без форм">· без форм</span>{/if}
-        </div>
-      {/if}
-      <div class="top">
-        <ModCard mod={build.aura ? db.mods[build.aura] : null} slotPol={build.pols?.aura} label="Аура" owned={!!build.aura && owned.has(build.aura)} onclick={() => build.aura && focus(build.aura)} />
-        <ModCard mod={build.exilus ? db.mods[build.exilus] : null} slotPol={build.pols?.exilus} label="Эксилус" owned={!!build.exilus && owned.has(build.exilus)} onclick={() => build.exilus && focus(build.exilus)} />
-      </div>
-      <div class="slots">
-        {#each build.slots as m, i (i)}
-          <ModCard mod={m ? db.mods[m] : null} slotPol={build.pols?.slots[i]} owned={!!m && owned.has(m)} onclick={() => m && focus(m)} />
-        {/each}
-      </div>
-      {#if build.arcanes.length}
-        <div class="top arcanes">
-          {#each build.arcanes as a (a)}
-            <ArcaneCard arcane={db.arcanes[a]} owned={owned.has(a)} onclick={() => focus(a)} />
-          {/each}
-        </div>
-      {/if}
-    </section>
+    <BuildBoard {db} {frame} bind:build={view} />
 
     <div class="have-head">
       <div class="section-title">Моды билда</div>
@@ -130,15 +110,15 @@
           {@const has = owned.has(l.id)}
           <div class="row line" id="line-{l.id}">
             <div class="thumb">
-              {#if l.mod}<ModCard mod={l.mod} slotPol={l.pol} scale={0.4} bare />{:else if l.arcane}<ArcaneCard arcane={l.arcane} scale={0.23} bare />{/if}
+              {#if l.mod}<ModCard mod={l.mod} slotPol={l.pol} rank={l.rank} scale={0.4} bare />{:else if l.arcane}<ArcaneCard arcane={l.arcane} scale={0.23} bare />{/if}
             </div>
             <span class="name">
               {item.ru}
               <small>
                 {l.slot} · {RARITY_RU[item.rarity]}
-                {#if l.mod}· <img class="pol" src="/icons/{l.mod.pol}.png" alt="" /> {POLARITY_RU[l.mod.pol]}{/if}
+                {#if l.mod}· <img class="pol" src="/icons/{l.mod.pol}.png" alt="" /> {POLARITY_RU[l.mod.pol]} · ранг {l.rank} / {l.mod.max}{/if}
               </small>
-              <span class="stats">{item.stats}</span>
+              <span class="stats">{l.mod ? (l.mod.levels[l.rank ?? l.mod.max] ?? item.stats) : item.stats}</span>
             </span>
             {#if item.slug}<a class="market" href="/market?id={encodeURIComponent(l.id)}" title="Заявки на warframe.market">Рынок</a>{/if}
             <button class="own" class:yes={has} onclick={() => owned.toggle(l.id)}>{has ? "✓ Есть" : "Нет"}</button>
@@ -153,67 +133,90 @@
 
 <style>
   .wide {
-    max-width: 1000px;
+    max-width: 1180px;
   }
-  .actions {
+  .top {
     display: flex;
-    gap: 8px;
-    margin: -8px 0 18px;
+    gap: 22px;
+    margin-bottom: 20px;
   }
-  .act {
-    font-size: 12px;
-    padding: 5px 10px;
-    border-radius: 8px;
-    border: 1px solid var(--line);
+  .portrait {
+    width: 150px;
+    height: 150px;
+    object-fit: contain;
+    flex: none;
+    filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.5));
+  }
+  .head {
+    flex: 1;
+    min-width: 0;
+  }
+  .title-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  h1 {
+    margin: 0 0 6px;
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--plat);
+  }
+  .sub {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
     color: var(--text-dim);
-  }
-  .act.danger:hover {
-    color: var(--warn);
+    font-size: 13px;
   }
   .frame-link {
     color: var(--accent);
   }
+  .actions {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    flex: none;
+  }
+  .act {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+  .act.primary {
+    color: var(--bg);
+    background: var(--accent);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .act.danger:hover {
+    color: var(--warn);
+  }
+  .costs {
+    display: flex;
+    gap: 16px;
+    margin: 12px 0 6px;
+    font-weight: 600;
+  }
+  .costs span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .costs img {
+    width: 20px;
+    height: 20px;
+  }
   .note {
-    margin: -8px 0 18px;
+    margin: 6px 0 0;
     font-size: 13px;
     color: var(--text-dim);
   }
   .note.demo {
     color: var(--warn);
-  }
-  .board {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    padding: 20px;
-    border-radius: 14px;
-    background: radial-gradient(ellipse at 50% 0%, rgba(201, 166, 107, 0.07), transparent 60%), var(--surface);
-  }
-  .top {
-    display: flex;
-    gap: 12px;
-  }
-  .slots {
-    display: grid;
-    grid-template-columns: repeat(4, 210px);
-    gap: 6px 12px;
-  }
-  .capacity {
-    align-self: flex-end;
-    font-size: 13px;
-    color: var(--text-dim);
-  }
-  .capacity b {
-    color: var(--good);
-    font-weight: 600;
-  }
-  .capacity.over b {
-    color: #ff7b6b;
-  }
-  .arcanes {
-    margin-top: 10px;
-    gap: 40px;
   }
   .have-head {
     display: flex;

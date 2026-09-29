@@ -1,172 +1,352 @@
 <script lang="ts">
   import { page } from "$app/state";
-  import { loadFrames, buildsFor, POLARITY_RU, type FramesDb } from "$lib/frames";
-  import { iconUrl } from "$lib/db";
+  import { goto } from "$app/navigation";
+  import { loadFrames, buildsFor, getBuild, emptyBuild, formaInfo, buildEndo, type Build, type FramesDb } from "$lib/frames";
+  import { getDb, iconUrl, itemName } from "$lib/db";
+  import { userBuilds } from "$lib/userBuilds.svelte";
+  import BuildBoard from "$lib/components/BuildBoard.svelte";
   import ImportBuild from "$lib/components/ImportBuild.svelte";
 
   let db = $state<FramesDb | null>(null);
   loadFrames().then((d) => (db = d));
 
   const id = $derived(page.url.searchParams.get("id") ?? "");
+  // ?build=<id> opens an existing build in the editor.
+  const editId = $derived(page.url.searchParams.get("build"));
   const frame = $derived(db?.frames[id]);
   const builds = $derived(db ? buildsFor(db, id) : []);
 
-  let openAbility = $state<number | null>(null);
-  let importing = $state(false);
+  let build = $state<Build | null>(null);
+  let title = $state("");
+  let savedAt = $state(0);
 
-  const STATS = [
-    ["health", "Здоровье"],
-    ["shield", "Щиты"],
-    ["armor", "Броня"],
-    ["energy", "Энергия"],
-    ["sprint", "Скорость"],
-  ] as const;
+  // Fresh editor state whenever the frame or the edited build changes.
+  $effect(() => {
+    if (!db || !frame) return;
+    const src = editId ? getBuild(db, editId) : undefined;
+    const base = emptyBuild(id, frame);
+    const snap = src ? $state.snapshot(src) : null; // plain deep copy (src may be a $state proxy)
+    build = snap ? { ...base, ...snap, pols: snap.pols ?? base.pols, ranks: snap.ranks ?? base.ranks } : base;
+    title = src?.title ?? "";
+  });
+
+  const own = $derived(!!editId && !!userBuilds.all[editId]);
+  const forma = $derived(frame && build ? formaInfo(frame, build.pols).count : 0);
+  const endo = $derived(db && build ? buildEndo(db, build) : 0);
+  const empty = $derived(!build || (!build.aura && !build.exilus && build.slots.every((s) => !s) && !build.arcanes.length));
+
+  function save() {
+    if (!build) return;
+    const bid = own ? editId! : `my-${Date.now()}`;
+    const prev = own ? userBuilds.all[bid] : null;
+    userBuilds.save(bid, {
+      ...$state.snapshot(build),
+      frame: id,
+      title: title.trim() || "Мой билд",
+      author: prev?.author ?? "мой билд",
+      source: prev?.source,
+      url: prev?.url,
+      votes: 0,
+    });
+    savedAt = Date.now();
+    if (!own) goto(`/frame?id=${encodeURIComponent(id)}&build=${encodeURIComponent(bid)}`, { replaceState: true, noScroll: true });
+  }
+
+  function reset() {
+    goto(`/frame?id=${encodeURIComponent(id)}`, { noScroll: true });
+    if (!editId && frame) build = emptyBuild(id, frame);
+  }
+
+  // Prime parts: from the relic db; relics that still drop go first.
+  const primeParts = $derived.by(() => {
+    if (!frame?.prime) return [];
+    const wdb = getDb();
+    const set = wdb.sets[id];
+    if (!set) return [];
+    return set.parts.map((pid) => {
+      const it = wdb.items[pid];
+      const relics = it.relics
+        .map((r) => ({ ...r, vaulted: wdb.relics[r.relic]?.vaulted ?? true, ru: wdb.relics[r.relic]?.ru ?? r.relic }))
+        .sort((a, b) => Number(a.vaulted) - Number(b.vaulted));
+      return { id: pid, name: itemName(it), relics };
+    });
+  });
+  const RARITY_RU = { COMMON: "обычн.", UNCOMMON: "необычн.", RARE: "редк." } as const;
+
+  let importing = $state(false);
 </script>
 
-{#if frame && db}
-  <div class="page">
-    <header class="hero">
-      <img src={iconUrl(frame.icon)} alt="" />
-      <div>
-        <h1>{frame.ru}</h1>
-        <div class="sub">
-          <span>{frame.en}</span>
-          {#if frame.prime}<span class="tag prime">прайм</span>{/if}
+{#if frame && db && build}
+  <div class="page wide">
+    <header class="top">
+      <img class="portrait" src={iconUrl(frame.icon)} alt="" />
+      <div class="head">
+        <div class="title-row">
+          <div>
+            <h1>{frame.ru}{#if frame.prime}<span class="tag prime">прайм</span>{/if}</h1>
+            <input class="title" bind:value={title} placeholder={editId ? "Название билда" : "Новый билд — название"} spellcheck="false" />
+          </div>
+          <div class="actions">
+            {#if editId}<button class="act" onclick={reset}>Новый</button>{/if}
+            <button class="act primary" onclick={save} disabled={empty}>{own ? "Сохранить" : "Сохранить в мои"}</button>
+          </div>
         </div>
+        <div class="costs">
+          <span title="Форм нужно (изменённые полярности)"><img src="/icons/forma.png" alt="Форма" /> {forma}</span>
+          <span title="Эндо на прокачку всех модов с 0 до выбранных рангов"><img src="/icons/endo.png" alt="Эндо" /> {endo.toLocaleString("ru-RU")}</span>
+          {#if savedAt && own}<span class="saved">сохранено</span>{/if}
+        </div>
+        <p class="desc">{frame.desc}</p>
+        {#if frame.passive}<p class="passive"><b>Пассивка.</b> {frame.passive}</p>{/if}
       </div>
     </header>
 
-    <div class="stats">
-      {#each STATS as [key, label]}
-        <div class="stat"><b>{key === "sprint" ? frame.sprint.toFixed(2).replace(".", ",") : frame[key]}</b><span>{label}</span></div>
-      {/each}
-      <div class="stat pols">
-        <b>
-          {#if frame.aura}<img src="/icons/{frame.aura}.png" alt="" title="Аура: {POLARITY_RU[frame.aura]}" />{/if}
-          {#each frame.polarities as p}<img src="/icons/{p}.png" alt="" title={POLARITY_RU[p]} />{/each}
-          {#if !frame.aura && !frame.polarities.length}—{/if}
-        </b>
-        <span>Полярности</span>
-      </div>
-    </div>
+    <BuildBoard {db} {frame} bind:build editable />
 
-    <div class="section-title">Способности</div>
-    <div class="abilities">
-      {#each frame.abilities as a, i}
-        <button class="ability" class:on={openAbility === i} onclick={() => (openAbility = openAbility === i ? null : i)}>
-          <img src={iconUrl(a.icon)} alt="" />
-          <span>{a.ru}</span>
-        </button>
-      {/each}
-    </div>
-    {#if openAbility != null}
-      <p class="desc">{frame.abilities[openAbility].desc}</p>
-    {/if}
-    {#if frame.passive}
-      <p class="desc passive"><b>Пассивка.</b> {frame.passive}</p>
-    {/if}
+    <div class="cols">
+      <section>
+        <div class="section-title">Части и где добыть</div>
+        {#if frame.prime}
+          {#if primeParts.length}
+            <div class="parts">
+              {#each primeParts as p (p.id)}
+                <div class="part">
+                  <a class="pname" href="/item?id={encodeURIComponent(p.id)}">{p.name}</a>
+                  <div class="drops">
+                    {#each p.relics as r}
+                      <a class="relic" class:vaulted={r.vaulted} href="/relic?id={encodeURIComponent(r.relic)}">
+                        {r.ru}<small>{RARITY_RU[r.rarity]}</small>
+                      </a>
+                    {/each}
+                  </div>
+                </div>
+              {/each}
+            </div>
+            <p class="hint">Серым — реликвии в хранилище. <a href="/set?id={encodeURIComponent(id)}">Весь набор и цены →</a></p>
+          {:else}
+            <p class="muted">Нет данных о частях.</p>
+          {/if}
+        {:else}
+          <div class="parts">
+            {#each frame.parts as p}
+              <div class="part">
+                <span class="pname">{p.ru}</span>
+                <div class="drops list">
+                  {#if p.ru === "Чертёж" && !p.drops.length && frame.bpCost}
+                    <span>Рынок · {frame.bpCost.toLocaleString("ru-RU")} кредитов</span>
+                  {/if}
+                  {#each p.drops.slice(0, 6) as d}
+                    <span>{d.loc} <b>{d.chance.toFixed(2).replace(".", ",")}%</b></span>
+                  {/each}
+                  {#if p.drops.length > 6}<span class="more">и ещё {p.drops.length - 6}</span>{/if}
+                  {#if !p.drops.length && !(p.ru === "Чертёж" && frame.bpCost)}<span class="muted">квест, рынок или особый способ</span>{/if}
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </section>
 
-    <div class="builds-head">
-      <div class="section-title">Билды · сначала популярные</div>
-      {#if !importing}<button class="import-btn" onclick={() => (importing = true)}>+ Импорт с Overframe</button>{/if}
+      <section>
+        <div class="builds-head">
+          <div class="section-title">Билды</div>
+          {#if !importing}<button class="import-btn" onclick={() => (importing = true)}>+ Импорт с Overframe</button>{/if}
+        </div>
+        {#if importing}<ImportBuild {db} frameId={id} onclose={() => (importing = false)} />{/if}
+        {#if builds.length}
+          <div class="rows">
+            {#each builds as [bid, b] (bid)}
+              <a class="row build" class:on={bid === editId} href="/build?id={encodeURIComponent(bid)}">
+                <span class="name">
+                  {b.title}
+                  <small>{b.author}{#each b.tags as t}<span class="tag">{t}</span>{/each}</small>
+                </span>
+                <span class="bf" title="Форм"><img src="/icons/forma.png" alt="" /> {formaInfo(frame, b.pols).count}</span>
+                {#if b.demo}<span class="tag vaulted">демо</span>{/if}
+                {#if b.source !== "overframe" && !userBuilds.all[bid]}<span class="votes" title="Голоса">▲ {b.votes}</span>{/if}
+              </a>
+            {/each}
+          </div>
+        {:else}
+          <p class="muted">Билдов пока нет. Собери свой выше или импортируй с Overframe.</p>
+        {/if}
+      </section>
     </div>
-    {#if importing}<ImportBuild {db} frameId={id} onclose={() => (importing = false)} />{/if}
-    {#if builds.length}
-      <div class="rows">
-        {#each builds as [bid, b] (bid)}
-          <a class="row build" href="/build?id={encodeURIComponent(bid)}">
-            <span class="name">
-              {b.title}
-              <small>{b.author}{#each b.tags as t}<span class="tag">{t}</span>{/each}</small>
-            </span>
-            {#if b.demo}<span class="tag vaulted">демо</span>{/if}
-            {#if b.source === "overframe"}<span class="tag">мой импорт</span>{:else}<span class="votes" title="Голоса">▲ {b.votes}</span>{/if}
-          </a>
-        {/each}
-      </div>
-    {:else}
-      <p class="muted">Билдов пока нет. Импортируй понравившийся с Overframe — кнопка выше.</p>
-    {/if}
   </div>
 {:else if db}
   <div class="page"><p>Варфрейм не найден.</p></div>
 {/if}
 
 <style>
+  .wide {
+    max-width: 1180px;
+  }
+  .top {
+    display: flex;
+    gap: 22px;
+    margin-bottom: 20px;
+  }
+  .portrait {
+    width: 150px;
+    height: 150px;
+    object-fit: contain;
+    flex: none;
+    filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.5));
+  }
+  .head {
+    flex: 1;
+    min-width: 0;
+  }
+  .title-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  h1 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--plat);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
   .tag.prime {
     color: var(--accent);
     border-color: rgba(201, 166, 107, 0.35);
-  }
-  .stats {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .stat {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 10px 14px;
-    min-width: 92px;
-    border-radius: 10px;
-    background: var(--surface);
-  }
-  .stat b {
-    font-size: 18px;
-    font-weight: 600;
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    min-height: 24px;
-  }
-  .stat span {
-    font-size: 11px;
-    color: var(--text-faint);
-  }
-  .pols img {
-    width: 18px;
-    height: 18px;
-  }
-  .abilities {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .ability {
-    width: 104px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 10px 6px;
-    border-radius: 10px;
-    background: var(--surface);
-    border: 1px solid transparent;
     font-size: 12px;
-    text-align: center;
   }
-  .ability.on {
-    border-color: var(--accent);
+  .title {
+    margin-top: 4px;
+    width: 360px;
+    max-width: 100%;
+    padding: 4px 0;
+    border: none;
+    border-bottom: 1px dashed var(--line);
+    background: none;
+    color: var(--text);
+    font-size: 15px;
+    outline: none;
   }
-  .ability img {
-    width: 44px;
-    height: 44px;
+  .title:focus {
+    border-bottom-color: var(--accent);
   }
-  .desc {
-    margin: 10px 0 0;
-    padding: 12px 14px;
-    border-radius: 10px;
-    background: var(--surface);
+  .actions {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .act {
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
     color: var(--text-dim);
+    font-size: 13px;
+  }
+  .act.primary {
+    color: var(--bg);
+    background: var(--accent);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .act:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .costs {
+    display: flex;
+    gap: 16px;
+    margin: 10px 0 6px;
+    font-weight: 600;
+  }
+  .costs span {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .costs img,
+  .bf img {
+    width: 20px;
+    height: 20px;
+  }
+  .saved {
+    color: var(--good);
+    font-weight: 400;
+    font-size: 12px;
+  }
+  .desc,
+  .passive {
+    margin: 4px 0 0;
+    font-size: 13px;
     line-height: 1.5;
-    white-space: pre-line;
+    color: var(--text-dim);
+    max-width: 760px;
   }
   .passive b {
     color: var(--text);
     font-weight: 600;
   }
-  .build small .tag {
-    margin-left: 6px;
+
+  .cols {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 8px;
+  }
+  .parts {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .part {
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--surface);
+  }
+  .pname {
+    font-weight: 600;
+  }
+  a.pname:hover {
+    color: var(--accent);
+  }
+  .drops {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 6px;
+    margin-top: 6px;
+    font-size: 12px;
+  }
+  .drops.list {
+    flex-direction: column;
+    color: var(--text-dim);
+  }
+  .drops.list b {
+    color: var(--text);
+    font-weight: 600;
+  }
+  .more {
+    color: var(--text-faint);
+  }
+  .relic {
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(111, 207, 151, 0.35);
+    color: var(--good);
+  }
+  .relic small {
+    margin-left: 4px;
+    color: var(--text-faint);
+  }
+  .relic.vaulted {
+    border-color: var(--line);
+    color: var(--text-faint);
+  }
+  .hint {
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+  .hint a {
+    color: var(--accent);
   }
   .builds-head {
     display: flex;
@@ -181,8 +361,21 @@
     border-radius: 8px;
     border: 1px solid rgba(201, 166, 107, 0.35);
   }
+  .build.on {
+    outline: 1px solid var(--accent);
+  }
+  .build small .tag {
+    margin-left: 6px;
+  }
+  .bf {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
   .votes {
-    width: 70px;
+    width: 60px;
     text-align: right;
     color: var(--text-dim);
     font-variant-numeric: tabular-nums;
