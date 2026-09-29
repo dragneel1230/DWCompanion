@@ -30,6 +30,7 @@ pub fn run() {
             reward::reward_scan_file,
             reward::reward_replay,
             reward::overlay_config,
+            reward::reward_names,
             reward::overlay_demo,
             overlay::overlay_show,
             overlay::overlay_hide,

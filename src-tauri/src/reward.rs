@@ -27,7 +27,9 @@ const CARD_STEP: f32 = 241.5;
 const TEXT_W: f32 = 238.0;
 const TEXT_Y: f32 = 410.0;
 const TEXT_H: f32 = 52.0;
-const SCAN_FOR: Duration = Duration::from_secs(6);
+// Endless missions (Survival...) open the screen with a 5 s pause countdown before the cards
+// ("OpenVoidProjectionRewardScreenRMI" ... "Pause countdown done"), plus EE.log write delay.
+const SCAN_FOR: Duration = Duration::from_secs(10);
 const SCAN_EVERY: Duration = Duration::from_millis(60);
 
 pub struct Squad {
@@ -35,11 +37,12 @@ pub struct Squad {
     scanning: bool,
     last_scan: Option<Instant>,
     enabled: bool, // overlay switched on in the app; off = the screen is not captured at all
+    names: Vec<String>, // every relic reward as shown on the card, compacted (sent by the app)
 }
 
 impl Default for Squad {
     fn default() -> Self {
-        Self { relics: Vec::new(), scanning: false, last_scan: None, enabled: true }
+        Self { relics: Vec::new(), scanning: false, last_scan: None, enabled: true, names: Vec::new() }
     }
 }
 
@@ -110,7 +113,10 @@ fn start_scan(app: &AppHandle, squad: &SquadState) {
         s.scanning = true;
         s.last_scan = Some(Instant::now());
     }
-    let relics = squad.lock().unwrap().relics.clone();
+    let (relics, names) = {
+        let s = squad.lock().unwrap();
+        (s.relics.clone(), s.names.clone())
+    };
     let _ = app.emit("reward-open", relics.clone());
     let (app, squad) = (app.clone(), squad.clone());
     thread::spawn(move || {
@@ -124,7 +130,7 @@ fn start_scan(app: &AppHandle, squad: &SquadState) {
                 MinimumUpdateIntervalSettings::Custom(Duration::from_millis(15)),
                 DirtyRegionSettings::Default,
                 ColorFormat::Rgba8,
-                ScanFlags { app: app.clone(), relics },
+                ScanFlags { app: app.clone(), relics, names },
             );
             Scanner::start(settings).map_err(|e| e.to_string())
         })();
@@ -138,11 +144,13 @@ fn start_scan(app: &AppHandle, squad: &SquadState) {
 struct ScanFlags {
     app: AppHandle,
     relics: Vec<String>,
+    names: Vec<String>,
 }
 
 struct Scanner {
     app: AppHandle,
     relics: Vec<String>,
+    names: Vec<String>,
     ocr: Ocr,
     start: Instant,
     last: Option<Instant>,
@@ -158,6 +166,7 @@ impl GraphicsCaptureApiHandler for Scanner {
         Ok(Self {
             app: ctx.flags.app,
             relics: ctx.flags.relics,
+            names: ctx.flags.names,
             ocr: Ocr::new()?,
             start: Instant::now(),
             last: None,
@@ -168,7 +177,7 @@ impl GraphicsCaptureApiHandler for Scanner {
 
     fn on_frame_arrived(&mut self, frame: &mut Frame, control: InternalCaptureControl) -> Result<(), Self::Error> {
         if self.start.elapsed() > SCAN_FOR {
-            let _ = self.app.emit("reward-error", "Не удалось прочитать названия наград за 6 с");
+            let _ = self.app.emit("reward-error", "Не удалось прочитать названия наград за 10 с");
             control.stop();
             return Ok(());
         }
@@ -184,7 +193,7 @@ impl GraphicsCaptureApiHandler for Scanner {
         let Some(img) = RgbaImage::from_raw(w, h, pixels) else { return Ok(()) };
 
         let t = Instant::now();
-        if let Some(cards) = read_cards(&self.ocr, &img)? {
+        if let Some(cards) = read_cards(&self.ocr, &img, &self.names)? {
             let scan = Scan {
                 cards,
                 screen_w: w,
@@ -211,7 +220,7 @@ pub fn reward_scan_file(path: String) -> Result<Option<Scan>, String> {
     let (w, h) = img.dimensions();
     let ocr = Ocr::new().map_err(|e| e.to_string())?;
     let t = Instant::now();
-    let cards = read_cards(&ocr, &img).map_err(|e| e.to_string())?;
+    let cards = read_cards(&ocr, &img, &[]).map_err(|e| e.to_string())?;
     Ok(cards.map(|cards| Scan {
         cards,
         screen_w: w,
@@ -232,6 +241,15 @@ pub fn reward_replay(app: AppHandle, path: String, relics: Vec<String>) -> Resul
     crate::overlay::show(&app);
     let _ = app.emit("reward-scan", scan);
     Ok(true)
+}
+
+// Every relic reward's card name, from the app's database: lets the scanner tell real cards from
+// other text in the name strip (the pause countdown of endless missions).
+#[tauri::command]
+pub fn reward_names(app: AppHandle, names: Vec<String>) {
+    if let Some(sq) = app.try_state::<SquadState>() {
+        sq.lock().unwrap().names = names.iter().map(|n| compact(n)).collect();
+    }
 }
 
 // Settings from the app (saved on its side, sent at start and on change).
@@ -270,7 +288,8 @@ pub fn overlay_demo(app: AppHandle) -> Result<bool, String> {
 }
 
 // None = the names are not on screen yet (countdown, "Загрузка...", fade-in).
-fn read_cards(ocr: &Ocr, img: &RgbaImage) -> windows::core::Result<Option<Vec<Card>>> {
+// With `names` (compacted reward names), at least half of the cards must read like one of them.
+fn read_cards(ocr: &Ocr, img: &RgbaImage, names: &[String]) -> windows::core::Result<Option<Vec<Card>>> {
     let (w, h) = img.dimensions();
     let s = h as f32 / 1080.0;
     let cx = w as f32 / 2.0;
@@ -296,7 +315,48 @@ fn read_cards(ocr: &Ocr, img: &RgbaImage) -> windows::core::Result<Option<Vec<Ca
         }
         cards.push(Card { x, y, w: cw, h: ch, texts });
     }
+    if !names.is_empty() {
+        let real = cards.iter().filter(|c| c.texts.iter().any(|t| like_reward(t, names))).count();
+        if real == 0 || real * 2 < cards.len() {
+            return Ok(None);
+        }
+    }
     Ok(Some(cards))
+}
+
+// Lowercase, ё→е, letters and digits only (same as the app's matcher).
+fn compact(s: &str) -> String {
+    s.to_lowercase().replace('ё', "е").chars().filter(|c| c.is_alphanumeric()).collect()
+}
+
+// OCR text close enough to some reward name: similarity ≥ 0.5, or a long piece of a name
+// (two-line names often come out as one half).
+fn like_reward(text: &str, names: &[String]) -> bool {
+    let t: Vec<char> = compact(text).chars().collect();
+    if t.len() < 4 {
+        return false;
+    }
+    names.iter().any(|n| {
+        let n: Vec<char> = n.chars().collect();
+        let d = lev(&t, &n) as f32;
+        1.0 - d / t.len().max(n.len()) as f32 >= 0.5 || (t.len() >= 8 && contains(&n, &t))
+    })
+}
+
+fn contains(hay: &[char], needle: &[char]) -> bool {
+    hay.windows(needle.len()).any(|w| w == needle)
+}
+
+fn lev(a: &[char], b: &[char]) -> usize {
+    let mut prev: Vec<usize> = (0..=b.len()).collect();
+    for i in 1..=a.len() {
+        let mut cur = vec![i; b.len() + 1];
+        for j in 1..=b.len() {
+            cur[j] = (prev[j] + 1).min(cur[j - 1] + 1).min(prev[j - 1] + usize::from(a[i - 1] != b[j - 1]));
+        }
+        prev = cur;
+    }
+    prev[b.len()]
 }
 
 // Smallest centered layout where every word sits inside a card and every card has text.
@@ -314,4 +374,75 @@ fn card_count(words: &[Word], cx: f32, step: f32) -> Option<usize> {
             d <= step / 2.0
         }) && used.iter().all(|&u| u)
     })
+}
+
+#[cfg(test)]
+mod tests {
+    // Card recognition on every recorded reward-screen frame, for finding bad reads:
+    // REWARD_DIR=<bench dir> cargo test --lib reward -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn frames_in_dir() {
+        let root = std::path::PathBuf::from(std::env::var("REWARD_DIR").expect("REWARD_DIR"));
+        let ocr = super::Ocr::new().unwrap();
+        let names = reward_names();
+        let mut dirs: Vec<_> = walk(&root).into_iter().filter(|p| p.is_dir()).collect();
+        dirs.sort();
+        for dir in dirs {
+            let mut files: Vec<_> = std::fs::read_dir(&dir).unwrap().flatten().map(|e| e.path())
+                .filter(|p| p.extension().is_some_and(|e| e == "jpg" || e == "png") && !p.with_extension("png").exists() || p.extension().is_some_and(|e| e == "png"))
+                .collect();
+            files.sort();
+            files.dedup_by(|a, b| a.file_stem() == b.file_stem());
+            if files.is_empty() { continue; }
+            println!("== {}", dir.display());
+            for f in files {
+                let img = image::open(&f).unwrap().to_rgba8();
+                let r = super::read_cards(&ocr, &img, &names).unwrap();
+                let desc = match r {
+                    None => "-".to_string(),
+                    Some(cards) => format!("{} | {}", cards.len(), cards.iter().map(|c| c.texts.join(" / ")).collect::<Vec<_>>().join(" || ")),
+                };
+                println!("{} {}", f.file_name().unwrap().to_string_lossy(), desc);
+            }
+        }
+    }
+
+    #[test]
+    fn reward_text_check() {
+        let names = reward_names();
+        for junk in ["5", "Пауза 4", "ОЖИДАНИЕ ИГРОКОВ", "Выберите награду", "Загрузка...", "Продолжить: 3", "Нажмите ESC"] {
+            assert!(!super::like_reward(junk, &names), "junk passed: {junk}");
+        }
+        // Real OCR reads from recorded screens.
+        for real in ["Лавк-спур Прайм: Приёмник", "Бёрстон им: Приклад", "Аф нтис Прайм: Рукоять", "Чертёж: Вольнус Прайм", "Б эйтон Прайм: Приёмник", "дель Прайм: Каркас"] {
+            assert!(super::like_reward(real, &names), "real rejected: {real}");
+        }
+    }
+
+    // Card names of every relic reward, as the app sends them (see rewards.ts screenName).
+    fn reward_names() -> Vec<String> {
+        let db: serde_json::Value = serde_json::from_str(&std::fs::read_to_string("../static/data/db.json").unwrap()).unwrap();
+        let mut out = Vec::new();
+        for r in db["relics"].as_object().unwrap().values() {
+            for rw in r["rewards"].as_array().unwrap() {
+                let it = &db["items"][rw["id"].as_str().unwrap()];
+                if let Some(ru) = it["ru"].as_str() {
+                    let name = if it["bp"].as_bool() == Some(true) { format!("Чертёж: {ru}") } else { ru.to_string() };
+                    out.push(super::compact(&name));
+                }
+            }
+        }
+        out.sort();
+        out.dedup();
+        out
+    }
+
+    fn walk(p: &std::path::Path) -> Vec<std::path::PathBuf> {
+        let mut out = vec![p.to_path_buf()];
+        for e in std::fs::read_dir(p).into_iter().flatten().flatten() {
+            if e.path().is_dir() { out.extend(walk(&e.path())); }
+        }
+        out
+    }
 }

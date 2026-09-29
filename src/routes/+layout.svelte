@@ -1,7 +1,9 @@
 <script lang="ts">
   import "../app.css";
   import { page } from "$app/state";
+  import { invoke } from "@tauri-apps/api/core";
   import { loadDb } from "$lib/db";
+  import { allRewards } from "$lib/rewards";
   import SearchBox from "$lib/components/SearchBox.svelte";
   import { overlaySettings } from "$lib/overlaySettings.svelte";
 
@@ -12,7 +14,11 @@
   let paletteOpen = $state(false);
 
   loadDb()
-    .then(() => (ready = true))
+    .then(() => {
+      ready = true;
+      // The reward scanner checks card text against these (skips countdowns and other text).
+      if (!bare) invoke("reward_names", { names: allRewards().map((c) => c.name) }).catch(() => {});
+    })
     .catch((e) => (error = String(e)));
 
   function onkeydown(ev: KeyboardEvent) {
