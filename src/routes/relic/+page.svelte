@@ -4,6 +4,7 @@
   import type { Price } from "$lib/api";
   import Plat from "$lib/components/Plat.svelte";
   import Cur from "$lib/components/Cur.svelte";
+  import MarketPanel from "$lib/components/MarketPanel.svelte";
 
   const db = getDb();
   const id = $derived(page.url.searchParams.get("id") ?? "");
@@ -59,6 +60,10 @@
         </a>
       {/each}
     </div>
+
+    {#if relic.slug}
+      <MarketPanel slug={relic.slug} item={{ en: relic.mname ?? relic.en, ru: relic.ru }} />
+    {/if}
   </div>
 {:else}
   <div class="page"><p>Реликвия не найдена.</p></div>

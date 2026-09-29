@@ -3,6 +3,7 @@
   import { getDb, iconUrl, itemName } from "$lib/db";
   import Plat from "$lib/components/Plat.svelte";
   import Cur from "$lib/components/Cur.svelte";
+  import MarketPanel from "$lib/components/MarketPanel.svelte";
 
   const db = getDb();
   const id = $derived(page.url.searchParams.get("id") ?? "");
@@ -51,6 +52,8 @@
       {/each}
     </div>
     <p class="muted total">Дукатов за все части: <Cur kind="ducats" value={ducats} /></p>
+
+    <MarketPanel slug={set.slug} item={{ en: set.mname ?? `${set.en} Set`, ru: `${set.ru}: набор` }} />
   </div>
 {:else}
   <div class="page"><p>Набор не найден.</p></div>

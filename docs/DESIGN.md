@@ -153,6 +153,17 @@ FrameTop, FrameBottom, Background, TopRightBacker, …; RankSlotActive, RankComp
 Иконки предметов/модов/мистификаторов — официальный CDN DE `content.warframe.com/PublicExport<path>!<contentHash>`
 (хэш из ExportImages), иначе browse.wf.
 
+## 5a. Рынок warframe.market (2026-09-29)
+- `GET /v2/orders/item/{slug}` (заголовки `platform: pc`, `crossplay: true`) → все заявки: цена, количество,
+  `rank` (моды), `subtype` (реликвии: intact/…/radiant), user {ingameName, reputation, status ingame/online/offline,
+  locale}. Кэш 60 с, общая очередь запросов (~3/с).
+- Готового текста шёпота API НЕ отдаёт — собираем сами по шаблону сайта:
+  `/w Ник Hi! I want to buy: "<имя> (rank N)" for X platinum. (warframe.market)`. Имя — точное с рынка
+  (`mname` из `i18n.en.name`: «Saryn Prime Chassis Blueprint», не наше «Saryn Prime Chassis»).
+- Язык выбираем по `locale` адресата (ru → по-русски), а не по нашему языку — адресат читает на своём.
+- Копирование: `@tauri-apps/plugin-clipboard-manager` (`clipboard-manager:allow-write-text`) — браузерный
+  clipboard падает без фокуса окна. Мы ничего не отправляем в игру сами (правило «никакой автоматизации»).
+
 ## 6. Дизайн интерфейса
 Тёмная тема, свой стиль (не копия игрового UI), настоящие игровые иконки предметов с публичных CDN.
 Валюты и полярности — официальные иконки игры, скачаны в `static/icons/` (platinum, ducats, полярности).

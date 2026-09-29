@@ -140,6 +140,7 @@
               </small>
               <span class="stats">{item.stats}</span>
             </span>
+            {#if item.slug}<a class="market" href="/market?id={encodeURIComponent(l.id)}" title="Заявки на warframe.market">Рынок</a>{/if}
             <button class="own" class:yes={has} onclick={() => owned.toggle(l.id)}>{has ? "✓ Есть" : "Нет"}</button>
           </div>
         {/if}
@@ -277,6 +278,15 @@
     font-size: 12px;
     color: var(--text-dim);
     white-space: pre-line;
+  }
+  .market {
+    flex: none;
+    align-self: center;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--plat);
+    background: rgba(143, 184, 255, 0.1);
   }
   .own {
     flex: none;

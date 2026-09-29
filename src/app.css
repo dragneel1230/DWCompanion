@@ -107,7 +107,8 @@ input {
   align-items: center;
   margin-bottom: 24px;
 }
-.hero img {
+.hero > img,
+.hero > a > img {
   width: 84px;
   height: 84px;
   object-fit: contain;

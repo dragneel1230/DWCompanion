@@ -42,6 +42,8 @@ export interface Mod {
   aura?: boolean;
   exilus?: boolean;
   augment?: string;
+  slug?: string;
+  mname?: string;
 }
 
 export interface Arcane {
@@ -51,6 +53,8 @@ export interface Arcane {
   rarity: ModRarity;
   max: number;
   stats: string;
+  slug?: string;
+  mname?: string;
 }
 
 export interface Build {

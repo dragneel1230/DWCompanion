@@ -37,6 +37,12 @@ const POLARITY = {
   AP_PRECEPT: "penjaga", AP_WARD: "unairu", AP_UMBRA: "umbra", AP_UNIVERSAL: "any", AP_ANY: "any",
 };
 
+// warframe.market slugs by gameRef (= our uniqueName), for the market page.
+console.log("Fetching warframe.market items...");
+const wfmRes = await fetch("https://api.warframe.market/v2/items");
+if (!wfmRes.ok) throw new Error(`warframe.market ${wfmRes.status}`);
+const wfm = new Map((await wfmRes.json()).data.filter((x) => x.gameRef).map((x) => [x.gameRef, x]));
+
 // ---------- Warframes
 const frames = {};
 for (const f of wfFrames) {
@@ -94,6 +100,8 @@ for (const m of wfMods) {
     aura: isAura || undefined,
     exilus: pe.isUtility || undefined,
     augment: m.isAugment && frameCompat.has(m.compatName) ? m.compatName : undefined,
+    slug: wfm.get(m.uniqueName)?.slug,
+    mname: wfm.get(m.uniqueName)?.i18n?.en?.name,
   };
 }
 
@@ -110,6 +118,8 @@ for (const a of wfArcanes) {
     rarity: a.rarity,
     max: stats.length - 1,
     stats: clean((stats[stats.length - 1]?.stats ?? []).join("\n")),
+    slug: wfm.get(a.uniqueName)?.slug,
+    mname: wfm.get(a.uniqueName)?.i18n?.en?.name,
   };
 }
 

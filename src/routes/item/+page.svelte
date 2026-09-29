@@ -3,6 +3,7 @@
   import { getDb, iconUrl, itemName, RARITY_RU } from "$lib/db";
   import Plat from "$lib/components/Plat.svelte";
   import Cur from "$lib/components/Cur.svelte";
+  import MarketPanel from "$lib/components/MarketPanel.svelte";
 
   const db = getDb();
   const id = $derived(page.url.searchParams.get("id") ?? "");
@@ -66,6 +67,10 @@
       <div class="rows dim">
         {#each vaulted as r (r.key)}{@render relicRow(r)}{/each}
       </div>
+    {/if}
+
+    {#if item.slug}
+      <MarketPanel slug={item.slug} item={{ en: item.mname ?? item.en, ru: itemName(item) }} />
     {/if}
   </div>
 {:else}

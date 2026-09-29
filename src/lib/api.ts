@@ -81,3 +81,40 @@ export async function getFissures(): Promise<Fissure[]> {
   if (!res.ok) throw new Error(`warframestat ${res.status}`);
   return (await res.json()) as Fissure[];
 }
+
+// ---------- warframe.market: all orders of an item
+
+export type UserStatus = "ingame" | "online" | "offline";
+
+export interface Order {
+  id: string;
+  type: "sell" | "buy";
+  platinum: number;
+  quantity: number;
+  rank?: number;
+  subtype?: string;
+  updatedAt: string;
+  user: {
+    ingameName: string;
+    slug: string;
+    reputation: number;
+    status: UserStatus;
+    locale: string;
+    lastSeen?: string;
+  };
+}
+
+const ORDERS_TTL = 60_000;
+const orders = new Map<string, { at: number; list: Order[] }>();
+
+export async function getOrders(slug: string, fresh = false): Promise<Order[]> {
+  const cached = orders.get(slug);
+  if (!fresh && cached && Date.now() - cached.at < ORDERS_TTL) return cached.list;
+  const list = await throttled(async () => {
+    const res = await fetch(`${WFM}/orders/item/${slug}`, { headers: { platform: "pc", crossplay: "true" } });
+    if (!res.ok) throw new Error(`warframe.market ${res.status}`);
+    return ((await res.json()).data as Order[]).filter((o) => (o as Order & { visible?: boolean }).visible !== false);
+  });
+  orders.set(slug, { at: Date.now(), list });
+  return list;
+}

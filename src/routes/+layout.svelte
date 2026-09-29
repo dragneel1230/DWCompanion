@@ -30,7 +30,7 @@
   ];
 
   // Frame and build pages belong to the Warframes tab.
-  const SECTION: Record<string, string> = { "/frame": "/frames", "/build": "/frames" };
+  const SECTION: Record<string, string> = { "/frame": "/frames", "/build": "/frames", "/market": "/frames" };
   const current = $derived(SECTION[page.url.pathname] ?? page.url.pathname);
 </script>
 

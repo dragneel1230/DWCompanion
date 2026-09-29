@@ -87,6 +87,7 @@ function addItem(id) {
     icon: icon(id),
     ducats: ducatsOf(id) || undefined,
     slug: wfm?.slug,
+    mname: wfm?.i18n?.en?.name, // exact warframe.market name, used in trade whispers
     relics: [],
   };
   return items[id];
@@ -117,6 +118,7 @@ for (const [uid, r] of Object.entries(relicsExport)) {
     icon: img(r.icon),
     vaulted,
     slug: wfmByRef.get(baseUid)?.slug,
+    mname: wfmByRef.get(baseUid)?.i18n?.en?.name,
     rewards,
   };
 }
@@ -145,6 +147,7 @@ for (const w of wfmItems) {
     ru: tr(ru, main.name),
     icon: img(main.icon),
     slug: w.slug,
+    mname: w.i18n?.en?.name,
     parts,
   };
   for (const p of parts) items[p].set = w.gameRef;

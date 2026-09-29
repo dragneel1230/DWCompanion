@@ -10,6 +10,7 @@ export interface Item {
   icon: string | null;
   ducats?: number;
   slug?: string;
+  mname?: string;
   set?: string;
   relics: { relic: string; rarity: Rarity }[];
 }
@@ -22,6 +23,7 @@ export interface Relic {
   icon: string;
   vaulted: boolean;
   slug?: string;
+  mname?: string;
   rewards: { id: string; rarity: Rarity; count: number }[];
 }
 
@@ -30,6 +32,7 @@ export interface PrimeSet {
   ru: string;
   icon: string;
   slug: string;
+  mname?: string;
   parts: string[];
 }
 
