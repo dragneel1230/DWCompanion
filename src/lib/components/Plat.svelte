@@ -2,8 +2,9 @@
   // Lazily loaded warframe.market price for one item slug.
   import { untrack } from "svelte";
   import { getPrice, cachedPrice, type Price } from "$lib/api";
+  import Cur from "./Cur.svelte";
 
-  let { slug, onprice }: { slug?: string; onprice?: (p: Price | null) => void } = $props();
+  let { slug, onprice, size = 15 }: { slug?: string; onprice?: (p: Price | null) => void; size?: number } = $props();
 
   let price = $state<Price | null>(null);
   let loading = $state(false);
@@ -43,15 +44,12 @@
 {:else if loading}
   <span class="dash pulse">···</span>
 {:else if price?.sell != null}
-  <span class="plat" title="Дешевле всего у продавцов онлайн · покупатели дают {price.buy ?? '—'}">{price.sell} пл</span>
+  <span title="Дешевле всего у продавцов онлайн · покупатели дают {price.buy ?? '—'}"><Cur kind="plat" value={price.sell} {size} /></span>
 {:else}
   <span class="dash" title="Нет продавцов онлайн">—</span>
 {/if}
 
 <style>
-  .plat {
-    color: var(--plat);
-  }
   .dash {
     color: var(--text-faint);
   }

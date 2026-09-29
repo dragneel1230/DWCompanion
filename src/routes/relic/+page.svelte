@@ -3,6 +3,7 @@
   import { getDb, iconUrl, itemName, RARITY_RU } from "$lib/db";
   import type { Price } from "$lib/api";
   import Plat from "$lib/components/Plat.svelte";
+  import Cur from "$lib/components/Cur.svelte";
 
   const db = getDb();
   const id = $derived(page.url.searchParams.get("id") ?? "");
@@ -38,7 +39,7 @@
         </div>
       </div>
       <div class="price">
-        <div class="big"><Plat slug={relic.slug} /></div>
+        <div class="big"><Plat slug={relic.slug} size={22} /></div>
         <div class="muted">реликвия (интакт)</div>
       </div>
     </header>
@@ -53,7 +54,7 @@
             {rw.count > 1 ? `${rw.count} × ` : ""}{itemName(it)}
             <small class="rarity-{rw.rarity}">{RARITY_RU[rw.rarity]}</small>
           </span>
-          <span class="num ducat">{it.ducats ? `${it.ducats} д` : ""}</span>
+          <span class="num">{#if it.ducats}<Cur kind="ducats" value={it.ducats} />{/if}</span>
           <span class="num"><Plat slug={it.slug} onprice={(p) => onprice(rw.id, p)} /></span>
         </a>
       {/each}

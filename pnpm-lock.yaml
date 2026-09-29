@@ -30,6 +30,9 @@ importers:
       '@tauri-apps/cli':
         specifier: ^2
         version: 2.12.0
+      '@wfcd/items':
+        specifier: ^1.1276.7
+        version: 1.1276.7(warframe-worldstate-data@3.16.10)
       svelte:
         specifier: ^5.56.3
         version: 5.57.1
@@ -299,6 +302,11 @@ packages:
 
   '@types/estree@1.0.9':
     resolution: {integrity: sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==}
+
+  '@wfcd/items@1.1276.7':
+    resolution: {integrity: sha512-fuiiWXbAxgQDyA/tHCA/cvO8ctTs3hu3SEqACOg1hAH0U/5fbucSptaJoGdXaXDvdM7QGuIIogYvhY8OpD9RSg==}
+    peerDependencies:
+      warframe-worldstate-data: ^3.0.0
 
   acorn@8.18.0:
     resolution: {integrity: sha512-lGq+9yr1/GuAWaVYIHRjvvySG5/4VfKIvC8EWxStPdcDh/Ka7FG3twP6v4d5BkravUilhIAsG4Qj83t02LWUPQ==}
@@ -582,6 +590,10 @@ packages:
   warframe-public-export-plus@0.6.11:
     resolution: {integrity: sha512-xL/veIZkpTpH+Cn/3Tp/SO3POI53DxMvfZtPlfgiABdXebUqKodcPBwogLhrbaUPv57wPnHxJDybaZrx0JYD9Q==}
 
+  warframe-worldstate-data@3.16.10:
+    resolution: {integrity: sha512-90Zok6LI4ZX3aWe7hk20tjXSijRutqeZHCfTUHWl2cW+mw/mqzhj6yhwK9LsZ0DFdIHcOAYslNWnlwJXR8DjiA==}
+    engines: {node: '>=22'}
+
   zimmerframe@1.1.5:
     resolution: {integrity: sha512-msJxIvYDYcoNL+PJsu+7qmpDWsYmAxTY+2TNYXXF0hzBzBk0BMecOqDOG/EckUoKCuKwObfbugIl8QpqHDXeFA==}
 
@@ -758,6 +770,10 @@ snapshots:
   '@types/cookie@0.6.0': {}
 
   '@types/estree@1.0.9': {}
+
+  '@wfcd/items@1.1276.7(warframe-worldstate-data@3.16.10)':
+    dependencies:
+      warframe-worldstate-data: 3.16.10
 
   acorn@8.18.0: {}
 
@@ -969,5 +985,7 @@ snapshots:
       vite: 8.3.1
 
   warframe-public-export-plus@0.6.11: {}
+
+  warframe-worldstate-data@3.16.10: {}
 
   zimmerframe@1.1.5: {}

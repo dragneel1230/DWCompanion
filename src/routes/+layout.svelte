@@ -25,8 +25,13 @@
 
   const NAV = [
     { href: "/", label: "Поиск", icon: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm9 16-4.3-4.3" },
+    { href: "/frames", label: "Варфреймы", icon: "M12 3 5 7v6c0 4 3 7 7 8 4-1 7-4 7-8V7l-7-4Zm0 5v8" },
     { href: "/fissures", label: "Разломы", icon: "M12 3v18M5 7l14 10M19 7 5 17" },
   ];
+
+  // Frame and build pages belong to the Warframes tab.
+  const SECTION: Record<string, string> = { "/frame": "/frames", "/build": "/frames" };
+  const current = $derived(SECTION[page.url.pathname] ?? page.url.pathname);
 </script>
 
 <svelte:window {onkeydown} />
@@ -35,7 +40,7 @@
   <nav>
     <div class="logo" title="Dragneel's Warframe Companion">DW</div>
     {#each NAV as n}
-      <a href={n.href} class:current={page.url.pathname === n.href} title={n.label}>
+      <a href={n.href} class:current={current === n.href} title={n.label}>
         <svg viewBox="0 0 24 24"><path d={n.icon} /></svg>
         <span>{n.label}</span>
       </a>

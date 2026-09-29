@@ -1,0 +1,28 @@
+[
+  {
+    "id": "demo-saryn-strength",
+    "frame": "Saryn Prime",
+    "title": "Споры на максимум силы",
+    "author": "демо",
+    "demo": true,
+    "note": "Демонстрационный билд для проверки интерфейса, не из реальной статистики.",
+    "tags": ["Стальной путь", "Урон"],
+    "aura": "Growing Power",
+    "exilus": "Power Drift",
+    "slots": ["Umbral Intensify", "Umbral Vitality", "Umbral Fiber", "Blind Rage", "Transient Fortitude", "Primed Continuity", "Augur Secrets", "Stretch"],
+    "arcanes": ["Molt Augmented", "Arcane Energize"]
+  },
+  {
+    "id": "demo-saryn-tank",
+    "frame": "Saryn Prime",
+    "title": "Живучая Сарина для новичка",
+    "author": "демо",
+    "demo": true,
+    "note": "Демонстрационный билд для проверки интерфейса, не из реальной статистики.",
+    "tags": ["Начало игры"],
+    "aura": "Corrosive Projection",
+    "exilus": "Power Drift",
+    "slots": ["Intensify", "Streamline", "Flow", "Vitality", "Redirection", "Stretch", "Continuity", "Adaptation"],
+    "arcanes": ["Arcane Grace", "Molt Augmented"]
+  }
+]

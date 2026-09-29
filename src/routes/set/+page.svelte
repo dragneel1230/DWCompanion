@@ -2,6 +2,7 @@
   import { page } from "$app/state";
   import { getDb, iconUrl, itemName } from "$lib/db";
   import Plat from "$lib/components/Plat.svelte";
+  import Cur from "$lib/components/Cur.svelte";
 
   const db = getDb();
   const id = $derived(page.url.searchParams.get("id") ?? "");
@@ -30,7 +31,7 @@
         </div>
       </div>
       <div class="price">
-        <div class="big"><Plat slug={set.slug} /></div>
+        <div class="big"><Plat slug={set.slug} size={22} /></div>
         <div class="muted">набор целиком</div>
       </div>
     </header>
@@ -44,12 +45,12 @@
             {itemName(p.it)}
             <small>{p.active ? `в ${p.active} активных реликвиях` : "только в хранилище"} · всего {p.total}</small>
           </span>
-          <span class="num ducat">{p.it.ducats ?? "—"} д</span>
+          <span class="num">{#if p.it.ducats}<Cur kind="ducats" value={p.it.ducats} />{/if}</span>
           <span class="num"><Plat slug={p.it.slug} /></span>
         </a>
       {/each}
     </div>
-    <p class="muted total">Дукатов за все части: <span class="ducat">{ducats}</span></p>
+    <p class="muted total">Дукатов за все части: <Cur kind="ducats" value={ducats} /></p>
   </div>
 {:else}
   <div class="page"><p>Набор не найден.</p></div>
@@ -63,9 +64,6 @@
   .big {
     font-size: 22px;
     font-weight: 600;
-  }
-  .ducat {
-    color: var(--ducat);
   }
   .total {
     margin-top: 12px;

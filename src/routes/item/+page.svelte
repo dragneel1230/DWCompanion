@@ -2,6 +2,7 @@
   import { page } from "$app/state";
   import { getDb, iconUrl, itemName, RARITY_RU } from "$lib/db";
   import Plat from "$lib/components/Plat.svelte";
+  import Cur from "$lib/components/Cur.svelte";
 
   const db = getDb();
   const id = $derived(page.url.searchParams.get("id") ?? "");
@@ -46,8 +47,8 @@
         </div>
       </div>
       <div class="price">
-        <div class="big"><Plat slug={item.slug} /></div>
-        {#if item.ducats}<div class="ducat">{item.ducats} дукатов</div>{/if}
+        <div class="big"><Plat slug={item.slug} size={22} /></div>
+        {#if item.ducats}<div class="ducat"><Cur kind="ducats" value={item.ducats} size={16} /></div>{/if}
       </div>
     </header>
 
