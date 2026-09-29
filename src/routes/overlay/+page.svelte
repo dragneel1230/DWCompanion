@@ -106,6 +106,13 @@
 
   const RARITY_RU: Record<Rarity, string> = { COMMON: "обычная", UNCOMMON: "необычная", RARE: "редкая" };
 
+  priority = readOverlaySettings().priority;
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === "dwc.overlay") priority = readOverlaySettings().priority;
+  };
+  window.addEventListener("storage", onStorage);
+  onDestroy(() => window.removeEventListener("storage", onStorage));
+
   const un: Promise<UnlistenFn>[] = [
     listen<string[]>("squad-relics", (e) => {
       relics = e.payload;
@@ -135,17 +142,31 @@
         <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
 
         {#if s.match && n}
-          <div class="price">
-            {#if s.price?.sell != null}
-              <img src="/icons/platinum.png" alt="" />
-              <b>{s.price.sell}</b>
-            {:else if s.match.cand.item.slug}
-              <span class="wait">…</span>
-            {:else}
-              <span class="none">не торгуется</span>
-            {/if}
-          </div>
-          <div class="buy" class:hidden={s.price?.buy == null}>покупают за {s.price?.buy ?? 0}</div>
+          {@const ducats = s.match.cand.item.ducats ?? 0}
+          <!-- The chosen priority is the big number; the other value goes small, in the meta row. -->
+          {#if priority === "ducats"}
+            <div class="price gold">
+              {#if ducats}
+                <img src="/icons/ducats.png" alt="" />
+                <b>{ducats}</b>
+              {:else}
+                <span class="none">без дукатов</span>
+              {/if}
+            </div>
+            <div class="buy hidden">.</div>
+          {:else}
+            <div class="price">
+              {#if s.price?.sell != null}
+                <img src="/icons/platinum.png" alt="" />
+                <b>{s.price.sell}</b>
+              {:else if s.match.cand.item.slug}
+                <span class="wait">…</span>
+              {:else}
+                <span class="none">не торгуется</span>
+              {/if}
+            </div>
+            <div class="buy" class:hidden={s.price?.buy == null}>покупают за {s.price?.buy ?? 0}</div>
+          {/if}
 
           <div class="line"></div>
 
@@ -155,7 +176,9 @@
           </div>
 
           <div class="meta">
-            {#if s.match.cand.item.ducats}
+            {#if priority === "ducats"}
+              {#if s.price?.sell != null}<span class="plat"><img src="/icons/platinum.png" alt="" />{s.price.sell}</span>{/if}
+            {:else if s.match.cand.item.ducats}
               <span class="ducats"><img src="/icons/ducats.png" alt="" />{s.match.cand.item.ducats}</span>
             {/if}
             {#if s.rarity}<span class="rar">{RARITY_RU[s.rarity]}</span>{/if}
@@ -382,6 +405,25 @@
     color: #e6c060;
     font-size: calc(13px * var(--k));
     font-weight: 600;
+  }
+  .plat {
+    display: flex;
+    align-items: center;
+    gap: calc(3px * var(--k));
+    color: #b9d1ff;
+    font-size: calc(13px * var(--k));
+    font-weight: 600;
+  }
+  .plat img {
+    width: calc(15px * var(--k));
+    height: calc(15px * var(--k));
+  }
+  .price.gold img {
+    filter: drop-shadow(0 0 calc(6px * var(--k)) rgba(230, 192, 96, 0.5));
+  }
+  .price.gold b {
+    color: #ffe9b0;
+    text-shadow: 0 0 calc(12px * var(--k)) rgba(230, 192, 96, 0.45);
   }
   .ducats img {
     width: calc(15px * var(--k));
