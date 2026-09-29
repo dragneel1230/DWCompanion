@@ -3,6 +3,7 @@
   import { page } from "$app/state";
   import { loadDb } from "$lib/db";
   import SearchBox from "$lib/components/SearchBox.svelte";
+  import { overlaySettings } from "$lib/overlaySettings.svelte";
 
   let { children } = $props();
 
@@ -28,7 +29,7 @@
     { href: "/frames", label: "Варфреймы", icon: "M12 3 5 7v6c0 4 3 7 7 8 4-1 7-4 7-8V7l-7-4Zm0 5v8" },
     { href: "/fissures", label: "Разломы", icon: "M12 3v18M5 7l14 10M19 7 5 17" },
     { href: "/time", label: "Время", icon: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l3 2" },
-    { href: "/bench", label: "Замеры", icon: "M4 19h16M7 16V9M12 16V5M17 16v-4" },
+    { href: "/overlay-settings", label: "Оверлей", icon: "M4 6h16v9H4zM8 19h8M12 15v4" },
   ];
 
   // Frame and build pages belong to the Warframes tab.
@@ -36,6 +37,8 @@
   const current = $derived(SECTION[page.url.pathname] ?? page.url.pathname);
   // The overlay window (over the game) renders its page alone, without the app shell.
   const bare = page.url.pathname === "/overlay";
+  // Saved overlay settings reach the Rust side once, from the main window.
+  if (!bare) overlaySettings.sync();
 </script>
 
 <svelte:window {onkeydown} />

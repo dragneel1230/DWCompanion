@@ -80,7 +80,12 @@ impl Bench {
         };
         let _ = app.emit("bench-status", s);
     }
+    // Debug trail on disk, only while debug recording is on.
     fn note(&self, line: &str) {
+        if !self.status().enabled {
+            return;
+        }
+        let _ = fs::create_dir_all(&self.session);
         if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(self.session.join("log.txt")) {
             let _ = writeln!(f, "{}\t{}", now_ms(), line);
         }
@@ -91,11 +96,10 @@ pub fn init(app: &AppHandle) -> BenchState {
     let log_path = std::env::var("LOCALAPPDATA").map(|p| PathBuf::from(p).join("Warframe").join("EE.log")).unwrap_or_default();
     let base = app.path().app_local_data_dir().unwrap_or_else(|_| std::env::temp_dir()).join("bench");
     let session = base.join(format!("session-{}", now_ms() / 1000));
-    let _ = fs::create_dir_all(&session);
 
     let bench = Arc::new(Bench {
         status: Mutex::new(Status {
-            enabled: true,
+            enabled: false, // screen recording is for debugging; the app turns it on from settings
             log_path: log_path.display().to_string(),
             log_found: log_path.exists(),
             session_dir: session.display().to_string(),
@@ -307,10 +311,20 @@ pub fn start_recording(app: &AppHandle, bench: &BenchState, why: &str) {
 // Frame and OCR result of every overlay scan, for checking recognition later.
 pub fn save_scan(app: &AppHandle, img: &image::RgbaImage, scan: &crate::reward::Scan) {
     let Some(bench) = app.try_state::<BenchState>() else { return };
+    if !bench.status().enabled {
+        return;
+    }
+    let _ = fs::create_dir_all(&bench.session);
     let name = format!("scan-{}", now_ms());
     let _ = img.save(bench.session.join(format!("{name}.png")));
     let _ = fs::write(bench.session.join(format!("{name}.json")), serde_json::to_string_pretty(scan).unwrap_or_default());
     bench.note(&format!("[scan] {name}: {} ms, {} frames", scan.ms, scan.frames));
+}
+
+pub fn set_recording(app: &AppHandle, on: bool) {
+    if let Some(bench) = app.try_state::<BenchState>() {
+        bench.update(app, |s| s.enabled = on);
+    }
 }
 
 // ---------- commands
@@ -333,5 +347,6 @@ pub fn bench_test(app: AppHandle, bench: tauri::State<BenchState>) {
 
 #[tauri::command]
 pub fn bench_open_dir(bench: tauri::State<BenchState>) {
+    let _ = fs::create_dir_all(&bench.session);
     let _ = std::process::Command::new("explorer").arg(&bench.session).spawn();
 }

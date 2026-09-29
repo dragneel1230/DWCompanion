@@ -27,6 +27,8 @@ pub fn run() {
             bench::bench_open_dir,
             reward::reward_scan_file,
             reward::reward_replay,
+            reward::overlay_config,
+            reward::overlay_demo,
             overlay::overlay_show,
             overlay::overlay_hide
         ])

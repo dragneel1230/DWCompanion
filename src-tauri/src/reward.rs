@@ -30,11 +30,17 @@ const TEXT_H: f32 = 52.0;
 const SCAN_FOR: Duration = Duration::from_secs(6);
 const SCAN_EVERY: Duration = Duration::from_millis(60);
 
-#[derive(Default)]
 pub struct Squad {
     relics: Vec<String>, // "T1VoidProjectionProteaPrimeAPlatinum", seen since the mission started
     scanning: bool,
     last_scan: Option<Instant>,
+    enabled: bool, // overlay switched on in the app; off = the screen is not captured at all
+}
+
+impl Default for Squad {
+    fn default() -> Self {
+        Self { relics: Vec::new(), scanning: false, last_scan: None, enabled: true }
+    }
 }
 
 pub type SquadState = Arc<Mutex<Squad>>;
@@ -98,7 +104,7 @@ fn start_scan(app: &AppHandle, squad: &SquadState) {
     {
         let mut s = squad.lock().unwrap();
         // "Got rewards" comes seconds after the open line: one scan per screen.
-        if s.scanning || s.last_scan.is_some_and(|t| t.elapsed() < Duration::from_secs(20)) {
+        if !s.enabled || s.scanning || s.last_scan.is_some_and(|t| t.elapsed() < Duration::from_secs(20)) {
             return;
         }
         s.scanning = true;
@@ -226,6 +232,41 @@ pub fn reward_replay(app: AppHandle, path: String, relics: Vec<String>) -> Resul
     crate::overlay::show(&app);
     let _ = app.emit("reward-scan", scan);
     Ok(true)
+}
+
+// Settings from the app (saved on its side, sent at start and on change).
+#[tauri::command]
+pub fn overlay_config(app: AppHandle, enabled: bool, record: bool) {
+    if let Some(sq) = app.try_state::<SquadState>() {
+        sq.lock().unwrap().enabled = enabled;
+    }
+    crate::bench::set_recording(&app, record);
+}
+
+// Example for the settings page: replays the newest saved scan frame.
+#[tauri::command]
+pub fn overlay_demo(app: AppHandle) -> Result<bool, String> {
+    let base = app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("bench");
+    let mut newest: Option<(std::time::SystemTime, std::path::PathBuf)> = None;
+    for session in std::fs::read_dir(&base).map_err(|e| e.to_string())?.flatten() {
+        for f in std::fs::read_dir(session.path()).into_iter().flatten().flatten() {
+            let p = f.path();
+            let is_scan = p.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with("scan-") && n.ends_with(".png"));
+            let t = f.metadata().and_then(|m| m.modified()).ok();
+            if let (true, Some(t)) = (is_scan, t) {
+                if newest.as_ref().is_none_or(|(nt, _)| t > *nt) {
+                    newest = Some((t, p));
+                }
+            }
+        }
+    }
+    let Some((_, path)) = newest else { return Err("Пока нет сохранённых сканов: открой реликвию с отрядом".into()) };
+    let relics = std::fs::read_to_string(path.with_extension("json"))
+        .ok()
+        .and_then(|j| serde_json::from_str::<serde_json::Value>(&j).ok())
+        .and_then(|v| serde_json::from_value::<Vec<String>>(v["relics"].clone()).ok())
+        .unwrap_or_default();
+    reward_replay(app, path.display().to_string(), relics)
 }
 
 // None = the names are not on screen yet (countdown, "Загрузка...", fade-in).

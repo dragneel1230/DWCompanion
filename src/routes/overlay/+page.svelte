@@ -8,6 +8,7 @@
   import { getPrice, cachedPrice, type Price } from "$lib/api";
   import { getDb, type Rarity } from "$lib/db";
   import { matchCard, relicKey, squadRewards, type Candidate, type Match } from "$lib/rewards";
+  import { readOverlaySettings, type Priority } from "$lib/overlaySettings.svelte";
 
   type Card = { x: number; y: number; w: number; h: number; texts: string[] };
   type Scan = { cards: Card[]; screen_w: number; screen_h: number; scale: number; ms: number; relics: string[] };
@@ -19,6 +20,7 @@
   let relics = $state<string[]>([]);
   let scan = $state<Scan | null>(null);
   let shown = $state<Shown[]>([]);
+  let priority = $state<Priority>("platinum");
   let hideTimer: ReturnType<typeof setTimeout> | undefined;
   const dpr = window.devicePixelRatio || 1;
 
@@ -44,6 +46,7 @@
   }
 
   async function show(s: Scan) {
+    priority = readOverlaySettings().priority; // may have changed in the main window
     const squad = s.relics.length ? s.relics : relics;
     const pool = squadRewards(squad);
     scan = s;
@@ -79,12 +82,15 @@
     invoke("overlay_hide");
   }
 
-  // Best pick: most platinum; without prices, most ducats.
+  // Best pick by the chosen priority, the other value breaks ties.
+  // ("collection" needs the inventory; until then it behaves like platinum.)
   const best = $derived.by(() => {
     let bi = -1;
     let bv = -1;
     shown.forEach((s, i) => {
-      const v = (s.price?.sell ?? 0) * 1000 + (s.match?.cand.item.ducats ?? 0);
+      const plat = s.price?.sell ?? 0;
+      const ducats = s.match?.cand.item.ducats ?? 0;
+      const v = priority === "ducats" ? ducats * 10_000 + plat : plat * 10_000 + ducats;
       if (s.match && v > bv) (bv = v), (bi = i);
     });
     return bi;
