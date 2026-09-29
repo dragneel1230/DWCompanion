@@ -32,7 +32,7 @@
   <h1>Замеры для оверлея</h1>
   <p class="muted">
     Приложение читает только файл <code>EE.log</code> и делает снимки экрана системным API Windows. В игру ничего не
-    отправляется. Когда в логе появляется экран наград за реликвии, 7 секунд экрана пишутся в папку сессии.
+    отправляется. Когда в логе появляется экран наград за реликвии, 5 секунд экрана пишутся в папку сессии.
   </p>
 
   {#if status}
@@ -45,7 +45,7 @@
       <div class="kv"><span>Записей</span><b>{status.recordings}</b>{#if status.recording}<span class="rec">● идёт запись</span>{/if}</div>
       {#if status.last_error}<div class="kv"><span>Ошибка</span><b class="bad">{status.last_error}</b></div>{/if}
       <div class="actions">
-        <button onclick={() => invoke("bench_test")} disabled={status.recording}>Проверить захват (7 с)</button>
+        <button onclick={() => invoke("bench_test")} disabled={status.recording}>Проверить захват (5 с)</button>
         <button onclick={() => invoke("bench_open_dir")}>Открыть папку сессии</button>
       </div>
     </div>

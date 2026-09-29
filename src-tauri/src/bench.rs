@@ -24,10 +24,16 @@ use windows_capture::settings::{
 
 // Lines worth keeping for analysis (script names in EE.log are English in every client language).
 const KEEP: &[&str] = &["Projection", "Relic", "Reward", "reward", "EndOfMatch", "Void", "Fissure", "MissionIntro", "Mission name"];
-// Lines that mean "the relic reward screen is up".
-const TRIGGER: &[&str] = &["Got rewards", "ProjectionRewardChoice"];
+// Lines that mean "the relic reward screen is opening". Measured 2026-09-29 (1920x1080, ru client):
+// OpenVoidProjectionRewardScreen reaches us ~20 ms after the game writes it, card names are on
+// screen ~0.3 s later; "Got rewards" is flushed with a ~2.7 s delay, so it is only a fallback.
+const TRIGGER: &[&str] = &[
+    "OpenVoidProjectionRewardScreen",
+    "Created /Lotus/Interface/ProjectionRewardChoice.swf",
+    "ProjectionRewardChoice.lua: Got rewards",
+];
 
-const RECORD_FOR: Duration = Duration::from_secs(7);
+const RECORD_FOR: Duration = Duration::from_secs(5);
 const FRAME_EVERY: Duration = Duration::from_millis(100); // JPEG
 const LOSSLESS_EVERY: Duration = Duration::from_millis(1000); // PNG, for OCR experiments
 const MAX_RECORDINGS: u32 = 40; // per app run, keeps the disk in check
