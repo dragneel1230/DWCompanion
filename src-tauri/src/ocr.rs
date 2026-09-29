@@ -5,7 +5,7 @@ use image::{imageops, RgbaImage};
 use windows::core::HSTRING;
 use windows::Globalization::Language;
 use windows::Graphics::Imaging::{BitmapAlphaMode, BitmapPixelFormat, SoftwareBitmap};
-use windows::Media::Ocr::OcrEngine;
+use windows::Media::Ocr::{OcrEngine, OcrResult};
 use windows::Storage::Streams::DataWriter;
 
 pub struct Ocr {
@@ -17,6 +17,17 @@ pub struct Word {
     pub x: f32, // center, in the source frame's pixels
 }
 
+// A recognized text line with its box, in the source frame's pixels.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct Line {
+    pub text: String,
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
+    pub pass: u8, // which preparation produced it (set by the caller)
+}
+
 #[derive(Clone, Copy)]
 pub enum Prep {
     // Colors as they are, upscaled.
@@ -24,6 +35,8 @@ pub enum Prep {
     // Binarized: the light gold / white name text becomes black on white (measured on 1080p frames:
     // R > 170 && G > 150 keeps the text and drops most of the item art behind it).
     Text,
+    // Near-white text only (mod card names), black on white.
+    White,
 }
 
 impl Ocr {
@@ -40,6 +53,54 @@ impl Ocr {
     // OCR of a region (x, y, w, h in frame pixels), upscaled by `scale`. Word positions are mapped
     // back to frame pixels.
     pub fn region(&self, frame: &RgbaImage, x: u32, y: u32, w: u32, h: u32, scale: f32, prep: Prep) -> windows::core::Result<(String, Vec<Word>)> {
+        let (result, x, _) = self.recognize(frame, x, y, w, h, scale, prep)?;
+        let mut lines = Vec::new();
+        let mut words = Vec::new();
+        for line in result.Lines()? {
+            lines.push(line.Text()?.to_string());
+            for word in line.Words()? {
+                let r = word.BoundingRect()?;
+                words.push(Word { x: x as f32 + (r.X + r.Width / 2.0) / scale });
+            }
+        }
+        Ok((lines.join(" "), words))
+    }
+
+    // Lines of text in a region, with boxes mapped back to frame pixels.
+    pub fn lines(&self, frame: &RgbaImage, x: u32, y: u32, w: u32, h: u32, scale: f32, prep: Prep) -> windows::core::Result<Vec<Line>> {
+        let (result, x, y) = self.recognize(frame, x, y, w, h, scale, prep)?;
+        let mut out = Vec::new();
+        for line in result.Lines()? {
+            let (mut x0, mut y0, mut x1, mut y1) = (f32::MAX, f32::MAX, f32::MIN, f32::MIN);
+            for word in line.Words()? {
+                let r = word.BoundingRect()?;
+                x0 = x0.min(r.X);
+                y0 = y0.min(r.Y);
+                x1 = x1.max(r.X + r.Width);
+                y1 = y1.max(r.Y + r.Height);
+            }
+            if x1 < x0 {
+                continue;
+            }
+            out.push(Line {
+                text: line.Text()?.to_string(),
+                x: x as f32 + x0 / scale,
+                y: y as f32 + y0 / scale,
+                w: (x1 - x0) / scale,
+                h: (y1 - y0) / scale,
+                pass: 0,
+            });
+        }
+        Ok(out)
+    }
+
+    // Largest image side the engine accepts.
+    pub fn max_side() -> u32 {
+        OcrEngine::MaxImageDimension().unwrap_or(2600)
+    }
+
+    // Crops, upscales, prepares and recognizes; returns the result and the clamped region origin.
+    fn recognize(&self, frame: &RgbaImage, x: u32, y: u32, w: u32, h: u32, scale: f32, prep: Prep) -> windows::core::Result<(OcrResult, u32, u32)> {
         let (fw, fh) = frame.dimensions();
         let (x, y) = (x.min(fw - 1), y.min(fh - 1));
         let (w, h) = (w.min(fw - x), h.min(fh - y));
@@ -56,6 +117,10 @@ impl Ocr {
                     let v = if r > 170 && g > 150 { 0 } else { 255 };
                     [v, v, v, 255]
                 }
+                Prep::White => {
+                    let v = if r.min(g).min(b) > 175 { 0 } else { 255 };
+                    [v, v, v, 255]
+                }
             };
         }
 
@@ -63,17 +128,6 @@ impl Ocr {
         writer.WriteBytes(img.as_raw())?;
         let buffer = writer.DetachBuffer()?;
         let bitmap = SoftwareBitmap::CreateCopyWithAlphaFromBuffer(&buffer, BitmapPixelFormat::Bgra8, sw as i32, sh as i32, BitmapAlphaMode::Premultiplied)?;
-        let result = self.engine.RecognizeAsync(&bitmap)?.join()?;
-
-        let mut lines = Vec::new();
-        let mut words = Vec::new();
-        for line in result.Lines()? {
-            lines.push(line.Text()?.to_string());
-            for word in line.Words()? {
-                let r = word.BoundingRect()?;
-                words.push(Word { x: x as f32 + (r.X + r.Width / 2.0) / scale });
-            }
-        }
-        Ok((lines.join(" "), words))
+        Ok((self.engine.RecognizeAsync(&bitmap)?.join()?, x, y))
     }
 }

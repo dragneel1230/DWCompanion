@@ -2,6 +2,7 @@
 // Names on screen are the item's Russian name, with "Чертёж: " in front of blueprints.
 // Candidates: rewards of the squad's relics (from EE.log) first, then every relic reward.
 import { getDb, type Item } from "$lib/db";
+import { compact, lev } from "$lib/fuzzy";
 
 export interface Candidate {
   id: string;
@@ -15,8 +16,6 @@ export interface Match {
   score: number; // 0..1
 }
 
-// Lowercase, ё→е, letters and digits only: OCR mixes up ":" "." and spaces.
-const compact = (s: string) => s.toLowerCase().replace(/ё/g, "е").replace(/[^a-zа-я0-9]/g, "");
 
 export const screenName = (it: Item) => (it.bp ? `Чертёж: ${it.ru}` : it.ru);
 
@@ -52,19 +51,6 @@ export function squadRewards(projections: string[]): Candidate[] {
   return [...ids].map(cand).filter((c): c is Candidate => !!c);
 }
 
-function lev(a: string, b: string): number {
-  if (!a.length) return b.length;
-  if (!b.length) return a.length;
-  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
-  for (let i = 1; i <= a.length; i++) {
-    const cur = [i];
-    for (let j = 1; j <= b.length; j++) {
-      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-    }
-    prev = cur;
-  }
-  return prev[b.length];
-}
 
 // Words of a name for comparison (short OCR junk like "им" is dropped).
 const words = (s: string) =>

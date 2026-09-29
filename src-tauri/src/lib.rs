@@ -1,4 +1,5 @@
 mod bench;
+mod inventory;
 mod ocr;
 mod overlay;
 mod reward;
@@ -13,6 +14,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             app.manage(reward::init());
+            app.manage(inventory::init());
             let bench = bench::init(app.handle());
             app.manage(bench);
             if let Err(e) = overlay::create(app.handle()) {
@@ -30,7 +32,9 @@ pub fn run() {
             reward::overlay_config,
             reward::overlay_demo,
             overlay::overlay_show,
-            overlay::overlay_hide
+            overlay::overlay_hide,
+            inventory::inv_scan_start,
+            inventory::inv_scan_stop
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

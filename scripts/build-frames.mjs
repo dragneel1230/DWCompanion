@@ -200,6 +200,16 @@ for (const m of wfMods) {
   };
 }
 
+// ---------- Every mod's Russian name -> ids, for recognizing the in-game Mods screen (inventory scan).
+// All mod types, not only warframe ones: a weapon mod on screen must not be mistaken for a similar name.
+const modNames = {};
+for (const m of wfMods) {
+  // Rivens: names on screen are generated ("Болтор Ampiata"), veiled ones are not in the Mods list.
+  if (m.isFrivolous || m.type === "Focus Way" || m.type.includes("Riven")) continue;
+  const ru = ruI18n[m.uniqueName]?.name ?? m.name;
+  (modNames[ru] ??= []).push(m.uniqueName);
+}
+
 const arcanes = {};
 for (const a of wfArcanes) {
   const pe = peArcanes[a.uniqueName];
@@ -259,7 +269,7 @@ if (existsSync(seedFile)) {
 }
 
 mkdirSync("static/data", { recursive: true });
-writeFileSync("static/data/frames.json", JSON.stringify({ frames, mods, arcanes, builds, sets }));
+writeFileSync("static/data/frames.json", JSON.stringify({ frames, mods, arcanes, builds, sets, modNames }));
 console.log(
   `frames ${Object.keys(frames).length}, mods ${Object.keys(mods).length}, arcanes ${Object.keys(arcanes).length}, ` +
   `builds ${Object.keys(builds).length}`,

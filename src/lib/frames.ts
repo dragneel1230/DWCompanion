@@ -115,6 +115,7 @@ export interface FramesDb {
   arcanes: Record<string, Arcane>;
   builds: Record<string, Build>;
   sets: Record<string, ModSet>;
+  modNames: Record<string, string[]>; // Russian name -> ids, every mod type
 }
 
 let cache: Promise<FramesDb> | null = null;
