@@ -26,12 +26,16 @@
   let shown = $state(15);
 
   let copiedId = $state<string | null>(null);
-  // How many pieces to trade per order (orders with quantity > 1).
-  let counts2 = $state<Record<string, number>>({});
-  const countOf = (o: Order) => Math.min(counts2[o.id] ?? 1, o.quantity);
+  // Trades are counted in packs: an order with perTrade 6 is bought 6 at a time.
+  const per = (o: Order) => Math.max(1, o.perTrade ?? 1);
+  const unit = (o: Order) => o.platinum / per(o);
+  const maxPacks = (o: Order) => Math.max(1, Math.floor(o.quantity / per(o)));
+  let packsById = $state<Record<string, number>>({});
+  const packsOf = (o: Order) => Math.min(packsById[o.id] ?? 1, maxPacks(o));
   function step(o: Order, d: number) {
-    counts2 = { ...counts2, [o.id]: Math.max(1, Math.min(o.quantity, countOf(o) + d)) };
+    packsById = { ...packsById, [o.id]: Math.max(1, Math.min(maxPacks(o), packsOf(o) + d)) };
   }
+  const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ","));
   let toast = $state<string | null>(null);
   let toastOk = $state(true);
   let toastTimer: ReturnType<typeof setTimeout>;
@@ -80,7 +84,7 @@
     const dir = side === "sell" ? 1 : -1;
     return rows.sort(
       (a, b) =>
-        dir * (a.platinum - b.platinum) ||
+        dir * (unit(a) - unit(b)) ||
         STATUS_RANK[a.user.status] - STATUS_RANK[b.user.status] ||
         b.user.reputation - a.user.reputation,
     );
@@ -89,12 +93,12 @@
   // Summary always over in-game players with the chosen rank/subtype, independent of the tab.
   const summary = $derived.by(() => {
     const live = list.filter((o) => o.user.status === "ingame" && rankOk(o) && subtypeOk(o));
-    const sells = live.filter((o) => o.type === "sell").map((o) => o.platinum).sort((a, b) => a - b);
-    const buys = live.filter((o) => o.type === "buy").map((o) => o.platinum).sort((a, b) => b - a);
+    const sells = live.filter((o) => o.type === "sell").map(unit).sort((a, b) => a - b);
+    const buys = live.filter((o) => o.type === "buy").map(unit).sort((a, b) => b - a);
     const five = sells.slice(0, 5);
     return {
-      buyNow: sells[0] ?? null,
-      sellNow: buys[0] ?? null,
+      buyNow: sells[0] != null ? fmt(sells[0]) : null,
+      sellNow: buys[0] != null ? fmt(buys[0]) : null,
       avg5: five.length ? Math.round(five.reduce((s, x) => s + x, 0) / five.length) : null,
       sellers: sells.length,
       buyers: buys.length,
@@ -107,7 +111,7 @@
   });
 
   async function act(o: Order) {
-    const text = whisper(o, item, ruForRu ? "auto" : "en", countOf(o));
+    const text = whisper(o, item, ruForRu ? "auto" : "en", packsOf(o));
     const ok = await copyText(text);
     copiedId = ok ? o.id : null;
     toast = text;
@@ -208,17 +212,20 @@
         <span class="meta">
           {#if o.rank != null}<span class="tag">ранг {o.rank}</span>{/if}
           {#if o.subtype}<span class="tag">{SUB_RU[o.subtype] ?? o.subtype}</span>{/if}
-          {#if o.quantity > 1}
-            <span class="stepper" title="Сколько штук {o.type === 'sell' ? 'купить' : 'продать'} (всего у игрока: {o.quantity})">
-              <button onclick={() => step(o, -1)} disabled={countOf(o) <= 1}>−</button>
-              <span>{countOf(o)} из {o.quantity}</span>
-              <button onclick={() => step(o, 1)} disabled={countOf(o) >= o.quantity}>+</button>
+          {#if per(o) > 1}<span class="tag pack" title="Игрок торгует пачками по {per(o)} шт.">по {per(o)} за сделку</span>{/if}
+          {#if maxPacks(o) > 1}
+            <span class="stepper" title="Сколько {per(o) > 1 ? 'пачек' : 'штук'} {o.type === 'sell' ? 'купить' : 'продать'} (всего у игрока: {o.quantity} шт.)">
+              <button onclick={() => step(o, -1)} disabled={packsOf(o) <= 1}>−</button>
+              <span>{packsOf(o) * per(o)} из {o.quantity}</span>
+              <button onclick={() => step(o, 1)} disabled={packsOf(o) >= maxPacks(o)}>+</button>
             </span>
+          {:else if o.quantity > 1}
+            <span class="qty">×{o.quantity}</span>
           {/if}
         </span>
         <span class="price">
-          <Cur kind="plat" value={o.platinum * countOf(o)} size={16} />
-          {#if countOf(o) > 1}<small>по {o.platinum}</small>{/if}
+          <Cur kind="plat" value={o.platinum * packsOf(o)} size={16} />
+          {#if packsOf(o) * per(o) > 1}<small>{fmt(unit(o))} за шт.</small>{/if}
         </span>
         <button class="act {o.type}" onclick={() => act(o)}>
           {copiedId === o.id ? "✓ Скопировано" : o.type === "sell" ? "Купить" : "Продать"}
@@ -378,6 +385,14 @@
     display: flex;
     align-items: center;
     gap: 6px;
+  }
+  .qty {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .tag.pack {
+    color: var(--warn);
+    border-color: rgba(224, 161, 90, 0.35);
   }
   .stepper {
     display: flex;

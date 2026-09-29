@@ -15,17 +15,20 @@ const SUBTYPE_RU: Record<string, string> = {
   radiant: "сияющая",
 };
 
-// Several pieces: "x6" before the name and the total price, as the site does
-// (RU sample from the site: `Привет! Я хочу купить: x6 "Заражение Эксодии (ранг 0)" за 72 платины.`).
-export function whisper(order: Order, item: TradeItem, lang: "auto" | "en" = "auto", count = 1): string {
+// `packs` = how many trades. Pieces = packs × perTrade; when more than one piece, "xN" goes before
+// the name and the price is for all of it, as the site does
+// (RU sample from the site: `Привет! Я хочу купить: x6 "Заражение Эксодии (ранг 0)" за 72 платины.`,
+// an order of 6 per trade at 72 per trade).
+export function whisper(order: Order, item: TradeItem, lang: "auto" | "en" = "auto", packs = 1): string {
   const ru = lang === "auto" && order.user.locale === "ru";
   const name = ru ? item.ru : item.en;
   let full = name;
   if (order.rank != null) full += ru ? ` (ранг ${order.rank})` : ` (rank ${order.rank})`;
   if (order.subtype) full += ` (${ru ? (SUBTYPE_RU[order.subtype] ?? order.subtype) : order.subtype})`;
 
-  const qty = count > 1 ? `x${count} ` : "";
-  const total = order.platinum * count;
+  const pieces = packs * (order.perTrade ?? 1);
+  const qty = pieces > 1 ? `x${pieces} ` : "";
+  const total = order.platinum * packs;
   const who = `/w ${order.user.ingameName}`;
   // A sell order means we buy from them, and the other way round.
   if (ru) {

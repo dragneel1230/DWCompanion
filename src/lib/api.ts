@@ -89,8 +89,9 @@ export type UserStatus = "ingame" | "online" | "offline";
 export interface Order {
   id: string;
   type: "sell" | "buy";
-  platinum: number;
+  platinum: number; // price of one trade: of the whole pack when perTrade > 1
   quantity: number;
+  perTrade?: number; // pieces per trade, e.g. arcanes sold in packs of 6
   rank?: number;
   subtype?: string;
   updatedAt: string;
