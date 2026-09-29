@@ -147,7 +147,7 @@ FrameTop, FrameBottom, Background, TopRightBacker, …; RankSlotActive, RankComp
 Взяты с вики: https://wiki.warframe.com/w/Mod/Assets (файлы через `Special:FilePath/<имя>.png`); по словам вики,
 первоисточник — приложение-компаньон DE / Twitch-расширение Warframe Arsenal. Нет на вики: GoldAura, SilverExilus.
 Раскладка в родных пикселях ассетов 292×150 (верх со сдвигом x=6, низ с y=30), весь блок масштабируется ×0.72.
-Умбра и Peculiar рисуются рамкой Legendary. Мистификаторы пока CSS-арка — ассет рамки мистификатора не найден.
+Умбра и Peculiar рисуются рамкой Legendary. Мистификаторы — арки `ArcaneBackground{Common,Uncommon,Rare,Legendary}.png` с вики (WARFRAME Wiki:Media Policy/Arcane Images), иконка 190px в центре «чаши» (256,200) на холсте 512, видна полоса y 40–346.
 Над слотом — полярность формы; совпала → зелёная, стоимость /2 вверх (аура ×2). Вместимость = 60 + бонус ауры.
 Полярности из кода Overframe: 1 Мадурай, 2 Вазарин, 3 Нарамон, 8 Умбра, 9 Зенурик (Унайру, Пенджага — неизвестны).
 Иконки предметов/модов/мистификаторов — официальный CDN DE `content.warframe.com/PublicExport<path>!<contentHash>`

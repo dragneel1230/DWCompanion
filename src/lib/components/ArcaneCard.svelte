@@ -1,14 +1,27 @@
 <script lang="ts">
-  // Arcane in a golden arch, like the game's arcane slot.
+  // Arcane on its rarity arch (static/modframe/ArcaneBackground*.png, from the WARFRAME wiki
+  // "Media Policy/Arcane Images"), on the 512×512 canvas. The wiki recipe (343px icon, up 60px)
+  // is for its padded icons; DE CDN icons are tight, so they sit smaller inside the dark well
+  // (well center ≈ 256,200). Only the arch's rows (≈40–345) are shown.
   import { iconUrl } from "$lib/db";
   import type { Arcane } from "$lib/frames";
 
   let { arcane, owned = false, onclick }: { arcane: Arcane; owned?: boolean; onclick?: () => void } = $props();
+
+  const SCALE = 0.34;
+  const CROP_TOP = 40;
+  const CROP_H = 306;
+
+  const BG: Record<string, string> = { Common: "Common", Uncommon: "Uncommon", Rare: "Rare", Legendary: "Legendary" };
+  const bg = $derived(BG[arcane.rarity] ?? "Rare");
 </script>
 
-<button class="arcane" {onclick} title={arcane.stats}>
-  <div class="arch">
-    <div class="well"><img src={iconUrl(arcane.icon)} alt="" loading="lazy" /></div>
+<button class="arcane" {onclick} title={arcane.stats} style:--s={SCALE} style:--crop-top="{CROP_TOP}px" style:--crop-h="{CROP_H}px">
+  <div class="view">
+    <div class="native">
+      <img class="bg" src="/modframe/ArcaneBackground{bg}.png" alt="" />
+      <img class="icon" src={iconUrl(arcane.icon)} alt="" loading="lazy" />
+    </div>
     {#if owned}<div class="own" title="Есть у меня">✓</div>{/if}
   </div>
   <div class="name">{arcane.ru}</div>
@@ -19,56 +32,63 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
-    width: 150px;
-    transition: transform 0.12s;
+    gap: 4px;
+    width: calc(512px * var(--s));
+    transition: transform 0.12s, filter 0.12s;
   }
   .arcane:hover {
     transform: translateY(-2px);
+    filter: brightness(1.1);
   }
-  .arch {
+  .view {
     position: relative;
-    width: 120px;
-    height: 68px;
-    display: grid;
-    place-items: end center;
-    padding-bottom: 6px;
-    border-radius: 60px 60px 6px 6px;
-    background: linear-gradient(180deg, #f3d98f, #b98a2e 55%, #6d4c14);
-    box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.45), 0 4px 10px rgba(0, 0, 0, 0.5);
+    width: calc(512px * var(--s));
+    height: calc(var(--crop-h) * var(--s));
+    overflow: hidden;
   }
-  .well {
-    width: 76px;
-    height: 56px;
-    display: grid;
-    place-items: center;
-    border-radius: 38px 38px 4px 4px;
-    background: radial-gradient(circle at 50% 60%, #0f2a33, #070b10 75%);
-    box-shadow: inset 0 0 0 2px rgba(40, 24, 4, 0.8);
+  /* 512×512 canvas in native pixels, shifted up so only the arch shows. */
+  .native {
+    position: absolute;
+    left: 0;
+    top: calc(var(--crop-top) * var(--s) * -1);
+    width: 512px;
+    height: 512px;
+    transform: scale(var(--s));
+    transform-origin: top left;
   }
-  .well img {
-    width: 48px;
-    height: 48px;
+  .bg {
+    position: absolute;
+    inset: 0;
+    width: 512px;
+    height: 512px;
+  }
+  .icon {
+    position: absolute;
+    left: 161px;
+    top: 105px;
+    width: 190px;
+    height: 190px;
     object-fit: contain;
-    filter: drop-shadow(0 0 6px rgba(0, 229, 255, 0.55));
+    filter: drop-shadow(0 0 10px rgba(0, 229, 255, 0.45));
   }
   .own {
     position: absolute;
-    right: 6px;
+    right: 10px;
     bottom: 6px;
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
     display: grid;
     place-items: center;
-    font-size: 9px;
+    font-size: 10px;
     color: #0e1014;
     background: var(--good);
   }
   .name {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 600;
     text-align: center;
     color: #e6e8ee;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
   }
 </style>
