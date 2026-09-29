@@ -1,5 +1,6 @@
 <script lang="ts">
   // Lazily loaded warframe.market price for one item slug.
+  import { untrack } from "svelte";
   import { getPrice, cachedPrice, type Price } from "$lib/api";
 
   let { slug, onprice }: { slug?: string; onprice?: (p: Price | null) => void } = $props();
@@ -7,22 +8,34 @@
   let price = $state<Price | null>(null);
   let loading = $state(false);
 
+  // Depends on `slug` only; the body writes state it also reads, so keep it untracked.
   $effect(() => {
-    if (!slug) return;
-    price = cachedPrice(slug);
-    if (price) {
-      onprice?.(price);
+    const s = slug;
+    untrack(() => load(s));
+  });
+
+  function load(s: string | undefined) {
+    if (!s) return;
+    const cached = cachedPrice(s);
+    if (cached) {
+      price = cached;
+      loading = false;
+      onprice?.(cached);
       return;
     }
+    price = null;
     loading = true;
-    getPrice(slug)
+    getPrice(s)
       .then((p) => {
+        if (s !== slug) return;
         price = p;
         onprice?.(p);
       })
       .catch(() => onprice?.(null))
-      .finally(() => (loading = false));
-  });
+      .finally(() => {
+        if (s === slug) loading = false;
+      });
+  }
 </script>
 
 {#if !slug}

@@ -24,14 +24,15 @@ const prices = new Map<string, Price>();
 const inflight = new Map<string, Promise<Price | null>>();
 
 // warframe.market asks clients to stay around 3 requests per second.
-let queue: Promise<unknown> = Promise.resolve();
-function throttled<T>(fn: () => Promise<T>): Promise<T> {
-  const run = queue.then(fn, fn);
-  queue = run.then(
-    () => new Promise((r) => setTimeout(r, 350)),
-    () => new Promise((r) => setTimeout(r, 350)),
-  );
-  return run;
+// Space out request starts, but let responses overlap.
+const MIN_GAP = 340;
+let nextStart = 0;
+async function throttled<T>(fn: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const start = Math.max(now, nextStart);
+  nextStart = start + MIN_GAP;
+  if (start > now) await new Promise((r) => setTimeout(r, start - now));
+  return fn();
 }
 
 export function cachedPrice(slug: string): Price | null {
