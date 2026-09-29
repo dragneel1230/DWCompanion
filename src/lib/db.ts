@@ -41,12 +41,11 @@ export interface Db {
   items: Record<string, Item>;
   relics: Record<string, Relic>;
   sets: Record<string, PrimeSet>;
+  // Keyed by the raw ids of DE's worldState.php.
   world: {
-    nodes: Record<string, string>;
-    places: Record<string, string>;
-    mission: Record<string, string>;
-    faction: Record<string, string>;
-    tier: Record<string, string>;
+    regions: Record<string, { n: string; f: string; m: string | null }>; // SolNode126 -> node, faction, mission
+    missionType: Record<string, string>; // MT_RESCUE -> "Спасение"
+    tier: Record<string, string>; // VoidT1 -> "Лит"
   };
 }
 
@@ -140,16 +139,6 @@ export function search(query: string, limit = 30): Entry[] {
   }
   hits.sort((a, b) => b.s - a.s);
   return hits.slice(0, limit).map((h) => h.e);
-}
-
-// warframestat.us gives "Node (System)" in English.
-export function nodeName(s: string): string {
-  const w = getDb().world;
-  if (w.nodes[s]) return w.nodes[s];
-  const m = /^(.*) \((.*)\)$/.exec(s);
-  if (!m) return w.places[s.toLowerCase()] ?? s;
-  const place = (x: string) => w.places[x.toLowerCase()] ?? x;
-  return `${place(m[1])} (${place(m[2])})`;
 }
 
 export function iconUrl(path: string | null): string {

@@ -1,8 +1,9 @@
 // External APIs. Requests go through the Tauri HTTP plugin (Rust side), so no CORS issues.
 import { fetch } from "@tauri-apps/plugin-http";
+import { getDb } from "./db";
 
 const WFM = "https://api.warframe.market/v2";
-const WFSTAT = "https://api.warframestat.us/pc";
+const WORLDSTATE = "https://api.warframe.com/cdn/worldState.php";
 
 // ---------- warframe.market prices
 
@@ -64,22 +65,54 @@ export function getPrice(slug: string): Promise<Price | null> {
 
 // ---------- world state
 
+// Official worldState (the same public file the game and warframestat.us read).
+// Names are resolved to Russian here via db.world.
 export interface Fissure {
   id: string;
   node: string;
-  missionType: string;
+  mission: string;
   enemy: string;
   tier: string;
   tierNum: number;
-  expiry: string;
+  expiry: number;
   isStorm: boolean;
   isHard: boolean;
 }
 
+interface WsMission {
+  _id: { $oid: string };
+  Node: string;
+  Expiry: { $date: { $numberLong: string } };
+  MissionType?: string; // fissures only
+  Modifier?: string; // fissures: VoidT1..VoidT6
+  ActiveMissionTier?: string; // Void Storms
+  Hard?: boolean;
+}
+
 export async function getFissures(): Promise<Fissure[]> {
-  const res = await fetch(`${WFSTAT}/fissures`);
-  if (!res.ok) throw new Error(`warframestat ${res.status}`);
-  return (await res.json()) as Fissure[];
+  const res = await fetch(WORLDSTATE);
+  if (!res.ok) throw new Error(`worldState ${res.status}`);
+  const ws = (await res.json()) as { ActiveMissions?: WsMission[]; VoidStorms?: WsMission[] };
+  const w = getDb().world;
+  const map = (m: WsMission, isStorm: boolean): Fissure => {
+    const reg = w.regions[m.Node];
+    const t = (isStorm ? m.ActiveMissionTier : m.Modifier) ?? "";
+    return {
+      id: m._id.$oid,
+      node: reg?.n ?? m.Node,
+      mission: (m.MissionType && w.missionType[m.MissionType]) || reg?.m || m.MissionType || "",
+      enemy: reg?.f ?? "",
+      tier: w.tier[t] ?? t,
+      tierNum: Number(t.replace("VoidT", "")) || 0,
+      expiry: Number(m.Expiry.$date.$numberLong),
+      isStorm,
+      isHard: !!m.Hard,
+    };
+  };
+  return [
+    ...(ws.ActiveMissions ?? []).filter((m) => m.Modifier?.startsWith("VoidT")).map((m) => map(m, false)),
+    ...(ws.VoidStorms ?? []).map((m) => map(m, true)),
+  ];
 }
 
 // ---------- warframe.market: all orders of an item

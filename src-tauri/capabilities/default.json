@@ -15,7 +15,7 @@
           "url": "https://api.warframe.market/*"
         },
         {
-          "url": "https://api.warframestat.us/*"
+          "url": "https://api.warframe.com/cdn/*"
         }
       ]
     },

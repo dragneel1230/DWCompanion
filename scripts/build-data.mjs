@@ -154,54 +154,35 @@ for (const w of wfmItems) {
   items[mainBp].main = true;
 }
 
-// ---- World state translation: warframestat.us returns English strings.
-const nodes = {};
-for (const reg of Object.values(regions)) {
-  if (!tr(en, reg.name) || !tr(en, reg.systemName)) continue;
-  nodes[`${tr(en, reg.name)} (${tr(en, reg.systemName)})`] = `${tr(ru, reg.name)} (${tr(ru, reg.systemName)})`;
+// ---- World state: official worldState.php uses raw keys (SolNode126, MT_RESCUE, VoidT2).
+const factionRu = (fc) => unshout(tr(ru, factions[fc]?.name)) ?? fc;
+const regionsRu = {};
+for (const [key, reg] of Object.entries(regions)) {
+  const name = tr(ru, reg.name);
+  if (!name) continue;
+  const sys = tr(ru, reg.systemName);
+  // m: node's own mission name (Void Storms only give the node).
+  regionsRu[key] = { n: sys ? `${name} (${sys})` : name, f: factionRu(reg.faction), m: unshout(tr(ru, reg.missionName)) };
 }
-// Case-insensitive English -> Russian for every location / mission label in the dictionary.
-// Covers Railjack nodes and mission types that ExportRegions / ExportMissionTypes miss.
-const places = {};
-const mission = {};
-for (const [key, enName] of Object.entries(en)) {
-  if (!enName || !ru[key]) continue;
-  const lower = enName.toLowerCase();
-  if (key.startsWith("/Lotus/Language/Locations/")) places[lower] ??= unshout(ru[key]);
-  else if (key.startsWith("/Lotus/Language/Missions/MissionName_")) mission[lower] ??= unshout(ru[key]);
-}
-places["veil"] = places["veil proxima"];
-for (const [key, mt] of Object.entries(missionTypes)) {
-  const ruName = unshout(tr(ru, mt.name));
-  if (!ruName) continue;
-  mission[tr(en, mt.name).toLowerCase()] ??= ruName;
-  // warframestat uses the MT_ key in title case ("MT_EXTERMINATION" -> "extermination").
-  mission[key.replace(/^MT_/, "").replace(/_/g, " ").toLowerCase()] ??= ruName;
-}
-const faction = {};
-for (const fc of Object.values(factions)) {
-  const enName = tr(en, fc.name);
-  if (enName) faction[enName.toLowerCase()] = unshout(tr(ru, fc.name));
-}
-faction["infested"] = faction["infestation"];
-// Crossfire fissures report "Crossfire" as the enemy.
-faction["crossfire"] = mission["crossfire"];
+const missionTypeRu = {};
+for (const [key, mt] of Object.entries(missionTypes)) missionTypeRu[key] = unshout(tr(ru, mt.name)) ?? key;
+// Fissure modifier VoidT1..VoidT6 -> era name.
 const tier = {};
-for (const era of [...Object.keys(ERA_KEYS), "Omnia"]) {
-  tier[era.toLowerCase()] = tr(ru, `/Lotus/Language/Relics/Era_${era === "Omnia" ? "OMNI" : ERA_KEYS[era]}`);
-}
+["Lith", "Meso", "Neo", "Axi", "Requiem", "Omnia"].forEach((era, i) => {
+  tier[`VoidT${i + 1}`] = tr(ru, `/Lotus/Language/Relics/Era_${era === "Omnia" ? "OMNI" : ERA_KEYS[era]}`);
+});
 
 const db = {
   builtAt: new Date().toISOString(),
   items,
   relics,
   sets,
-  world: { nodes, places, mission, faction, tier },
+  world: { regions: regionsRu, missionType: missionTypeRu, tier },
 };
 
 mkdirSync("static/data", { recursive: true });
 writeFileSync("static/data/db.json", JSON.stringify(db));
 console.log(
   `items ${Object.keys(items).length}, relics ${Object.keys(relics).length}, sets ${Object.keys(sets).length}, ` +
-  `nodes ${Object.keys(nodes).length}, size ${(JSON.stringify(db).length / 1024).toFixed(0)} KB`,
+  `nodes ${Object.keys(regionsRu).length}, size ${(JSON.stringify(db).length / 1024).toFixed(0)} KB`,
 );

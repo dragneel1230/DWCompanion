@@ -1,9 +1,6 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
   import { getFissures, type Fissure } from "$lib/api";
-  import { getDb, nodeName } from "$lib/db";
-
-  const world = getDb().world;
 
   type Mode = "normal" | "hard" | "storm";
   const MODES: { id: Mode; label: string }[] = [
@@ -37,9 +34,9 @@
 
   const shown = $derived(
     list
-      .filter((f) => new Date(f.expiry).getTime() > now)
+      .filter((f) => f.expiry > now)
       .filter((f) => (mode === "storm" ? f.isStorm : !f.isStorm && f.isHard === (mode === "hard")))
-      .sort((a, b) => a.tierNum - b.tierNum || new Date(a.expiry).getTime() - new Date(b.expiry).getTime()),
+      .sort((a, b) => a.tierNum - b.tierNum || a.expiry - b.expiry),
   );
 
   const tiers = $derived.by(() => {
@@ -48,10 +45,8 @@
     return [...groups];
   });
 
-  const t = (map: Record<string, string>, s: string) => map[s.toLowerCase()] ?? s;
-
-  function left(expiry: string): string {
-    const s = Math.max(0, Math.floor((new Date(expiry).getTime() - now) / 1000));
+  function left(expiry: number): string {
+    const s = Math.max(0, Math.floor((expiry - now) / 1000));
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
     const sec = s % 60;
@@ -76,16 +71,16 @@
   {/if}
 
   {#each tiers as [tier, items] (tier)}
-    <div class="section-title">{t(world.tier, tier)}</div>
+    <div class="section-title">{tier}</div>
     <div class="rows">
       {#each items as f (f.id)}
-        {@const soon = new Date(f.expiry).getTime() - now < 5 * 60_000}
+        {@const soon = f.expiry - now < 5 * 60_000}
         <div class="row">
           <span class="name">
-            {t(world.mission, f.missionType)}
-            <small>{nodeName(f.node)}</small>
+            {f.mission}
+            <small>{f.node}</small>
           </span>
-          <span class="enemy">{t(world.faction, f.enemy)}</span>
+          <span class="enemy">{f.enemy}</span>
           <span class="time" class:soon>{left(f.expiry)}</span>
         </div>
       {/each}
