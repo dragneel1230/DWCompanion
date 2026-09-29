@@ -26,6 +26,12 @@
   let shown = $state(15);
 
   let copiedId = $state<string | null>(null);
+  // How many pieces to trade per order (orders with quantity > 1).
+  let counts2 = $state<Record<string, number>>({});
+  const countOf = (o: Order) => Math.min(counts2[o.id] ?? 1, o.quantity);
+  function step(o: Order, d: number) {
+    counts2 = { ...counts2, [o.id]: Math.max(1, Math.min(o.quantity, countOf(o) + d)) };
+  }
   let toast = $state<string | null>(null);
   let toastOk = $state(true);
   let toastTimer: ReturnType<typeof setTimeout>;
@@ -101,7 +107,7 @@
   });
 
   async function act(o: Order) {
-    const text = whisper(o, item, ruForRu ? "auto" : "en");
+    const text = whisper(o, item, ruForRu ? "auto" : "en", countOf(o));
     const ok = await copyText(text);
     copiedId = ok ? o.id : null;
     toast = text;
@@ -202,9 +208,18 @@
         <span class="meta">
           {#if o.rank != null}<span class="tag">ранг {o.rank}</span>{/if}
           {#if o.subtype}<span class="tag">{SUB_RU[o.subtype] ?? o.subtype}</span>{/if}
-          {#if o.quantity > 1}<span class="qty" title="Количество">×{o.quantity}</span>{/if}
+          {#if o.quantity > 1}
+            <span class="stepper" title="Сколько штук {o.type === 'sell' ? 'купить' : 'продать'} (всего у игрока: {o.quantity})">
+              <button onclick={() => step(o, -1)} disabled={countOf(o) <= 1}>−</button>
+              <span>{countOf(o)} из {o.quantity}</span>
+              <button onclick={() => step(o, 1)} disabled={countOf(o) >= o.quantity}>+</button>
+            </span>
+          {/if}
         </span>
-        <span class="price"><Cur kind="plat" value={o.platinum} size={16} /></span>
+        <span class="price">
+          <Cur kind="plat" value={o.platinum * countOf(o)} size={16} />
+          {#if countOf(o) > 1}<small>по {o.platinum}</small>{/if}
+        </span>
         <button class="act {o.type}" onclick={() => act(o)}>
           {copiedId === o.id ? "✓ Скопировано" : o.type === "sell" ? "Купить" : "Продать"}
         </button>
@@ -364,15 +379,45 @@
     align-items: center;
     gap: 6px;
   }
-  .qty {
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 7px;
+    background: var(--bg);
     font-size: 12px;
     color: var(--text-dim);
   }
+  .stepper span {
+    min-width: 46px;
+    text-align: center;
+  }
+  .stepper button {
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+    color: var(--text);
+  }
+  .stepper button:hover:not(:disabled) {
+    background: var(--surface-2);
+  }
+  .stepper button:disabled {
+    color: var(--text-faint);
+    cursor: default;
+  }
   .price {
-    width: 64px;
-    text-align: right;
+    width: 72px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
     font-size: 15px;
     font-weight: 600;
+  }
+  .price small {
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--text-faint);
   }
   .act {
     width: 118px;

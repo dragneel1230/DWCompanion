@@ -158,7 +158,9 @@ FrameTop, FrameBottom, Background, TopRightBacker, …; RankSlotActive, RankComp
   `rank` (моды), `subtype` (реликвии: intact/…/radiant), user {ingameName, reputation, status ingame/online/offline,
   locale}. Кэш 60 с, общая очередь запросов (~3/с).
 - Готового текста шёпота API НЕ отдаёт — собираем сами по шаблону сайта:
-  `/w Ник Hi! I want to buy: "<имя> (rank N)" for X platinum. (warframe.market)`. Имя — точное с рынка
+  `/w Ник Hi! I want to buy: "<имя> (rank N)" for X platinum. (warframe.market)`.
+  RU (образец с сайта от пользователя): `/w Ник Привет! Я хочу купить: x6 "Заражение Эксодии (ранг 0)" за 72 платины. (warframe.market)`
+  — несколько штук: `xN ` перед кавычками и цена за все. Количество выбирается степпером в строке заявки. Имя — точное с рынка
   (`mname` из `i18n.en.name`: «Saryn Prime Chassis Blueprint», не наше «Saryn Prime Chassis»).
 - Язык выбираем по `locale` адресата (ru → по-русски), а не по нашему языку — адресат читает на своём.
 - Копирование: `@tauri-apps/plugin-clipboard-manager` (`clipboard-manager:allow-write-text`) — браузерный
