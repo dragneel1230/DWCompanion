@@ -1,0 +1,82 @@
+// External APIs. Requests go through the Tauri HTTP plugin (Rust side), so no CORS issues.
+import { fetch } from "@tauri-apps/plugin-http";
+
+const WFM = "https://api.warframe.market/v2";
+const WFSTAT = "https://api.warframestat.us/pc";
+
+// ---------- warframe.market prices
+
+export interface Price {
+  sell: number | null; // cheapest online seller
+  buy: number | null; // best online buyer
+  sellers: number;
+  at: number;
+}
+
+interface WfmOrder {
+  type: "sell" | "buy";
+  platinum: number;
+  user: { status: "ingame" | "online" | "offline" };
+}
+
+const PRICE_TTL = 5 * 60_000;
+const prices = new Map<string, Price>();
+const inflight = new Map<string, Promise<Price | null>>();
+
+// warframe.market asks clients to stay around 3 requests per second.
+let queue: Promise<unknown> = Promise.resolve();
+function throttled<T>(fn: () => Promise<T>): Promise<T> {
+  const run = queue.then(fn, fn);
+  queue = run.then(
+    () => new Promise((r) => setTimeout(r, 350)),
+    () => new Promise((r) => setTimeout(r, 350)),
+  );
+  return run;
+}
+
+export function cachedPrice(slug: string): Price | null {
+  const p = prices.get(slug);
+  return p && Date.now() - p.at < PRICE_TTL ? p : null;
+}
+
+export function getPrice(slug: string): Promise<Price | null> {
+  const cached = cachedPrice(slug);
+  if (cached) return Promise.resolve(cached);
+  const pending = inflight.get(slug);
+  if (pending) return pending;
+
+  const p = throttled(async () => {
+    const res = await fetch(`${WFM}/orders/item/${slug}/top`, { headers: { platform: "pc", crossplay: "true" } });
+    if (!res.ok) return null;
+    const data = (await res.json()).data as { sell: WfmOrder[]; buy: WfmOrder[] };
+    const online = (o: WfmOrder) => o.user.status !== "offline";
+    const sells = data.sell.filter(online).map((o) => o.platinum).sort((a, b) => a - b);
+    const buys = data.buy.filter(online).map((o) => o.platinum).sort((a, b) => b - a);
+    const price: Price = { sell: sells[0] ?? null, buy: buys[0] ?? null, sellers: sells.length, at: Date.now() };
+    prices.set(slug, price);
+    return price;
+  }).finally(() => inflight.delete(slug));
+
+  inflight.set(slug, p);
+  return p;
+}
+
+// ---------- world state
+
+export interface Fissure {
+  id: string;
+  node: string;
+  missionType: string;
+  enemy: string;
+  tier: string;
+  tierNum: number;
+  expiry: string;
+  isStorm: boolean;
+  isHard: boolean;
+}
+
+export async function getFissures(): Promise<Fissure[]> {
+  const res = await fetch(`${WFSTAT}/fissures`);
+  if (!res.ok) throw new Error(`warframestat ${res.status}`);
+  return (await res.json()) as Fissure[];
+}
