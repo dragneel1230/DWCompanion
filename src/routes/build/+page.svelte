@@ -1,6 +1,8 @@
 <script lang="ts">
   import { page } from "$app/state";
-  import { loadFrames, POLARITY_RU, RARITY_RU, type FramesDb, type Mod, type Arcane } from "$lib/frames";
+  import { goto } from "$app/navigation";
+  import { loadFrames, getBuild, POLARITY_RU, RARITY_RU, type FramesDb, type Mod, type Arcane } from "$lib/frames";
+  import { userBuilds } from "$lib/userBuilds.svelte";
   import { iconUrl } from "$lib/db";
   import { owned } from "$lib/owned.svelte";
   import ModCard from "$lib/components/ModCard.svelte";
@@ -9,7 +11,14 @@
   loadFrames().then((d) => (db = d));
 
   const id = $derived(page.url.searchParams.get("id") ?? "");
-  const build = $derived(db?.builds[id]);
+  const build = $derived(db ? getBuild(db, id) : undefined);
+
+  function remove() {
+    if (!build) return;
+    const frameId = build.frame;
+    userBuilds.remove(id);
+    goto(`/frame?id=${encodeURIComponent(frameId)}`);
+  }
   const frame = $derived(build && db ? db.frames[build.frame] : null);
 
   type Line = { id: string; kind: "mod" | "arcane"; slot: string; mod?: Mod; arcane?: Arcane };
@@ -43,11 +52,18 @@
         <div class="sub">
           <a class="frame-link" href="/frame?id={encodeURIComponent(build.frame)}">{frame.ru}</a>
           <span>· {build.author}</span>
-          <span>· ▲ {build.votes}</span>
+          {#if build.source !== "overframe"}<span>· ▲ {build.votes}</span>{/if}
           {#each build.tags as t}<span class="tag">{t}</span>{/each}
         </div>
       </div>
     </header>
+
+    {#if build.source === "overframe"}
+      <div class="actions">
+        {#if build.url}<a class="act" href={build.url} target="_blank" rel="noreferrer">Открыть на Overframe ↗</a>{/if}
+        <button class="act danger" onclick={remove}>Удалить импорт</button>
+      </div>
+    {/if}
 
     {#if build.demo || build.note}
       <p class="note" class:demo={build.demo}>{build.note}</p>
@@ -113,6 +129,21 @@
 {/if}
 
 <style>
+  .actions {
+    display: flex;
+    gap: 8px;
+    margin: -8px 0 18px;
+  }
+  .act {
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+  }
+  .act.danger:hover {
+    color: var(--warn);
+  }
   .frame-link {
     color: var(--accent);
   }

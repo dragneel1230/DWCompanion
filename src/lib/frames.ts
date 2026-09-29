@@ -1,5 +1,7 @@
 // Warframes, mods and builds (static/data/frames.json, built by scripts/build-frames.mjs).
 import { normalize } from "$lib/db";
+import { userBuilds } from "$lib/userBuilds.svelte";
+import { overframeIds, type DecodedBuild } from "$lib/overframe.svelte";
 
 export type Polarity = "madurai" | "vazarin" | "naramon" | "zenurik" | "penjaga" | "unairu" | "umbra" | "any";
 export type ModRarity = "Common" | "Uncommon" | "Rare" | "Legendary" | "Peculiar";
@@ -63,6 +65,8 @@ export interface Build {
   exilus: string | null;
   slots: (string | null)[];
   arcanes: string[];
+  source?: "overframe";
+  url?: string;
 }
 
 export interface FramesDb {
@@ -89,8 +93,13 @@ export function searchFrames(db: FramesDb, query: string): [string, Frame][] {
   return hits.sort(([, a], [, b]) => a.ru.localeCompare(b.ru, "ru"));
 }
 
+// Bundled builds plus the ones the user imported (saved locally).
+export function getBuild(db: FramesDb, id: string): Build | undefined {
+  return userBuilds.all[id] ?? db.builds[id];
+}
+
 export function buildsFor(db: FramesDb, frameId: string): [string, Build][] {
-  return Object.entries(db.builds)
+  return Object.entries({ ...db.builds, ...userBuilds.all })
     .filter(([, b]) => b.frame === frameId)
     .sort(([, a], [, b]) => b.votes - a.votes);
 }
@@ -113,3 +122,74 @@ export const POLARITY_RU: Record<Polarity, string> = {
 export const RARITY_RU: Record<ModRarity, string> = {
   Common: "Обычный", Uncommon: "Необычный", Rare: "Редкий", Legendary: "Легендарный", Peculiar: "Особый",
 };
+
+// ---------- Overframe import
+
+export interface ImportResult {
+  build: Omit<Build, "title" | "author" | "votes" | "note" | "tags"> | null;
+  frameId: string | null;
+  unknown: number[];
+  total: number;
+}
+
+function byEnName(table: Record<string, { en: string }>): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const [id, v] of Object.entries(table)) if (!m.has(v.en)) m.set(v.en, id);
+  return m;
+}
+
+// Maps Overframe ids to our uniqueNames and lays entries out into slots.
+export function assembleImport(db: FramesDb, dec: DecodedBuild, fallbackFrame: string): ImportResult {
+  const mods = byEnName(db.mods);
+  const arcanes = byEnName(db.arcanes);
+  const frames = byEnName(db.frames);
+
+  const frameName = overframeIds.name(dec.itemId);
+  const frameId = (frameName && frames.get(frameName)) || fallbackFrame || null;
+
+  const unknown: number[] = [];
+  const slots: (string | null)[] = Array(8).fill(null);
+  let aura: string | null = null;
+  let exilus: string | null = null;
+  const arc: string[] = [];
+
+  dec.entries.forEach((e, i) => {
+    const name = overframeIds.name(e.id);
+    const modId = name ? mods.get(name) : undefined;
+    const arcId = name ? arcanes.get(name) : undefined;
+    if (!modId && !arcId) {
+      unknown.push(e.id);
+      return;
+    }
+    if (arcId) arc.push(arcId);
+    else if (i < 8) slots[i] = modId!;
+    else if (db.mods[modId!].aura) aura = modId!;
+    else exilus = modId!;
+  });
+
+  return {
+    build: frameId ? { frame: frameId, aura, exilus, slots, arcanes: arc, source: "overframe", url: dec.url ?? undefined } : null,
+    frameId,
+    unknown,
+    total: dec.entries.length,
+  };
+}
+
+// Mods and arcanes by Russian or English name, for resolving unknown Overframe ids by hand.
+export function searchModsAndArcanes(db: FramesDb, query: string, limit = 6): { id: string; en: string; ru: string; icon: string | null }[] {
+  const q = normalize(query);
+  if (!q) return [];
+  const out: { id: string; en: string; ru: string; icon: string | null }[] = [];
+  const seen = new Set<string>(); // the game has a few same-named duplicates; import matches by name anyway
+  for (const table of [db.mods, db.arcanes]) {
+    for (const [id, v] of Object.entries(table)) {
+      if (seen.has(v.en)) continue;
+      if (normalize(v.ru).includes(q) || normalize(v.en).includes(q)) {
+        seen.add(v.en);
+        out.push({ id, en: v.en, ru: v.ru, icon: v.icon });
+      }
+      if (out.length >= limit) return out;
+    }
+  }
+  return out;
+}

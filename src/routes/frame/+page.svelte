@@ -2,6 +2,7 @@
   import { page } from "$app/state";
   import { loadFrames, buildsFor, POLARITY_RU, type FramesDb } from "$lib/frames";
   import { iconUrl } from "$lib/db";
+  import ImportBuild from "$lib/components/ImportBuild.svelte";
 
   let db = $state<FramesDb | null>(null);
   loadFrames().then((d) => (db = d));
@@ -11,6 +12,7 @@
   const builds = $derived(db ? buildsFor(db, id) : []);
 
   let openAbility = $state<number | null>(null);
+  let importing = $state(false);
 
   const STATS = [
     ["health", "Здоровье"],
@@ -64,7 +66,11 @@
       <p class="desc passive"><b>Пассивка.</b> {frame.passive}</p>
     {/if}
 
-    <div class="section-title">Билды · сначала популярные</div>
+    <div class="builds-head">
+      <div class="section-title">Билды · сначала популярные</div>
+      {#if !importing}<button class="import-btn" onclick={() => (importing = true)}>+ Импорт с Overframe</button>{/if}
+    </div>
+    {#if importing}<ImportBuild {db} frameId={id} onclose={() => (importing = false)} />{/if}
     {#if builds.length}
       <div class="rows">
         {#each builds as [bid, b] (bid)}
@@ -74,12 +80,12 @@
               <small>{b.author}{#each b.tags as t}<span class="tag">{t}</span>{/each}</small>
             </span>
             {#if b.demo}<span class="tag vaulted">демо</span>{/if}
-            <span class="votes" title="Голоса">▲ {b.votes}</span>
+            {#if b.source === "overframe"}<span class="tag">мой импорт</span>{:else}<span class="votes" title="Голоса">▲ {b.votes}</span>{/if}
           </a>
         {/each}
       </div>
     {:else}
-      <p class="muted">Билдов пока нет. Источник билдов ещё не выбран — см. раздел «Билды» в docs/DESIGN.md.</p>
+      <p class="muted">Билдов пока нет. Импортируй понравившийся с Overframe — кнопка выше.</p>
     {/if}
   </div>
 {:else if db}
@@ -161,6 +167,19 @@
   }
   .build small .tag {
     margin-left: 6px;
+  }
+  .builds-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .import-btn {
+    margin-top: 16px;
+    font-size: 12px;
+    color: var(--accent);
+    padding: 5px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(201, 166, 107, 0.35);
   }
   .votes {
     width: 70px;
