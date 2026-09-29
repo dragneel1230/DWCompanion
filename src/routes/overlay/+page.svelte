@@ -1,18 +1,18 @@
 <script lang="ts">
   // Overlay window content (transparent, click-through, over the game). Rust shows the window when
-  // the card names are read (event "reward-scan") and hides it when the reward screen closes.
+  // the card names are read (event "reward-scan"); we hide it after the reward countdown.
+  // Look: in the spirit of the game's own UI — dark glass, thin gold lines, corner brackets.
   import { onDestroy } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { getPrice, cachedPrice, type Price } from "$lib/api";
-  import { getDb } from "$lib/db";
-  import { matchCard, squadRewards, type Candidate, type Match } from "$lib/rewards";
+  import { getDb, type Rarity } from "$lib/db";
+  import { matchCard, relicKey, squadRewards, type Candidate, type Match } from "$lib/rewards";
 
   type Card = { x: number; y: number; w: number; h: number; texts: string[] };
   type Scan = { cards: Card[]; screen_w: number; screen_h: number; scale: number; ms: number; relics: string[] };
-  type Shown = { card: Card; match: Match | null; price: Price | null; vaulted: boolean };
+  type Shown = { card: Card; match: Match | null; price: Price | null; vaulted: boolean; rarity: Rarity | null };
 
-  // Transparent page: no app background.
   document.documentElement.style.background = "transparent";
   document.body.style.background = "transparent";
 
@@ -33,15 +33,32 @@
     return !!it?.relics.length && it.relics.every((r) => db.relics[r.relic]?.vaulted);
   };
 
+  // Drop rarity: from the squad's relics when known, else from any relic that has the item.
+  function rarityOf(id: string, squad: string[]): Rarity | null {
+    const db = getDb();
+    for (const p of squad) {
+      const rw = db.relics[relicKey(p) ?? ""]?.rewards.find((r) => r.id === id);
+      if (rw) return rw.rarity;
+    }
+    return db.items[id]?.relics[0]?.rarity ?? null;
+  }
+
   async function show(s: Scan) {
+    const squad = s.relics.length ? s.relics : relics;
+    const pool = squadRewards(squad);
     scan = s;
-    const pool = squadRewards(s.relics.length ? s.relics : relics);
     shown = s.cards.map((card) => {
       const match = matchCard(card.texts, pool);
+      const id = match?.cand.id;
       const slug = match?.cand.item.slug;
-      return { card, match, price: slug ? cachedPrice(slug) : null, vaulted: match ? vaultedItem(match.cand.id) : false };
+      return {
+        card,
+        match,
+        price: slug ? cachedPrice(slug) : null,
+        vaulted: id ? vaultedItem(id) : false,
+        rarity: id ? rarityOf(id, squad) : null,
+      };
     });
-    // Anything not prefetched: fetch now and fill in.
     await Promise.all(
       shown.map(async (sh, i) => {
         const slug = sh.match?.cand.item.slug;
@@ -73,6 +90,16 @@
     return bi;
   });
 
+  // Item name split into the part and what it belongs to:
+  // "Чертёж: Протея Прайм: Система" -> "Система" under "Чертёж · Протея Прайм".
+  function nameParts(name: string) {
+    const parts = name.split(": ");
+    const title = parts.pop()!;
+    return { title, over: parts.join(" · ") };
+  }
+
+  const RARITY_RU: Record<Rarity, string> = { COMMON: "обычная", UNCOMMON: "необычная", RARE: "редкая" };
+
   const un: Promise<UnlistenFn>[] = [
     listen<string[]>("squad-relics", (e) => {
       relics = e.payload;
@@ -86,31 +113,55 @@
 </script>
 
 {#if scan}
-  {#each shown as s, i}
-    {@const top = (560 * scan.scale) / dpr}
-    <div class="panel" class:best={i === best} style:left="{s.card.x / dpr}px" style:top="{top}px" style:width="{s.card.w / dpr}px">
-      {#if s.match}
-        <div class="price">
-          {#if s.price?.sell != null}
-            <img src="/icons/platinum.png" alt="" /><b>{s.price.sell}</b>
-          {:else if s.match.cand.item.slug}
-            <span class="muted">…</span>
-          {:else}
-            <span class="muted">не продаётся</span>
-          {/if}
-          {#if s.match.cand.item.ducats}<span class="ducats"><img src="/icons/ducats.png" alt="" />{s.match.cand.item.ducats}</span>{/if}
-        </div>
-        <div class="name" title={s.card.texts.join(" / ")}>{s.match.cand.name}</div>
-        <div class="tags">
-          {#if i === best}<span class="pick">Бери</span>{/if}
-          {#if s.vaulted}<span class="vault">в хранилище</span>{/if}
-          {#if s.match.score < 0.7}<span class="unsure">не уверен</span>{/if}
-        </div>
-      {:else}
-        <div class="muted">не распознано</div>
-      {/if}
-    </div>
-  {/each}
+  <!-- Sizes are the game's 1080p pixels times --k, so the look follows the resolution. -->
+  <div class="layer" style:--k={scan.scale / dpr}>
+    {#each shown as s, i (i)}
+      {@const n = s.match ? nameParts(s.match.cand.name) : null}
+      <div
+        class="panel r-{s.rarity ?? 'none'}"
+        class:best={i === best}
+        style:left="{s.card.x / dpr}px"
+        style:top="calc(548px * var(--k))"
+        style:width="{s.card.w / dpr}px"
+        style:animation-delay="{i * 70}ms"
+      >
+        {#if i === best}<div class="ribbon">Лучший выбор</div>{/if}
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+
+        {#if s.match && n}
+          <div class="price">
+            {#if s.price?.sell != null}
+              <img src="/icons/platinum.png" alt="" />
+              <b>{s.price.sell}</b>
+            {:else if s.match.cand.item.slug}
+              <span class="wait">…</span>
+            {:else}
+              <span class="none">не торгуется</span>
+            {/if}
+          </div>
+          <div class="buy" class:hidden={s.price?.buy == null}>покупают за {s.price?.buy ?? 0}</div>
+
+          <div class="line"></div>
+
+          <div class="name">
+            {#if n.over}<small>{n.over}</small>{/if}
+            <span>{n.title}</span>
+          </div>
+
+          <div class="meta">
+            {#if s.match.cand.item.ducats}
+              <span class="ducats"><img src="/icons/ducats.png" alt="" />{s.match.cand.item.ducats}</span>
+            {/if}
+            {#if s.rarity}<span class="rar">{RARITY_RU[s.rarity]}</span>{/if}
+            {#if s.vaulted}<span class="vault">хранилище</span>{/if}
+            {#if s.match.score < 0.7}<span class="doubt">не уверен</span>{/if}
+          </div>
+        {:else}
+          <div class="none big">не распознано</div>
+        {/if}
+      </div>
+    {/each}
+  </div>
 {/if}
 
 <style>
@@ -119,83 +170,241 @@
     background: transparent !important;
     overflow: hidden;
   }
+  .layer {
+    --gold: #d8b77a;
+    --gold-dim: rgba(216, 183, 122, 0.35);
+    --glass: rgba(10, 12, 18, 0.84);
+    --txt: #e9e4d8;
+    --dim: #9a9484;
+    --r: var(--dim);
+    font-family: Bahnschrift, "Segoe UI", system-ui, sans-serif;
+    color: var(--txt);
+  }
+  .r-COMMON {
+    --r: #c8956a;
+  }
+  .r-UNCOMMON {
+    --r: #cfd6e2;
+  }
+  .r-RARE {
+    --r: #f0cf73;
+  }
+
   .panel {
     position: fixed;
+    box-sizing: border-box;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    padding: 6px 8px;
-    border-radius: 10px;
-    background: rgba(12, 14, 20, 0.86);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    color: #e6e8ee;
-    font-family: "Segoe UI", system-ui, sans-serif;
+    padding: calc(18px * var(--k)) calc(10px * var(--k)) calc(9px * var(--k));
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--r) 16%, transparent), transparent 42%),
+      var(--glass);
+    border: 1px solid rgba(216, 183, 122, 0.18);
+    border-top: calc(2px * var(--k)) solid var(--r);
+    box-shadow: 0 calc(6px * var(--k)) calc(22px * var(--k)) rgba(0, 0, 0, 0.55);
     text-align: center;
+    animation: rise 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
-  .panel.best {
-    border-color: #c9a66b;
-    box-shadow: 0 0 0 1px rgba(201, 166, 107, 0.5), 0 0 18px rgba(201, 166, 107, 0.35);
+  .panel:not(.best) {
+    opacity: 0.9;
   }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(calc(10px * var(--k)));
+    }
+  }
+
+  /* Corner brackets, like the frames of the game's reward cards. */
+  .corner {
+    position: absolute;
+    width: calc(9px * var(--k));
+    height: calc(9px * var(--k));
+    border: 0 solid var(--gold-dim);
+  }
+  .tl {
+    left: -1px;
+    top: -1px;
+    border-left-width: 1px;
+    border-top-width: 1px;
+  }
+  .tr {
+    right: -1px;
+    top: -1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+  }
+  .bl {
+    left: -1px;
+    bottom: -1px;
+    border-left-width: 1px;
+    border-bottom-width: 1px;
+  }
+  .br {
+    right: -1px;
+    bottom: -1px;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+  }
+
+  .best {
+    border-color: rgba(216, 183, 122, 0.75);
+    box-shadow:
+      0 0 0 1px rgba(216, 183, 122, 0.35),
+      0 0 calc(26px * var(--k)) rgba(216, 183, 122, 0.35),
+      0 calc(6px * var(--k)) calc(22px * var(--k)) rgba(0, 0, 0, 0.55);
+    overflow: hidden;
+  }
+  .best .corner {
+    border-color: var(--gold);
+    width: calc(13px * var(--k));
+    height: calc(13px * var(--k));
+  }
+  /* One light sweep across the best card when it appears. */
+  .best::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 35%, rgba(255, 236, 190, 0.22) 50%, transparent 65%);
+    transform: translateX(-120%);
+    animation: sweep 1.1s 0.35s ease-out both;
+    pointer-events: none;
+  }
+  @keyframes sweep {
+    to {
+      transform: translateX(120%);
+    }
+  }
+  /* Tab hanging from the top edge, like the game's "Можно передать" label. */
+  .ribbon {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: calc(2px * var(--k)) calc(14px * var(--k)) calc(3px * var(--k));
+    background: linear-gradient(180deg, #e9cd92, #b8904f);
+    color: #16120a;
+    font-size: calc(10px * var(--k));
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    clip-path: polygon(0 0, 100% 0, 92% 100%, 8% 100%);
+  }
+
   .price {
     display: flex;
     align-items: center;
-    gap: 5px;
-    font-size: 20px;
+    gap: calc(6px * var(--k));
+    margin-top: calc(4px * var(--k));
+    min-height: calc(34px * var(--k));
   }
   .price img {
-    width: 20px;
-    height: 20px;
+    width: calc(24px * var(--k));
+    height: calc(24px * var(--k));
+    filter: drop-shadow(0 0 calc(6px * var(--k)) rgba(143, 184, 255, 0.45));
   }
   .price b {
-    font-weight: 700;
-    color: #8fb8ff;
+    font-size: calc(32px * var(--k));
+    line-height: 1;
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 0 0 calc(12px * var(--k)) rgba(143, 184, 255, 0.35);
+    font-variant-numeric: tabular-nums;
   }
-  .ducats {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    margin-left: 8px;
-    font-size: 15px;
-    color: #e0b84f;
+  .best .price b {
+    color: #fff4dc;
+    text-shadow: 0 0 calc(14px * var(--k)) rgba(216, 183, 122, 0.6);
   }
-  .ducats img {
-    width: 16px;
-    height: 16px;
+  .buy {
+    font-size: calc(11px * var(--k));
+    color: var(--dim);
+    letter-spacing: 0.02em;
   }
+  .buy.hidden {
+    visibility: hidden;
+  }
+  .wait {
+    font-size: calc(22px * var(--k));
+    color: var(--dim);
+  }
+
+  .line {
+    width: 70%;
+    height: 1px;
+    margin: calc(7px * var(--k)) 0 calc(6px * var(--k));
+    background: linear-gradient(90deg, transparent, var(--gold-dim), transparent);
+  }
+
   .name {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     max-width: 100%;
-    font-size: 11px;
-    color: #8b92a3;
+    line-height: 1.15;
+  }
+  .name small {
+    font-size: calc(10px * var(--k));
+    color: var(--dim);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .name span {
+    font-size: calc(15px * var(--k));
+    color: var(--r);
+    letter-spacing: 0.02em;
+    max-width: 100%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .tags {
+
+  .meta {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 4px;
-    font-size: 11px;
+    align-items: center;
+    gap: calc(4px * var(--k)) calc(8px * var(--k));
+    margin-top: calc(7px * var(--k));
+    font-size: calc(11px * var(--k));
   }
-  .pick {
-    padding: 1px 8px;
-    border-radius: 999px;
-    background: #c9a66b;
-    color: #0e1014;
-    font-weight: 700;
+  .ducats {
+    display: flex;
+    align-items: center;
+    gap: calc(3px * var(--k));
+    color: #e6c060;
+    font-size: calc(13px * var(--k));
+    font-weight: 600;
+  }
+  .ducats img {
+    width: calc(15px * var(--k));
+    height: calc(15px * var(--k));
+  }
+  .rar {
+    color: var(--r);
+    opacity: 0.85;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: calc(10px * var(--k));
   }
   .vault {
-    padding: 1px 7px;
-    border-radius: 999px;
-    border: 1px solid rgba(224, 161, 90, 0.5);
-    color: #e0a15a;
+    padding: 0 calc(6px * var(--k));
+    border: 1px solid rgba(232, 150, 80, 0.55);
+    color: #f0a45e;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: calc(10px * var(--k));
   }
-  .unsure {
-    color: #8b92a3;
+  .doubt {
+    color: var(--dim);
+    font-style: italic;
   }
-  .muted {
-    color: #8b92a3;
-    font-size: 13px;
+  .none {
+    color: var(--dim);
+    font-size: calc(13px * var(--k));
+  }
+  .none.big {
+    padding: calc(14px * var(--k)) 0;
   }
 </style>
