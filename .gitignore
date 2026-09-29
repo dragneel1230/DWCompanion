@@ -8,3 +8,6 @@ node_modules
 !.env.example
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+.overframe-profile/
+.overframe-cache/
+data/builds.overframe.json
