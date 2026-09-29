@@ -11,8 +11,7 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "tauri": "tauri",
-    "data": "node scripts/build-data.mjs && node scripts/build-frames.mjs",
-    "overframe": "node scripts/overframe.mjs"
+    "data": "node scripts/build-data.mjs && node scripts/build-frames.mjs"
   },
   "license": "UNLICENSED",
   "dependencies": {
@@ -26,7 +25,6 @@
     "@sveltejs/vite-plugin-svelte": "^7.1.2",
     "@tauri-apps/cli": "^2",
     "@wfcd/items": "^1.1276.7",
-    "playwright-core": "^1.63.0",
     "svelte": "^5.56.3",
     "svelte-check": "^4.6.0",
     "typescript": "~6.0.3",
