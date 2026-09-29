@@ -89,10 +89,60 @@ interface WsMission {
   Hard?: boolean;
 }
 
+type WsDate = { $date: { $numberLong: string } };
+const ms = (d: WsDate | undefined) => (d ? Number(d.$date.$numberLong) : 0);
+
+interface WorldState {
+  ActiveMissions?: WsMission[];
+  VoidStorms?: WsMission[];
+  SyndicateMissions?: { Tag: string; Activation: WsDate; Expiry: WsDate }[];
+  VoidTraders?: { Activation: WsDate; Expiry: WsDate; Node: string }[];
+  PrimeVaultTraders?: { Activation: WsDate; Expiry: WsDate; Manifest?: { ItemType: string }[] }[];
+}
+
+// One request serves every page for a short while (the file is ~140 KB).
+let wsCache: { at: number; p: Promise<WorldState> } | null = null;
+function worldState(): Promise<WorldState> {
+  if (!wsCache || Date.now() - wsCache.at > 30_000) {
+    const p = fetch(WORLDSTATE).then((res) => {
+      if (!res.ok) throw new Error(`worldState ${res.status}`);
+      return res.json() as Promise<WorldState>;
+    });
+    p.catch(() => (wsCache = null));
+    wsCache = { at: Date.now(), p };
+  }
+  return wsCache.p;
+}
+
+export interface Timers {
+  cetusEnd: number; // end of the Cetus / Cambion bounty cycle
+  baro: { from: number; to: number; relay: string } | null;
+  resurgence: { to: number; frames: string[] } | null; // frame uniqueNames on offer
+}
+
+export async function getTimers(): Promise<Timers> {
+  const ws = await worldState();
+  const w = getDb().world;
+  const cetus = ws.SyndicateMissions?.find((m) => m.Tag === "CetusSyndicate");
+  const baro = ws.VoidTraders?.[0];
+  const pv = ws.PrimeVaultTraders?.[0];
+  return {
+    cetusEnd: ms(cetus?.Expiry),
+    baro: baro ? { from: ms(baro.Activation), to: ms(baro.Expiry), relay: w.regions[baro.Node]?.n ?? baro.Node } : null,
+    resurgence: pv
+      ? {
+          to: ms(pv.Expiry),
+          frames: (pv.Manifest ?? [])
+            .map((m) => m.ItemType)
+            .filter((t) => t.startsWith("/Lotus/StoreItems/Powersuits/"))
+            .map((t) => t.replace("/Lotus/StoreItems/", "/Lotus/")),
+        }
+      : null,
+  };
+}
+
 export async function getFissures(): Promise<Fissure[]> {
-  const res = await fetch(WORLDSTATE);
-  if (!res.ok) throw new Error(`worldState ${res.status}`);
-  const ws = (await res.json()) as { ActiveMissions?: WsMission[]; VoidStorms?: WsMission[] };
+  const ws = await worldState();
   const w = getDb().world;
   const map = (m: WsMission, isStorm: boolean): Fissure => {
     const reg = w.regions[m.Node];
