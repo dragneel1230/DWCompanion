@@ -34,10 +34,15 @@
   // Frame and build pages belong to the Warframes tab.
   const SECTION: Record<string, string> = { "/frame": "/frames", "/build": "/frames", "/market": "/frames" };
   const current = $derived(SECTION[page.url.pathname] ?? page.url.pathname);
+  // The overlay window (over the game) renders its page alone, without the app shell.
+  const bare = page.url.pathname === "/overlay";
 </script>
 
 <svelte:window {onkeydown} />
 
+{#if bare}
+  {#if ready}{@render children()}{/if}
+{:else}
 <div class="shell">
   <nav>
     <div class="logo" title="Dragneel's Warframe Companion">DW</div>
@@ -65,6 +70,7 @@
       <SearchBox autofocus onpick={() => (paletteOpen = false)} />
     </div>
   </div>
+{/if}
 {/if}
 
 <style>

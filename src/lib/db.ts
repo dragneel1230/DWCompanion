@@ -41,6 +41,7 @@ export interface Db {
   items: Record<string, Item>;
   relics: Record<string, Relic>;
   sets: Record<string, PrimeSet>;
+  projections: Record<string, string>; // "T1VoidProjectionProteaPrimeA" -> relic key
   // Keyed by the raw ids of DE's worldState.php.
   world: {
     regions: Record<string, { n: string; f: string; m: string | null }>; // SolNode126 -> node, faction, mission

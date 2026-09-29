@@ -996,6 +996,7 @@ dependencies = [
  "tauri-plugin-clipboard-manager",
  "tauri-plugin-http",
  "tauri-plugin-opener",
+ "windows 0.62.2",
  "windows-capture",
 ]
 

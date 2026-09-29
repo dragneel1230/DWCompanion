@@ -156,6 +156,7 @@ fn tail_log(app: AppHandle, bench: BenchState, path: PathBuf) {
 }
 
 fn on_line(app: &AppHandle, bench: &BenchState, line: &str) {
+    crate::reward::on_line(app, line);
     let trigger = TRIGGER.iter().any(|k| line.contains(k));
     if !trigger && !KEEP.iter().any(|k| line.contains(k)) {
         return;
@@ -301,6 +302,15 @@ pub fn start_recording(app: &AppHandle, bench: &BenchState, why: &str) {
             s.last_error = result.err();
         });
     });
+}
+
+// Frame and OCR result of every overlay scan, for checking recognition later.
+pub fn save_scan(app: &AppHandle, img: &image::RgbaImage, scan: &crate::reward::Scan) {
+    let Some(bench) = app.try_state::<BenchState>() else { return };
+    let name = format!("scan-{}", now_ms());
+    let _ = img.save(bench.session.join(format!("{name}.png")));
+    let _ = fs::write(bench.session.join(format!("{name}.json")), serde_json::to_string_pretty(scan).unwrap_or_default());
+    bench.note(&format!("[scan] {name}: {} ms, {} frames", scan.ms, scan.frames));
 }
 
 // ---------- commands

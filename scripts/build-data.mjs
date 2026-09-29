@@ -93,8 +93,11 @@ function addItem(id) {
   return items[id];
 }
 
+// EE.log names squad relics by type ("T1VoidProjectionProteaPrimeAPlatinum"): name without quality -> relic key.
+const projections = {};
 for (const [uid, r] of Object.entries(relicsExport)) {
   const key = `${r.era} ${r.category}`;
+  projections[uid.split("/").pop().replace(/(Bronze|Silver|Gold|Platinum)$/, "")] = key;
   const vaulted = !!r.vaultedAt && r.vaultedAt > (r.introducedAt ?? 0);
   if (relics[key]) {
     relics[key].vaulted &&= vaulted;
@@ -177,6 +180,7 @@ const db = {
   items,
   relics,
   sets,
+  projections,
   world: { regions: regionsRu, missionType: missionTypeRu, tier },
 };
 
