@@ -12,16 +12,18 @@
     slotPol = null,
     label = "",
     owned = false,
+    scale = 0.72,
+    bare = false,
     onclick,
   }: {
     mod?: Mod | null;
     slotPol?: Polarity | null;
     label?: "Аура" | "Эксилус" | "";
     owned?: boolean;
+    scale?: number;
+    bare?: boolean; // thumbnail: no slot polarity row, not clickable
     onclick?: () => void;
   } = $props();
-
-  const SCALE = 0.72;
 
   const FRAME: Record<string, string> = {
     Common: "Bronze",
@@ -38,13 +40,15 @@
   const kindIcon = $derived(label === "Аура" ? "/modframe/SilverAura.png" : label === "Эксилус" ? "/modframe/GoldExilus.png" : null);
 </script>
 
-<div class="slot" style:--s={SCALE}>
-  <div class="slot-pol" class:match>
-    {#if slotPol}<PolIcon pol={slotPol} size={13} />{/if}
-  </div>
+<div class="slot" style:--s={scale}>
+  {#if !bare}
+    <div class="slot-pol" class:match>
+      {#if slotPol}<PolIcon pol={slotPol} size={13} />{/if}
+    </div>
+  {/if}
 
   {#if mod}
-    <button class="card" {onclick} title={mod.stats}>
+    <svelte:element this={bare ? "div" : "button"} class="card" {onclick} title={bare ? undefined : mod.stats} role={bare ? undefined : "button"}>
       <div class="native">
         <div class="bg" style:background-image="url(/modframe/{frame}Background.png)"></div>
         <div class="art" style:background-image="url({iconUrl(mod.icon)})"></div>
@@ -63,7 +67,7 @@
         <img class="line" src="/modframe/RankCompleteLine.png" alt="" />
         {#if owned}<div class="own" title="Есть у меня">✓</div>{/if}
       </div>
-    </button>
+    </svelte:element>
   {:else}
     <div class="card empty"><span>{label || "Пусто"}</span></div>
   {/if}
@@ -93,7 +97,7 @@
     padding: 0;
     transition: transform 0.12s, filter 0.12s;
   }
-  button.card:hover {
+  .slot :global(button.card:hover) {
     transform: translateY(-2px);
     filter: brightness(1.12);
   }

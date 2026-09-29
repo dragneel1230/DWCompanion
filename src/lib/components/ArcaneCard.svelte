@@ -6,9 +6,13 @@
   import { iconUrl } from "$lib/db";
   import type { Arcane } from "$lib/frames";
 
-  let { arcane, owned = false, onclick }: { arcane: Arcane; owned?: boolean; onclick?: () => void } = $props();
-
-  const SCALE = 0.34;
+  let {
+    arcane,
+    owned = false,
+    scale = 0.34,
+    bare = false,
+    onclick,
+  }: { arcane: Arcane; owned?: boolean; scale?: number; bare?: boolean; onclick?: () => void } = $props();
   const CROP_TOP = 40;
   const CROP_H = 306;
 
@@ -16,7 +20,16 @@
   const bg = $derived(BG[arcane.rarity] ?? "Rare");
 </script>
 
-<button class="arcane" {onclick} title={arcane.stats} style:--s={SCALE} style:--crop-top="{CROP_TOP}px" style:--crop-h="{CROP_H}px">
+<svelte:element
+  this={bare ? "div" : "button"}
+  class="arcane"
+  role={bare ? undefined : "button"}
+  {onclick}
+  title={bare ? undefined : arcane.stats}
+  style:--s={scale}
+  style:--crop-top="{CROP_TOP}px"
+  style:--crop-h="{CROP_H}px"
+>
   <div class="view">
     <div class="native">
       <img class="bg" src="/modframe/ArcaneBackground{bg}.png" alt="" />
@@ -24,8 +37,8 @@
     </div>
     {#if owned}<div class="own" title="Есть у меня">✓</div>{/if}
   </div>
-  <div class="name">{arcane.ru}</div>
-</button>
+  {#if !bare}<div class="name">{arcane.ru}</div>{/if}
+</svelte:element>
 
 <style>
   .arcane {
@@ -36,7 +49,7 @@
     width: calc(512px * var(--s));
     transition: transform 0.12s, filter 0.12s;
   }
-  .arcane:hover {
+  button.arcane:hover {
     transform: translateY(-2px);
     filter: brightness(1.1);
   }

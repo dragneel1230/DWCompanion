@@ -149,7 +149,7 @@ input {
 a.row:hover {
   background: var(--surface-2);
 }
-.row img {
+.row > img {
   width: 36px;
   height: 36px;
   object-fit: contain;

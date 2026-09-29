@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { goto } from "$app/navigation";
-  import { loadFrames, getBuild, modCost, BASE_CAPACITY, POLARITY_RU, RARITY_RU, type FramesDb, type Mod, type Arcane } from "$lib/frames";
+  import { loadFrames, getBuild, modCost, BASE_CAPACITY, POLARITY_RU, RARITY_RU, type FramesDb, type Mod, type Arcane, type Polarity } from "$lib/frames";
   import { userBuilds } from "$lib/userBuilds.svelte";
   import { iconUrl } from "$lib/db";
   import { owned } from "$lib/owned.svelte";
@@ -22,16 +22,18 @@
   }
   const frame = $derived(build && db ? db.frames[build.frame] : null);
 
-  type Line = { id: string; kind: "mod" | "arcane"; slot: string; mod?: Mod; arcane?: Arcane };
+  type Line = { id: string; kind: "mod" | "arcane"; slot: string; mod?: Mod; arcane?: Arcane; pol?: Polarity | null };
 
   // Everything the build needs, in grid order, for the "do I have it" list.
   const lines = $derived.by<Line[]>(() => {
     if (!build || !db) return [];
     const out: Line[] = [];
-    const addMod = (mid: string | null, slot: string) => mid && out.push({ id: mid, kind: "mod", slot, mod: db!.mods[mid] });
-    addMod(build.aura, "Аура");
-    addMod(build.exilus, "Эксилус");
-    build.slots.forEach((m, i) => addMod(m, `Слот ${i + 1}`));
+    const p = build.pols;
+    const addMod = (mid: string | null, slot: string, pol?: Polarity | null) =>
+      mid && out.push({ id: mid, kind: "mod", slot, mod: db!.mods[mid], pol });
+    addMod(build.aura, "Аура", p?.aura);
+    addMod(build.exilus, "Эксилус", p?.exilus);
+    build.slots.forEach((m, i) => addMod(m, `Слот ${i + 1}`, p?.slots[i]));
     build.arcanes.forEach((a, i) => out.push({ id: a, kind: "arcane", slot: `Мистификатор ${i + 1}`, arcane: db!.arcanes[a] }));
     return out;
   });
@@ -127,7 +129,9 @@
         {#if item}
           {@const has = owned.has(l.id)}
           <div class="row line" id="line-{l.id}">
-            <img src={iconUrl(item.icon)} alt="" loading="lazy" />
+            <div class="thumb">
+              {#if l.mod}<ModCard mod={l.mod} slotPol={l.pol} scale={0.4} bare />{:else if l.arcane}<ArcaneCard arcane={l.arcane} scale={0.23} bare />{/if}
+            </div>
             <span class="name">
               {item.ru}
               <small>
@@ -251,11 +255,12 @@
   .line {
     align-items: flex-start;
   }
-  .line > img {
-    width: 44px;
-    height: 44px;
-    object-fit: cover;
-    border-radius: 6px;
+  .thumb {
+    flex: none;
+    width: 118px;
+    display: flex;
+    justify-content: center;
+    align-self: center;
   }
   .line small {
     display: flex;
