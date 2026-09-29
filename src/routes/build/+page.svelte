@@ -1,11 +1,12 @@
 <script lang="ts">
   import { page } from "$app/state";
   import { goto } from "$app/navigation";
-  import { loadFrames, getBuild, POLARITY_RU, RARITY_RU, type FramesDb, type Mod, type Arcane } from "$lib/frames";
+  import { loadFrames, getBuild, modCost, BASE_CAPACITY, POLARITY_RU, RARITY_RU, type FramesDb, type Mod, type Arcane } from "$lib/frames";
   import { userBuilds } from "$lib/userBuilds.svelte";
   import { iconUrl } from "$lib/db";
   import { owned } from "$lib/owned.svelte";
   import ModCard from "$lib/components/ModCard.svelte";
+  import ArcaneCard from "$lib/components/ArcaneCard.svelte";
 
   let db = $state<FramesDb | null>(null);
   loadFrames().then((d) => (db = d));
@@ -35,6 +36,17 @@
     return out;
   });
 
+  // Capacity like the in-game counter: 60 with reactor + aura bonus, minus every mod's drain.
+  const capacity = $derived.by(() => {
+    if (!build || !db) return null;
+    const p = build.pols;
+    const auraMod = build.aura ? db.mods[build.aura] : null;
+    const total = BASE_CAPACITY + (auraMod ? -modCost(auraMod, p?.aura) : 0);
+    let used = build.exilus ? modCost(db.mods[build.exilus], p?.exilus) : 0;
+    build.slots.forEach((m, i) => m && (used += modCost(db!.mods[m], p?.slots[i])));
+    return { used, total };
+  });
+
   const have = $derived(lines.filter((l) => owned.has(l.id)).length);
   const ring = $derived(lines.length ? have / lines.length : 0);
 
@@ -44,7 +56,7 @@
 </script>
 
 {#if build && frame && db}
-  <div class="page">
+  <div class="page wide">
     <header class="hero">
       <a href="/frame?id={encodeURIComponent(build.frame)}"><img src={iconUrl(frame.icon)} alt="" /></a>
       <div>
@@ -70,19 +82,25 @@
     {/if}
 
     <section class="board">
+      {#if capacity}
+        <div class="capacity" class:over={capacity.used > capacity.total}>
+          Вместимость <b>{capacity.used}</b> / {capacity.total}
+          {#if !build.pols}<span class="muted" title="Полярности слотов неизвестны — стоимость без форм">· без форм</span>{/if}
+        </div>
+      {/if}
       <div class="top">
-        <ModCard mod={build.aura ? db.mods[build.aura] : null} label="Аура" owned={!!build.aura && owned.has(build.aura)} onclick={() => build.aura && focus(build.aura)} />
-        <ModCard mod={build.exilus ? db.mods[build.exilus] : null} label="Эксилус" owned={!!build.exilus && owned.has(build.exilus)} onclick={() => build.exilus && focus(build.exilus)} />
+        <ModCard mod={build.aura ? db.mods[build.aura] : null} slotPol={build.pols?.aura} label="Аура" owned={!!build.aura && owned.has(build.aura)} onclick={() => build.aura && focus(build.aura)} />
+        <ModCard mod={build.exilus ? db.mods[build.exilus] : null} slotPol={build.pols?.exilus} label="Эксилус" owned={!!build.exilus && owned.has(build.exilus)} onclick={() => build.exilus && focus(build.exilus)} />
       </div>
       <div class="slots">
         {#each build.slots as m, i (i)}
-          <ModCard mod={m ? db.mods[m] : null} owned={!!m && owned.has(m)} onclick={() => m && focus(m)} />
+          <ModCard mod={m ? db.mods[m] : null} slotPol={build.pols?.slots[i]} owned={!!m && owned.has(m)} onclick={() => m && focus(m)} />
         {/each}
       </div>
       {#if build.arcanes.length}
         <div class="top arcanes">
           {#each build.arcanes as a (a)}
-            <ModCard arcane={db.arcanes[a]} label="Мистиф." owned={owned.has(a)} onclick={() => focus(a)} />
+            <ArcaneCard arcane={db.arcanes[a]} owned={owned.has(a)} onclick={() => focus(a)} />
           {/each}
         </div>
       {/if}
@@ -129,6 +147,9 @@
 {/if}
 
 <style>
+  .wide {
+    max-width: 1000px;
+  }
   .actions {
     display: flex;
     gap: 8px;
@@ -170,11 +191,24 @@
   }
   .slots {
     display: grid;
-    grid-template-columns: repeat(4, 118px);
-    gap: 12px;
+    grid-template-columns: repeat(4, 210px);
+    gap: 6px 12px;
+  }
+  .capacity {
+    align-self: flex-end;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .capacity b {
+    color: var(--good);
+    font-weight: 600;
+  }
+  .capacity.over b {
+    color: #ff7b6b;
   }
   .arcanes {
-    margin-top: 4px;
+    margin-top: 10px;
+    gap: 40px;
   }
   .have-head {
     display: flex;

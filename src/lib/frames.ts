@@ -67,6 +67,8 @@ export interface Build {
   arcanes: string[];
   source?: "overframe";
   url?: string;
+  // Forma'd slot polarities, when known (Overframe import carries them).
+  pols?: { aura: Polarity | null; exilus: Polarity | null; slots: (Polarity | null)[] };
 }
 
 export interface FramesDb {
@@ -105,9 +107,12 @@ export function buildsFor(db: FramesDb, frameId: string): [string, Build][] {
 }
 
 // Mod drain at max rank; a matching slot polarity halves it (rounded up), a mismatch adds 25%.
-// Auras have negative base drain and give capacity instead: returned as a negative number.
+// Auras give capacity instead: returned as a negative number, doubled in a matching aura slot.
 export function modCost(mod: Mod, slotPol?: Polarity | null): number {
-  if (mod.aura) return -(Math.abs(mod.drain) + mod.max);
+  if (mod.aura) {
+    const bonus = Math.abs(mod.drain) + mod.max;
+    return -(slotPol === mod.pol ? bonus * 2 : bonus);
+  }
   const full = mod.drain + mod.max;
   if (!slotPol) return full;
   if (slotPol === mod.pol || slotPol === "any") return Math.ceil(full / 2);
@@ -138,6 +143,13 @@ function byEnName(table: Record<string, { en: string }>): Map<string, string> {
   return m;
 }
 
+// Third field of an Overframe entry = forma'd slot polarity. Checked on a real build:
+// 1 madurai, 2 vazarin, 3 naramon, 9 zenurik. Unairu / penjaga / umbra codes are not known yet.
+const OVERFRAME_POLARITY: Record<number, Polarity> = { 1: "madurai", 2: "vazarin", 3: "naramon", 9: "zenurik" };
+
+// Warframe capacity with an Orokin Reactor at rank 30.
+export const BASE_CAPACITY = 60;
+
 // Maps Overframe ids to our uniqueNames and lays entries out into slots.
 export function assembleImport(db: FramesDb, dec: DecodedBuild, fallbackFrame: string): ImportResult {
   const mods = byEnName(db.mods);
@@ -148,6 +160,7 @@ export function assembleImport(db: FramesDb, dec: DecodedBuild, fallbackFrame: s
   const frameId = (frameName && frames.get(frameName)) || fallbackFrame || null;
 
   const unknown: number[] = [];
+  const pols: NonNullable<Build["pols"]> = { aura: null, exilus: null, slots: Array(8).fill(null) };
   const slots: (string | null)[] = Array(8).fill(null);
   let aura: string | null = null;
   let exilus: string | null = null;
@@ -161,14 +174,22 @@ export function assembleImport(db: FramesDb, dec: DecodedBuild, fallbackFrame: s
       unknown.push(e.id);
       return;
     }
+    const pol = OVERFRAME_POLARITY[e.pol] ?? null;
     if (arcId) arc.push(arcId);
-    else if (i < 8) slots[i] = modId!;
-    else if (db.mods[modId!].aura) aura = modId!;
-    else exilus = modId!;
+    else if (i < 8) {
+      slots[i] = modId!;
+      pols.slots[i] = pol;
+    } else if (db.mods[modId!].aura) {
+      aura = modId!;
+      pols.aura = pol;
+    } else {
+      exilus = modId!;
+      pols.exilus = pol;
+    }
   });
 
   return {
-    build: frameId ? { frame: frameId, aura, exilus, slots, arcanes: arc, source: "overframe", url: dec.url ?? undefined } : null,
+    build: frameId ? { frame: frameId, aura, exilus, slots, arcanes: arc, pols, source: "overframe", url: dec.url ?? undefined } : null,
     frameId,
     unknown,
     total: dec.entries.length,

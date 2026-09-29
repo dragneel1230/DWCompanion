@@ -14,6 +14,16 @@ const ruI18n = read(`${WFCD}/i18n/ru.json`);
 const peFrames = read(`${PE}/ExportWarframes.json`);
 const peUpgrades = read(`${PE}/ExportUpgrades.json`);
 const peArcanes = read(`${PE}/ExportArcanes.json`);
+const pe = (f) => read(`${PE}/${f}`);
+
+// Icons: DE's own CDN when ExportImages has a content hash (better quality), else the bare game
+// path, which the app loads from browse.wf.
+const images = pe("ExportImages.json");
+const img = (path) => {
+  const hash = path && images[path]?.contentHash;
+  return hash ? `https://content.warframe.com/PublicExport${path}!${hash.replace(/\+/g, "%2B")}` : (path ?? null);
+};
+
 
 // Game rich-text markers like <DT_VIRAL_COLOR> and escaped newlines.
 // Placeholders like |DURATION| have no values in the data, show them as "X". Drop duplicate lines.
@@ -38,7 +48,7 @@ for (const f of wfFrames) {
   frames[f.uniqueName] = {
     ru: ru.name ?? f.name,
     en: f.name,
-    icon: pe.icon,
+    icon: img(pe.icon),
     prime: !!f.isPrime,
     health: f.health,
     shield: f.shield,
@@ -55,7 +65,7 @@ for (const f of wfFrames) {
         ru: r?.abilityName ?? a.name,
         en: a.name,
         desc: clean(r?.description ?? a.description),
-        icon: pe.abilities?.find((x) => x.uniqueName === a.uniqueName)?.icon ?? null,
+        icon: img(pe.abilities?.find((x) => x.uniqueName === a.uniqueName)?.icon),
       };
     }),
   };
@@ -75,7 +85,7 @@ for (const m of wfMods) {
   mods[m.uniqueName] = {
     ru: ru.name ?? m.name,
     en: m.name,
-    icon: pe.icon ?? null,
+    icon: img(pe.icon),
     pol: POLARITY[pe.polarity] ?? m.polarity ?? "any",
     rarity: m.rarity, // Common | Uncommon | Rare | Legendary | Peculiar
     drain: m.baseDrain ?? 0,
@@ -96,7 +106,7 @@ for (const a of wfArcanes) {
   arcanes[a.uniqueName] = {
     ru: ru.name ?? a.name,
     en: a.name,
-    icon: pe.icon ?? null,
+    icon: img(pe.icon),
     rarity: a.rarity,
     max: stats.length - 1,
     stats: clean((stats[stats.length - 1]?.stats ?? []).join("\n")),

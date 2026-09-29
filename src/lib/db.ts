@@ -150,7 +150,8 @@ export function nodeName(s: string): string {
 }
 
 export function iconUrl(path: string | null): string {
-  return path ? `https://browse.wf${path}` : "";
+  if (!path) return "";
+  return path.startsWith("http") ? path : `https://browse.wf${path}`;
 }
 
 export const RARITY_RU: Record<Rarity, string> = { COMMON: "Обычная", UNCOMMON: "Необычная", RARE: "Редкая" };

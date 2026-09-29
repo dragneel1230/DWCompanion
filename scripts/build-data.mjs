@@ -16,6 +16,15 @@ const regions = pe("ExportRegions.json");
 const missionTypes = pe("ExportMissionTypes.json");
 const factions = pe("ExportFactions.json");
 
+// Icons: DE's own CDN when ExportImages has a content hash (better quality), else the bare game
+// path, which the app loads from browse.wf.
+const images = pe("ExportImages.json");
+const img = (path) => {
+  const hash = path && images[path]?.contentHash;
+  return hash ? `https://content.warframe.com/PublicExport${path}!${hash.replace(/\+/g, "%2B")}` : (path ?? null);
+};
+
+
 // Every export that has a `name` field, merged into one lookup by uniqueName.
 const named = {};
 for (const f of [
@@ -44,7 +53,7 @@ function itemNames(id) {
 function icon(id) {
   const recipe = recipes[id];
   const item = recipe ? named[recipe.resultType] : named[id];
-  return item?.icon ?? null;
+  return img(item?.icon);
 }
 
 const ducatsOf = (id) => recipes[id]?.primeSellingPrice ?? named[id]?.primeSellingPrice ?? 0;
@@ -105,7 +114,7 @@ for (const [uid, r] of Object.entries(relicsExport)) {
     cat: r.category,
     en: relicTemplate(en).replace("|ERA|", eraName(en, r.era)).replace("|CATEGORY|", r.category),
     ru: relicTemplate(ru).replace("|ERA|", eraName(ru, r.era)).replace("|CATEGORY|", r.category),
-    icon: r.icon,
+    icon: img(r.icon),
     vaulted,
     slug: wfmByRef.get(baseUid)?.slug,
     rewards,
@@ -134,7 +143,7 @@ for (const w of wfmItems) {
   sets[w.gameRef] = {
     en: tr(en, main.name),
     ru: tr(ru, main.name),
-    icon: main.icon,
+    icon: img(main.icon),
     slug: w.slug,
     parts,
   };
