@@ -1,5 +1,5 @@
 // Windows built-in OCR (Windows.Media.Ocr) on regions of a captured frame.
-// Needs the Russian OCR language pack (Settings → Time & language → Language → Russian).
+// Needs the OCR language pack of the game client's language (Settings → Time & language → Language).
 
 use image::{imageops, RgbaImage};
 use windows::core::HSTRING;
@@ -37,15 +37,24 @@ pub enum Prep {
     Text,
     // Near-white text only (mod card names), black on white.
     White,
+    // Pale gold text (ducat kiosk tile names), black on white: drops grey-silver and saturated gold art.
+    Beige,
 }
 
 impl Ocr {
-    pub fn new() -> windows::core::Result<Self> {
+    // `lang`: the game client's language as EE.log names it ("ru", "en", ...).
+    pub fn new(lang: &str) -> windows::core::Result<Self> {
         // WinRT on this thread; "already initialized" is fine.
         unsafe {
             let _ = windows::Win32::System::WinRT::RoInitialize(windows::Win32::System::WinRT::RO_INIT_MULTITHREADED);
         }
-        let lang = Language::CreateLanguage(&HSTRING::from("ru"))?;
+        let tag = match lang {
+            "en" => "en-US",
+            "tc" => "zh-Hant",
+            "zh" => "zh-Hans",
+            other => other,
+        };
+        let lang = Language::CreateLanguage(&HSTRING::from(tag))?;
         let engine = OcrEngine::TryCreateFromLanguage(&lang)?;
         Ok(Self { engine })
     }
@@ -119,6 +128,12 @@ impl Ocr {
                 }
                 Prep::White => {
                     let v = if r.min(g).min(b) > 175 { 0 } else { 255 };
+                    [v, v, v, 255]
+                }
+                Prep::Beige => {
+                    let (r, g, b) = (r as i32, g as i32, b as i32);
+                    let text = r > 120 && g > 105 && (r - g).abs() < 35 && b * 100 > r * 45 && b * 100 < r * 85;
+                    let v = if text { 0 } else { 255 };
                     [v, v, v, 255]
                 }
             };

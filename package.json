@@ -11,7 +11,7 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "tauri": "tauri",
-    "data": "node scripts/build-data.mjs && node scripts/build-frames.mjs"
+    "data": "node scripts/fetch-wiki-farming.mjs && node scripts/build-drops.mjs && node scripts/build-data.mjs && node scripts/build-frames.mjs && node scripts/build-mastery.mjs"
   },
   "license": "UNLICENSED",
   "dependencies": {

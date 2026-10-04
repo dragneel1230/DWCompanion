@@ -1,0 +1,425 @@
+{
+ "fetchedAt": "2026-10-04T17:15:02.046Z",
+ "pages": {
+  "Beating Heartstrings": {
+   "title": "Beating Heartstrings",
+   "nodes": [
+    "Solstice Square"
+   ]
+  },
+  "Shrill Voca": {
+   "title": "Shrill Voca",
+   "nodes": [
+    "Nex",
+    "Effervo"
+   ]
+  },
+  "Echo Voca": {
+   "title": "Echo Voca",
+   "nodes": [
+    "Nex",
+    "Effervo"
+   ]
+  },
+  "Bellow Voca": {
+   "title": "Bellow Voca",
+   "nodes": [
+    "Nex",
+    "Effervo"
+   ]
+  },
+  "Entrati Obols": {
+   "title": "Entrati Obols",
+   "nodes": [
+    "Persto",
+    "Cambire"
+   ]
+  },
+  "Necracoil": {
+   "title": "Necracoil",
+   "nodes": [
+    "Persto",
+    "Cambire"
+   ]
+  },
+  "Entrati Lanthorn": {
+   "title": "Entrati Lanthorn",
+   "nodes": [
+    "Halako Perimeter",
+    "The Greenway"
+   ]
+  },
+  "Stela": {
+   "title": "Stela",
+   "nodes": [
+    "Effervo",
+    "Nex",
+    "Persto"
+   ]
+  },
+  "Thrax Plasm": {
+   "title": "Thrax Plasm",
+   "nodes": [
+    "Tuvul Commons",
+    "The Greenway"
+   ]
+  },
+  "Voidplume Down": {
+   "title": "Voidplume Down",
+   "nodes": [
+    "Halako Perimeter",
+    "The Greenway"
+   ]
+  },
+  "Voidplume Crest": {
+   "title": "Voidplume Crest",
+   "nodes": [
+    "Halako Perimeter",
+    "The Greenway"
+   ]
+  },
+  "Voidplume Vane": {
+   "title": "Voidplume Vane",
+   "nodes": [
+    "Halako Perimeter",
+    "The Greenway"
+   ]
+  },
+  "Voidgel Orb": {
+   "title": "Voidgel Orb",
+   "nodes": [
+    "Halako Perimeter",
+    "The Greenway"
+   ]
+  },
+  "Animo Nav Beacon": {
+   "title": "Ambulas",
+   "nodes": [
+    "Outer Terminus",
+    "Regna",
+    "Minthe",
+    "Narcissus"
+   ]
+  },
+  "Alloy Plate": {
+   "title": "Alloy Plate",
+   "nodes": [
+    "Gabii",
+    "Draco",
+    "Tessera",
+    "Berehynia",
+    "Oro Works",
+    "The Greenway",
+    "Halako Perimeter",
+    "Everview Arc",
+    "Tuvul Commons"
+   ]
+  },
+  "Argon Crystal": {
+   "title": "Argon Crystal",
+   "nodes": [
+    "Teshub",
+    "Hepit",
+    "Ani",
+    "Stribog",
+    "Ukko",
+    "Oxomoco",
+    "Mot",
+    "Marduk"
+   ]
+  },
+  "Circuits": {
+   "title": "Circuits",
+   "nodes": [
+    "Seimeni",
+    "Tessera",
+    "Gabii",
+    "Romula",
+    "Malva"
+   ]
+  },
+  "Hexenon": {
+   "title": "Hexenon",
+   "nodes": [
+    "Ganymede",
+    "Io",
+    "Elara",
+    "Cameria",
+    "Sinai"
+   ]
+  },
+  "Control Module": {
+   "title": "Control Module",
+   "nodes": [
+    "Teshub",
+    "Hepit"
+   ]
+  },
+  "Cryotic": {
+   "title": "Cryotic",
+   "nodes": [
+    "Everest",
+    "Valefor",
+    "Hieracon",
+    "Despina",
+    "Kiliken",
+    "Augustus"
+   ]
+  },
+  "Ferrite": {
+   "title": "Ferrite",
+   "nodes": [
+    "Teshub",
+    "Apollodorus"
+   ]
+  },
+  "Gallium": {
+   "title": "Gallium",
+   "nodes": [
+    "Hellas",
+    "Gradivus",
+    "Ara",
+    "Titania"
+   ]
+  },
+  "Mutalist Alad V Nav Coordinate": {
+   "title": "Mutalist Alad V Nav Coordinate",
+   "nodes": [
+    "Hyf"
+   ]
+  },
+  "Morphics": {
+   "title": "Morphics",
+   "nodes": [
+    "Hellas",
+    "Gradivus",
+    "Augustus",
+    "Olympus",
+    "Tyana Pass",
+    "War",
+    "Iliad",
+    "Wahiba",
+    "Lares",
+    "Kadesh"
+   ]
+  },
+  "Nano Spores": {
+   "title": "Nano Spores",
+   "nodes": [
+    "Akkad",
+    "Piscinas",
+    "Hyf",
+    "Terrorem"
+   ]
+  },
+  "Neural Sensors": {
+   "title": "Neural Sensors",
+   "nodes": [
+    "Elara",
+    "Sinai",
+    "Themisto",
+    "Cameria"
+   ]
+  },
+  "Neurodes": {
+   "title": "Neurodes",
+   "nodes": [
+    "Magnacidium",
+    "Mariana",
+    "Tycho",
+    "Tikal",
+    "Isos"
+   ]
+  },
+  "Orokin Cell": {
+   "title": "Orokin Cell",
+   "nodes": [
+    "Titan",
+    "Magnacidium",
+    "Lex",
+    "Exta",
+    "Gabii",
+    "Piscinas"
+   ]
+  },
+  "Oxium": {
+   "title": "Oxium",
+   "nodes": [
+    "Gulliver",
+    "Io",
+    "Outer Terminus",
+    "Tycho",
+    "Apollo",
+    "Paimon",
+    "Elara"
+   ]
+  },
+  "Plastids": {
+   "title": "Plastids",
+   "nodes": [
+    "Assur",
+    "Stephano",
+    "Piscinas",
+    "Akkad",
+    "Ophelia",
+    "Helene",
+    "Outer Terminus",
+    "Palus",
+    "Gulliver",
+    "Zeugma",
+    "Stickney",
+    "Cambion Drift",
+    "Brutus"
+   ]
+  },
+  "Polymer Bundle": {
+   "title": "Polymer Bundle",
+   "nodes": [
+    "Assur",
+    "Ophelia"
+   ]
+  },
+  "Rubedo": {
+   "title": "Rubedo",
+   "nodes": [
+    "Zeugma",
+    "Stickney"
+   ]
+  },
+  "Salvage": {
+   "title": "Salvage",
+   "nodes": [
+    "Cameria",
+    "Wahiba"
+   ]
+  },
+  "Antiserum Injector Fragment": {
+   "title": "Antiserum Injector Fragment",
+   "nodes": [
+    "Oestrus"
+   ]
+  },
+  "Tellurium": {
+   "title": "Tellurium",
+   "nodes": [
+    "The Kuva Wytch",
+    "Scoria's Angel",
+    "Ophelia",
+    "Caelus",
+    "Salacia",
+    "Tamu",
+    "Lu-yan"
+   ]
+  },
+  "Sunlight Threshcone": {
+   "title": "Sunlight Threshcone",
+   "nodes": [
+    "Mantle",
+    "E Prime",
+    "Cervantes"
+   ]
+  },
+  "Moonlight Threshcone": {
+   "title": "Moonlight Threshcone",
+   "nodes": [
+    "Mantle",
+    "E Prime",
+    "Cervantes"
+   ]
+  },
+  "Ruk's Claw": {
+   "title": "Ruk's Claw",
+   "nodes": [
+    "Ara",
+    "Hellas"
+   ]
+  },
+  "Vestan Moss": {
+   "title": "Vestan Moss",
+   "nodes": [
+    "M Prime",
+    "Caloris",
+    "Draco"
+   ]
+  },
+  "Sunlight Jadeleaf": {
+   "title": "Sunlight Jadeleaf",
+   "nodes": [
+    "Mantle",
+    "E Prime",
+    "Cervantes"
+   ]
+  },
+  "Moonlight Jadeleaf": {
+   "title": "Moonlight Jadeleaf",
+   "nodes": [
+    "Mantle",
+    "E Prime",
+    "Cervantes"
+   ]
+  },
+  "Sunlight Dragonlily": {
+   "title": "Sunlight Dragonlily",
+   "nodes": [
+    "Mantle",
+    "E Prime",
+    "Cervantes"
+   ]
+  },
+  "Moonlight Dragonlily": {
+   "title": "Moonlight Dragonlily",
+   "nodes": [
+    "Mantle",
+    "E Prime",
+    "Cervantes"
+   ]
+  },
+  "Frostleaf": {
+   "title": "Frostleaf",
+   "nodes": [
+    "Regna",
+    "Linea",
+    "Galatea",
+    "E Gate",
+    "Venera"
+   ]
+  },
+  "Dusklight Sarracenia": {
+   "title": "Dusklight Sarracenia",
+   "nodes": [
+    "Pallas",
+    "Ker"
+   ]
+  },
+  "Lunar Pitcher": {
+   "title": "Lunar Pitcher",
+   "nodes": [
+    "Copernicus"
+   ]
+  },
+  "Mutagen Sample": {
+   "title": "Mutagen Sample",
+   "nodes": [
+    "Hyf",
+    "Terrorem",
+    "Cambion Drift",
+    "Xini"
+   ]
+  },
+  "Detonite Ampule": {
+   "title": "Detonite Ampule",
+   "nodes": [
+    "Piscinas",
+    "Gabii"
+   ]
+  },
+  "Fieldron Sample": {
+   "title": "Fieldron Sample",
+   "nodes": [
+    "Kelashin",
+    "Wahiba",
+    "Kadesh"
+   ]
+  }
+ }
+}

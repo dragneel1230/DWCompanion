@@ -16,25 +16,123 @@ export interface Price {
 
 interface WfmOrder {
   type: "sell" | "buy";
-  platinum: number;
+  platinum: number; // per trade: of the whole pack when perTrade > 1
+  perTrade?: number;
   user: { status: "ingame" | "online" | "offline" };
 }
 
+// Price of one piece: packs (arcanes, some resources) are listed as "23 for 6".
+const unit = (o: WfmOrder) => {
+  const per = Math.max(1, o.perTrade ?? 1);
+  return per > 1 ? Math.round((o.platinum / per) * 10) / 10 : o.platinum;
+};
+
 const PRICE_TTL = 5 * 60_000;
-const prices = new Map<string, Price>();
+const PRICES_KEY = "dwc.prices"; // live prices shared by the app and the hub window, and across restarts
+const prices = new Map<string, Price>(readStored());
 const inflight = new Map<string, Promise<Price | null>>();
 
-// warframe.market asks clients to stay around 3 requests per second.
-// Space out request starts, but let responses overlap.
-const MIN_GAP = 340;
-let nextStart = 0;
-async function throttled<T>(fn: () => Promise<T>): Promise<T> {
-  const now = Date.now();
-  const start = Math.max(now, nextStart);
-  nextStart = start + MIN_GAP;
-  if (start > now) await new Promise((r) => setTimeout(r, start - now));
-  return fn();
+function readStored(): [string, Price][] {
+  try {
+    const all = JSON.parse(localStorage.getItem(PRICES_KEY) ?? "[]") as [string, Price][];
+    return all.filter(([, p]) => Date.now() - p.at < PRICE_TTL);
+  } catch {
+    return [];
+  }
 }
+let storeTimer: ReturnType<typeof setTimeout> | undefined;
+function store() {
+  clearTimeout(storeTimer);
+  storeTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(PRICES_KEY, JSON.stringify([...prices].filter(([, p]) => Date.now() - p.at < PRICE_TTL)));
+    } catch {
+      // storage unavailable
+    }
+  }, 1000);
+}
+window.addEventListener("storage", (e) => {
+  if (e.key !== PRICES_KEY) return;
+  for (const [k, p] of readStored()) if ((prices.get(k)?.at ?? 0) < p.at) prices.set(k, p);
+});
+
+// warframe.market asks clients to stay around 3 requests per second. The newest request goes first:
+// what the player just opened must not wait behind a backlog of earlier pages (2026-09-30: prices came
+// "later and later" once the lobby, journal and mission blocks queued dozens of items).
+const MIN_GAP = 340;
+const queue: (() => void)[] = [];
+let pumping = false;
+let lastStart = 0;
+function pump() {
+  const job = queue.pop();
+  if (!job) {
+    pumping = false;
+    return;
+  }
+  pumping = true;
+  setTimeout(() => {
+    lastStart = Date.now();
+    job();
+    pump();
+  }, Math.max(0, lastStart + MIN_GAP - Date.now()));
+}
+function throttled<T>(fn: () => Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    queue.push(() => void fn().then(resolve, reject));
+    if (!pumping) pump();
+  });
+}
+
+// ---------- bulk prices of every prime part and set (one request)
+// WFInfo's file (served by WFCD's api.warframestat.us): average warframe.market trade price over the
+// last day, keyed by the market's English name. Lists (journal, lobby, rewards, sets) use it instead
+// of one request per item; the market panel and the trade buttons still read live orders.
+const BULK_URL = "https://api.warframestat.us/wfinfo/prices/";
+const BULK_KEY = "dwc.bulkPrices";
+const BULK_TTL = 60 * 60_000;
+let bulkBySlug: Map<string, number> | null = null;
+let bulkLoad: Promise<void> | null = null;
+
+function indexBulk(byName: Record<string, number>) {
+  const db = getDb();
+  const m = new Map<string, number>();
+  for (const x of [...Object.values(db.items), ...Object.values(db.sets)]) {
+    const v = x.slug && x.mname ? byName[x.mname.toLowerCase()] : undefined;
+    if (x.slug && v != null) m.set(x.slug, Math.round(v));
+  }
+  bulkBySlug = m;
+}
+
+export function loadBulk(): Promise<void> {
+  bulkLoad ??= (async () => {
+    let cached: { at: number; byName: Record<string, number> } | null = null;
+    try {
+      cached = JSON.parse(localStorage.getItem(BULK_KEY) ?? "null");
+    } catch {
+      // storage unavailable
+    }
+    if (cached) indexBulk(cached.byName);
+    if (cached && Date.now() - cached.at < BULK_TTL) return;
+    try {
+      const res = await fetch(BULK_URL);
+      if (!res.ok) throw new Error(String(res.status));
+      const list = (await res.json()) as { name: string; custom_avg: string }[];
+      const byName: Record<string, number> = {};
+      for (const x of list) {
+        const v = Number(x.custom_avg);
+        if (Number.isFinite(v)) byName[x.name.toLowerCase()] = v;
+      }
+      indexBulk(byName);
+      localStorage.setItem(BULK_KEY, JSON.stringify({ at: Date.now(), byName }));
+    } catch {
+      // offline or down: lists fall back to live prices
+    }
+  })();
+  return bulkLoad;
+}
+
+// The day's average price of a prime part / set, when the bulk file has it.
+export const bulkSell = (slug: string): number | undefined => bulkBySlug?.get(slug);
 
 export function cachedPrice(slug: string): Price | null {
   const p = prices.get(slug);
@@ -52,10 +150,11 @@ export function getPrice(slug: string): Promise<Price | null> {
     if (!res.ok) return null;
     const data = (await res.json()).data as { sell: WfmOrder[]; buy: WfmOrder[] };
     const online = (o: WfmOrder) => o.user.status !== "offline";
-    const sells = data.sell.filter(online).map((o) => o.platinum).sort((a, b) => a - b);
-    const buys = data.buy.filter(online).map((o) => o.platinum).sort((a, b) => b - a);
+    const sells = data.sell.filter(online).map(unit).sort((a, b) => a - b);
+    const buys = data.buy.filter(online).map(unit).sort((a, b) => b - a);
     const price: Price = { sell: sells[0] ?? null, buy: buys[0] ?? null, sellers: sells.length, at: Date.now() };
     prices.set(slug, price);
+    store();
     return price;
   }).finally(() => inflight.delete(slug));
 
@@ -96,7 +195,7 @@ interface WorldState {
   ActiveMissions?: WsMission[];
   VoidStorms?: WsMission[];
   SyndicateMissions?: { Tag: string; Activation: WsDate; Expiry: WsDate }[];
-  VoidTraders?: { Activation: WsDate; Expiry: WsDate; Node: string }[];
+  VoidTraders?: { Activation: WsDate; Expiry: WsDate; Node: string; Manifest?: { ItemType: string; PrimePrice: number; RegularPrice: number }[] }[];
   PrimeVaultTraders?: { Activation: WsDate; Expiry: WsDate; Manifest?: { ItemType: string }[] }[];
 }
 
@@ -116,8 +215,17 @@ function worldState(): Promise<WorldState> {
 
 export interface Timers {
   cetusEnd: number; // end of the Cetus / Cambion bounty cycle
-  baro: { from: number; to: number; relay: string } | null;
-  resurgence: { to: number; frames: string[] } | null; // frame uniqueNames on offer
+  baro: { from: number; to: number; relay: string; items?: BaroOffer[] } | null; // items: while he is here
+  // Prime Resurgence: frame and weapon uniqueNames on offer, how many relics Varzia sells for Aya.
+  // `frames` is the old cached shape (frames only); new data has `items`.
+  resurgence: { to: number; items?: string[]; relics?: number; frames?: string[] } | null;
+}
+
+// One line of Baro's stock: store path as worldState gives it (baro.ts resolves the name).
+export interface BaroOffer {
+  type: string;
+  ducats: number;
+  credits: number;
 }
 
 export async function getTimers(): Promise<Timers> {
@@ -128,14 +236,22 @@ export async function getTimers(): Promise<Timers> {
   const pv = ws.PrimeVaultTraders?.[0];
   return {
     cetusEnd: ms(cetus?.Expiry),
-    baro: baro ? { from: ms(baro.Activation), to: ms(baro.Expiry), relay: w.regions[baro.Node]?.n ?? baro.Node } : null,
+    baro: baro
+      ? {
+          from: ms(baro.Activation),
+          to: ms(baro.Expiry),
+          relay: w.regions[baro.Node]?.n ?? baro.Node,
+          items: baro.Manifest?.map((m) => ({ type: m.ItemType, ducats: m.PrimePrice, credits: m.RegularPrice })),
+        }
+      : null,
     resurgence: pv
       ? {
           to: ms(pv.Expiry),
-          frames: (pv.Manifest ?? [])
+          items: (pv.Manifest ?? [])
             .map((m) => m.ItemType)
-            .filter((t) => t.startsWith("/Lotus/StoreItems/Powersuits/"))
+            .filter((t) => t.startsWith("/Lotus/StoreItems/Powersuits/") || t.startsWith("/Lotus/StoreItems/Weapons/"))
             .map((t) => t.replace("/Lotus/StoreItems/", "/Lotus/")),
+          relics: (pv.Manifest ?? []).filter((m) => m.ItemType.includes("/Projections/")).length,
         }
       : null,
   };

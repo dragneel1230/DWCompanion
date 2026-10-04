@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/index.svelte";
   import { page } from "$app/state";
-  import { getDb, iconUrl, itemName } from "$lib/db";
+  import { getDb, iconUrl, itemName, setParts } from "$lib/db";
   import Plat from "$lib/components/Plat.svelte";
   import Cur from "$lib/components/Cur.svelte";
   import MarketPanel from "$lib/components/MarketPanel.svelte";
@@ -10,13 +11,13 @@
   const set = $derived(db.sets[id]);
 
   const parts = $derived(
-    (set?.parts ?? []).map((pid) => {
+    (set ? setParts(set) : []).map(({ id: pid, count }) => {
       const it = db.items[pid];
       const active = it.relics.filter((r) => !db.relics[r.relic].vaulted);
-      return { id: pid, it, active: active.length, total: it.relics.length };
+      return { id: pid, count, it, active: active.length, total: it.relics.length };
     }),
   );
-  const ducats = $derived(parts.reduce((s, p) => s + (p.it.ducats ?? 0), 0));
+  const ducats = $derived(parts.reduce((s, p) => s + (p.it.ducats ?? 0) * p.count, 0));
   const vaulted = $derived(parts.length > 0 && parts.every((p) => p.active === 0));
 </script>
 
@@ -25,38 +26,38 @@
     <header class="hero">
       <img src={iconUrl(set.icon)} alt="" />
       <div>
-        <h1>{set.ru}</h1>
+        <h1>{set.name}</h1>
         <div class="sub">
           <span>{set.en}</span>
-          <span class="tag {vaulted ? 'vaulted' : 'active'}">{vaulted ? "в хранилище" : "выпадает сейчас"}</span>
+          <span class="tag {vaulted ? 'vaulted' : 'active'}">{vaulted ? t("tag.inVault") : t("tag.dropsNow")}</span>
         </div>
       </div>
       <div class="price">
         <div class="big"><Plat slug={set.slug} size={22} /></div>
-        <div class="muted">набор целиком</div>
+        <div class="muted">{t("detail.wholeSet")}</div>
       </div>
     </header>
 
-    <div class="section-title">Части</div>
+    <div class="section-title">{t("detail.parts")}</div>
     <div class="rows">
       {#each parts as p (p.id)}
         <a class="row" href="/item?id={encodeURIComponent(p.id)}">
           <img src={iconUrl(p.it.icon)} alt="" loading="lazy" />
           <span class="name">
-            {itemName(p.it)}
-            <small>{p.active ? `в ${p.active} активных реликвиях` : "только в хранилище"} · всего {p.total}</small>
+            {p.count > 1 ? `${p.count} × ` : ""}{itemName(p.it)}
+            <small>{p.active ? t("detail.inActive", { n: p.active }) : t("detail.onlyVault")} · {t("set.total", { v: p.total })}</small>
           </span>
           <span class="num">{#if p.it.ducats}<Cur kind="ducats" value={p.it.ducats} />{/if}</span>
           <span class="num"><Plat slug={p.it.slug} /></span>
         </a>
       {/each}
     </div>
-    <p class="muted total">Дукатов за все части: <Cur kind="ducats" value={ducats} /></p>
+    <p class="muted total">{t("set.ducats")} <Cur kind="ducats" value={ducats} /></p>
 
     <MarketPanel slug={set.slug} item={{ en: set.mname ?? `${set.en} Set`, ru: `${set.ru}: набор` }} />
   </div>
 {:else}
-  <div class="page"><p>Набор не найден.</p></div>
+  <div class="page"><p>{t("set.notFound")}</p></div>
 {/if}
 
 <style>

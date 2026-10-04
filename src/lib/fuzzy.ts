@@ -1,7 +1,7 @@
 // Fuzzy text comparison for OCR results.
 
-// Lowercase, ё→е, letters and digits only: OCR mixes up ":" "." and spaces.
-export const compact = (s: string) => s.toLowerCase().replace(/ё/g, "е").replace(/[^a-zа-я0-9]/g, "");
+// Lowercase, ё→е, letters and digits only (any alphabet): OCR mixes up ":" "." and spaces.
+export const compact = (s: string) => s.toLowerCase().replace(/ё/g, "е").replace(/[^\p{L}\p{N}]/gu, "");
 
 // Edit distance.
 export function lev(a: string, b: string): number {

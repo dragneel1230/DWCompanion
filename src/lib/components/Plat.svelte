@@ -1,10 +1,12 @@
 <script lang="ts">
   // Lazily loaded warframe.market price for one item slug.
+  import { t } from "$lib/i18n/index.svelte";
   import { untrack } from "svelte";
-  import { getPrice, cachedPrice, type Price } from "$lib/api";
+  import { getPrice, cachedPrice, loadBulk, bulkSell, type Price } from "$lib/api";
   import Cur from "./Cur.svelte";
 
-  let { slug, onprice, size = 15 }: { slug?: string; onprice?: (p: Price | null) => void; size?: number } = $props();
+  let { slug, onprice, size = 15, live = false }: { slug?: string; onprice?: (p: Price | null) => void; size?: number; live?: boolean } =
+    $props();
 
   let price = $state<Price | null>(null);
   let loading = $state(false);
@@ -15,8 +17,30 @@
     untrack(() => load(s));
   });
 
+  // Prime parts and sets: the day's average from the bulk file, no request. `live` asks warframe.market
+  // (cheapest seller online) — only where a list doesn't need dozens of requests.
+  let avg = $state(false);
+
   function load(s: string | undefined) {
     if (!s) return;
+    if (!live) {
+      loading = true;
+      loadBulk().then(() => {
+        if (s !== slug) return;
+        const b = bulkSell(s);
+        if (b == null) return liveLoad(s);
+        avg = true;
+        price = { sell: b, buy: null, sellers: 0, at: Date.now() };
+        loading = false;
+        onprice?.(price);
+      });
+      return;
+    }
+    liveLoad(s);
+  }
+
+  function liveLoad(s: string) {
+    avg = false;
     const cached = cachedPrice(s);
     if (cached) {
       price = cached;
@@ -44,9 +68,9 @@
 {:else if loading}
   <span class="dash pulse">···</span>
 {:else if price?.sell != null}
-  <span title="Дешевле всего у продавцов онлайн · покупатели дают {price.buy ?? '—'}"><Cur kind="plat" value={price.sell} {size} /></span>
+  <span title={avg ? t("plat.avgHint") : t("plat.liveHint", { v: price.buy ?? "—" })}><Cur kind="plat" value={price.sell} {size} /></span>
 {:else}
-  <span class="dash" title="Нет продавцов онлайн">—</span>
+  <span class="dash" title={t("plat.none")}>—</span>
 {/if}
 
 <style>

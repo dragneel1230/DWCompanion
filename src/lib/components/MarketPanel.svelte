@@ -1,12 +1,13 @@
 <script lang="ts">
   // warframe.market orders for one item: who sells / buys, and a button that copies the
   // ready-made in-game whisper. Nothing is sent anywhere by us; the user pastes it in chat.
+  import { labels, num, t } from "$lib/i18n/index.svelte";
   import { onDestroy, untrack } from "svelte";
   import { getOrders, type Order, type UserStatus } from "$lib/api";
   import { whisper, copyText, type TradeItem } from "$lib/whisper";
   import Cur from "./Cur.svelte";
 
-  let { slug, item, maxRank = 0 }: { slug: string; item: TradeItem; maxRank?: number } = $props();
+  let { slug, item, maxRank = 0, unranked = false }: { slug: string; item: TradeItem; maxRank?: number; unranked?: boolean } = $props();
 
   type Side = "sell" | "buy";
   type StatusFilter = "ingame" | "online" | "all";
@@ -35,7 +36,7 @@
   function step(o: Order, d: number) {
     packsById = { ...packsById, [o.id]: Math.max(1, Math.min(maxPacks(o), packsOf(o) + d)) };
   }
-  const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ","));
+  const fmt = (n: number) => (Number.isInteger(n) ? String(n) : num(n, 1));
   let toast = $state<string | null>(null);
   let toastOk = $state(true);
   let toastTimer: ReturnType<typeof setTimeout>;
@@ -58,8 +59,8 @@
     untrack(() => {
       shown = 15;
       subtype = "all";
-      // Mods trade mostly maxed or unranked; start from maxed.
-      rank = maxRank > 0 ? "max" : "any";
+      // Mods trade mostly maxed or unranked; start from maxed unless asked otherwise (Baro sells them unranked).
+      rank = maxRank > 0 ? (unranked ? "zero" : "max") : "any";
       load();
     });
   });
@@ -125,77 +126,77 @@
 
   function ago(iso: string): string {
     const min = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60000));
-    if (min < 60) return `${min} мин`;
+    if (min < 60) return t("unit.minutes", { v: min });
     const h = Math.round(min / 60);
-    if (h < 48) return `${h} ч`;
-    return `${Math.round(h / 24)} дн`;
+    if (h < 48) return t("unit.hours", { v: h });
+    return t("unit.days", { v: Math.round(h / 24) });
   }
 
-  const STATUS_RU: Record<UserStatus, string> = { ingame: "в игре", online: "онлайн", offline: "офлайн" };
-  const SUB_RU: Record<string, string> = { intact: "интакт", exceptional: "искл.", flawless: "безупр.", radiant: "сияющая" };
+  const STATUS_RU = labels<UserStatus>({ ingame: "mp.status.ingame", online: "mp.status.online", offline: "mp.status.offline" });
+  const SUB_RU: Record<string, string> = labels({ intact: "mp.sub.intact", exceptional: "mp.sub.exceptional", flawless: "mp.sub.flawless", radiant: "mp.sub.radiant" });
 </script>
 
 <section class="market">
   <div class="head">
-    <div class="section-title">Рынок · warframe.market</div>
-    <button class="refresh" onclick={() => load(true)} disabled={loading} title="Обновить заявки">
-      {loading ? "Загрузка…" : `↻ ${loadedAt ? `${Math.round((now - loadedAt) / 1000)} с назад` : ""}`}
+    <div class="section-title">{t("mp.title")}</div>
+    <button class="refresh" onclick={() => load(true)} disabled={loading} title={t("mp.refresh")}>
+      {loading ? t("common.loading") : `↻ ${loadedAt ? t("mp.secondsAgo", { v: Math.max(0, Math.round((now - loadedAt) / 1000)) }) : ""}`}
     </button>
   </div>
 
   <div class="summary">
-    <div class="stat" title="Самая дешёвая продажа среди игроков в игре">
-      <span>Купить сейчас</span>
+    <div class="stat" title={t("mp.buyNowHint")}>
+      <span>{t("mp.buyNow")}</span>
       <b>{#if summary.buyNow != null}<Cur kind="plat" value={summary.buyNow} size={18} />{:else}—{/if}</b>
     </div>
-    <div class="stat" title="Самая дорогая скупка среди игроков в игре">
-      <span>Продать сейчас</span>
+    <div class="stat" title={t("mp.sellNowHint")}>
+      <span>{t("mp.sellNow")}</span>
       <b>{#if summary.sellNow != null}<Cur kind="plat" value={summary.sellNow} size={18} />{:else}—{/if}</b>
     </div>
-    <div class="stat" title="Среднее по 5 самым дешёвым продавцам в игре">
-      <span>Средняя (5 дешёвых)</span>
+    <div class="stat" title={t("mp.avgHint")}>
+      <span>{t("mp.avg")}</span>
       <b>{#if summary.avg5 != null}<Cur kind="plat" value={summary.avg5} size={18} />{:else}—{/if}</b>
     </div>
     <div class="stat">
-      <span>В игре</span>
-      <b class="small">{summary.sellers} продают · {summary.buyers} покупают</b>
+      <span>{t("mp.inGame")}</span>
+      <b class="small">{t("mp.sellersBuyers", { s: summary.sellers, b: summary.buyers })}</b>
     </div>
   </div>
 
   <div class="controls">
     <div class="seg big">
-      <button class:on={side === "sell"} onclick={() => ((side = "sell"), (shown = 15))}>Продают · {counts.sell}</button>
-      <button class:on={side === "buy"} onclick={() => ((side = "buy"), (shown = 15))}>Покупают · {counts.buy}</button>
+      <button class:on={side === "sell"} onclick={() => ((side = "sell"), (shown = 15))}>{t("mp.selling")} · {counts.sell}</button>
+      <button class:on={side === "buy"} onclick={() => ((side = "buy"), (shown = 15))}>{t("mp.buying")} · {counts.buy}</button>
     </div>
     <div class="seg">
-      <button class:on={status === "ingame"} onclick={() => (status = "ingame")}>В игре</button>
-      <button class:on={status === "online"} onclick={() => (status = "online")}>+ онлайн</button>
-      <button class:on={status === "all"} onclick={() => (status = "all")}>Все</button>
+      <button class:on={status === "ingame"} onclick={() => (status = "ingame")}>{t("mp.inGame")}</button>
+      <button class:on={status === "online"} onclick={() => (status = "online")}>{t("mp.plusOnline")}</button>
+      <button class:on={status === "all"} onclick={() => (status = "all")}>{t("mp.all")}</button>
     </div>
     {#if maxRank > 0}
       <div class="seg">
-        <button class:on={rank === "max"} onclick={() => (rank = "max")}>Ранг {maxRank}</button>
-        <button class:on={rank === "zero"} onclick={() => (rank = "zero")}>Ранг 0</button>
-        <button class:on={rank === "any"} onclick={() => (rank = "any")}>Любой</button>
+        <button class:on={rank === "max"} onclick={() => (rank = "max")}>{t("mp.rank", { r: maxRank })}</button>
+        <button class:on={rank === "zero"} onclick={() => (rank = "zero")}>{t("mp.rank", { r: 0 })}</button>
+        <button class:on={rank === "any"} onclick={() => (rank = "any")}>{t("mp.anyRank")}</button>
       </div>
     {/if}
     {#if subtypes.length > 1}
       <div class="seg">
-        <button class:on={subtype === "all"} onclick={() => (subtype = "all")}>Все</button>
+        <button class:on={subtype === "all"} onclick={() => (subtype = "all")}>{t("mp.all")}</button>
         {#each subtypes as st}
           <button class:on={subtype === st} onclick={() => (subtype = st)}>{SUB_RU[st] ?? st}</button>
         {/each}
       </div>
     {/if}
-    <label class="lang" title="Игрокам с русским языком на warframe.market сообщение пишется по-русски">
-      <input type="checkbox" bind:checked={ruForRu} /> RU-игрокам по-русски
+    <label class="lang" title={t("mp.ruForRuHint")}>
+      <input type="checkbox" bind:checked={ruForRu} /> {t("mp.ruForRu")}
     </label>
   </div>
 
   {#if error}
-    <p class="muted">Не удалось загрузить заявки: {error}</p>
+    <p class="muted">{t("mp.error", { error })}</p>
   {:else if !loading && !filtered.length}
-    <p class="muted">Нет заявок с такими фильтрами. Попробуй «+ онлайн» или «Все».</p>
+    <p class="muted">{t("mp.empty")}</p>
   {/if}
 
   <div class="orders">
@@ -210,13 +211,13 @@
           </small>
         </span>
         <span class="meta">
-          {#if o.rank != null}<span class="tag">ранг {o.rank}</span>{/if}
+          {#if o.rank != null}<span class="tag">{t("mp.rankLower", { r: o.rank })}</span>{/if}
           {#if o.subtype}<span class="tag">{SUB_RU[o.subtype] ?? o.subtype}</span>{/if}
-          {#if per(o) > 1}<span class="tag pack" title="Игрок торгует пачками по {per(o)} шт.">по {per(o)} за сделку</span>{/if}
+          {#if per(o) > 1}<span class="tag pack" title={t("mp.packHint", { n: per(o) })}>{t("mp.pack", { n: per(o) })}</span>{/if}
           {#if maxPacks(o) > 1}
-            <span class="stepper" title="Сколько {per(o) > 1 ? 'пачек' : 'штук'} {o.type === 'sell' ? 'купить' : 'продать'} (всего у игрока: {o.quantity} шт.)">
+            <span class="stepper" title={t(per(o) > 1 ? (o.type === "sell" ? "mp.stepPacksBuy" : "mp.stepPacksSell") : o.type === "sell" ? "mp.stepPcsBuy" : "mp.stepPcsSell", { q: o.quantity })}>
               <button onclick={() => step(o, -1)} disabled={packsOf(o) <= 1}>−</button>
-              <span>{packsOf(o) * per(o)} из {o.quantity}</span>
+              <span>{t("mp.ofTotal", { a: packsOf(o) * per(o), b: o.quantity })}</span>
               <button onclick={() => step(o, 1)} disabled={packsOf(o) >= maxPacks(o)}>+</button>
             </span>
           {:else if o.quantity > 1}
@@ -225,25 +226,25 @@
         </span>
         <span class="price">
           <Cur kind="plat" value={o.platinum * packsOf(o)} size={16} />
-          {#if packsOf(o) * per(o) > 1}<small>{fmt(unit(o))} за шт.</small>{/if}
+          {#if packsOf(o) * per(o) > 1}<small>{t("mp.perPiece", { v: fmt(unit(o)) })}</small>{/if}
         </span>
         <button class="act {o.type}" onclick={() => act(o)}>
-          {copiedId === o.id ? "✓ Скопировано" : o.type === "sell" ? "Купить" : "Продать"}
+          {copiedId === o.id ? `✓ ${t("mp.copied")}` : o.type === "sell" ? t("mp.buy") : t("mp.sell")}
         </button>
       </div>
     {/each}
   </div>
   {#if filtered.length > shown}
-    <button class="more" onclick={() => (shown += 25)}>Показать ещё ({filtered.length - shown})</button>
+    <button class="more" onclick={() => (shown += 25)}>{t("mp.more", { v: filtered.length - shown })}</button>
   {/if}
 </section>
 
 {#if toast}
   <div class="toast" role="status">
     {#if toastOk}
-      <b>Скопировано — вставь в чат игры (Ctrl+V)</b>
+      <b>{t("mp.copiedHint")}</b>
     {:else}
-      <b class="bad">Не удалось скопировать — выдели текст ниже и скопируй вручную</b>
+      <b class="bad">{t("mp.copyFailed")}</b>
     {/if}
     <code>{toast}</code>
   </div>

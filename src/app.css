@@ -174,3 +174,89 @@ a.row:hover {
   box-shadow: inset 2px 0 0 var(--accent);
   background: linear-gradient(90deg, var(--accent-soft), var(--surface) 60%);
 }
+
+/* "Как получить": the short answer at the top of the farming pages (src/lib/components/farm/). */
+.howto {
+  margin: 0 0 8px;
+  padding: 16px 18px 6px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent-soft), var(--surface) 55%);
+  box-shadow: inset 0 0 0 1px rgba(201, 166, 107, 0.22);
+}
+.howto-title {
+  margin-bottom: 12px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.howto .step {
+  display: flex;
+  gap: 12px;
+  padding-bottom: 12px;
+}
+.howto .step + .step {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.howto .n {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--accent);
+  font-size: 13px;
+}
+.howto .lead {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-bottom: 3px;
+}
+.howto .main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.howto .main b {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.howto .why {
+  margin: 5px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+.howto .why a,
+.howto a {
+  color: var(--accent);
+}
+.howto .alts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+.howto .alt {
+  color: var(--text-dim);
+}
+.howto .chip {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--surface-2);
+  font-size: 11.5px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.howto .chip.good {
+  color: var(--good);
+}

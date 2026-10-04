@@ -1,17 +1,18 @@
 <script lang="ts">
+  import { locale, t } from "$lib/i18n/index.svelte";
   import SearchBox from "$lib/components/SearchBox.svelte";
   import { getDb } from "$lib/db";
 
   const db = getDb();
-  const built = new Date(db.builtAt).toLocaleDateString("ru-RU");
+  const built = $derived(new Date(db.builtAt).toLocaleDateString(locale()));
 </script>
 
 <div class="page home">
-  <h1>Что ищем?</h1>
-  <p class="muted">Наборы, части, реликвии, варфреймы, моды, мистификаторы — по-русски или по-английски. Из любого экрана: <kbd>Ctrl</kbd> + <kbd>K</kbd></p>
+  <h1>{t("home.title")}</h1>
+  <p class="muted">{t("home.intro")} <kbd>Ctrl</kbd> + <kbd>K</kbd></p>
   <SearchBox autofocus />
   <p class="foot">
-    База: {Object.keys(db.sets).length} наборов · {Object.keys(db.items).length} наград · {Object.keys(db.relics).length} реликвий · обновлена {built}
+    {t("home.db", { s: Object.keys(db.sets).length, i: Object.keys(db.items).length, r: Object.keys(db.relics).length, d: built })}
   </p>
 </div>
 

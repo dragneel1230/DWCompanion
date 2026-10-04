@@ -1,5 +1,7 @@
 // Matches OCR text of relic reward cards to relic reward items.
-// Names on screen are the item's Russian name, with "Чертёж: " in front of blueprints.
+// Names on screen are in the game client's language (clientLang.svelte.ts), not the interface's:
+// ru "Чертёж: Сарина Прайм: Система", en "Saryn Prime Systems Blueprint". Other client languages
+// fall back to English names until their dictionaries are in the data.
 // Candidates: rewards of the squad's relics (from EE.log) first, then every relic reward.
 import { getDb, type Item } from "$lib/db";
 import { compact, lev } from "$lib/fuzzy";
@@ -7,7 +9,7 @@ import { compact, lev } from "$lib/fuzzy";
 export interface Candidate {
   id: string;
   item: Item;
-  name: string; // as shown on the reward screen
+  name: string; // as the client shows it on the reward screen
   key: string; // compact form for comparison
 }
 
@@ -17,23 +19,26 @@ export interface Match {
 }
 
 
-export const screenName = (it: Item) => (it.bp ? `Чертёж: ${it.ru}` : it.ru);
+export const screenName = (it: Item, lang: string) =>
+  lang === "ru" ? (it.bp ? `Чертёж: ${it.ru}` : it.ru) : it.bp ? `${it.en} Blueprint` : it.en;
 
-function cand(id: string): Candidate | null {
+function cand(id: string, lang: string): Candidate | null {
   const item = getDb().items[id];
   if (!item) return null;
-  const name = screenName(item);
+  const name = screenName(item, lang);
   return { id, item, name, key: compact(name) };
 }
 
-let all: Candidate[] | null = null;
-export function allRewards(): Candidate[] {
-  if (!all) {
+const all = new Map<string, Candidate[]>();
+export function allRewards(lang: string): Candidate[] {
+  let list = all.get(lang);
+  if (!list) {
     const ids = new Set<string>();
     for (const r of Object.values(getDb().relics)) for (const rw of r.rewards) ids.add(rw.id);
-    all = [...ids].map(cand).filter((c): c is Candidate => !!c);
+    list = [...ids].map((id) => cand(id, lang)).filter((c): c is Candidate => !!c);
+    all.set(lang, list);
   }
-  return all;
+  return list;
 }
 
 // "T1VoidProjectionProteaPrimeAPlatinum" -> relic key ("Lith P9").
@@ -41,20 +46,20 @@ export function relicKey(projection: string): string | undefined {
   return getDb().projections[projection.replace(/(Bronze|Silver|Gold|Platinum)$/, "")];
 }
 
-export function squadRewards(projections: string[]): Candidate[] {
+export function squadRewards(projections: string[], lang: string): Candidate[] {
   const db = getDb();
   const ids = new Set<string>();
   for (const p of projections) {
     const r = db.relics[relicKey(p) ?? ""];
     r?.rewards.forEach((rw) => ids.add(rw.id));
   }
-  return [...ids].map(cand).filter((c): c is Candidate => !!c);
+  return [...ids].map((id) => cand(id, lang)).filter((c): c is Candidate => !!c);
 }
 
 
-// Words of a name for comparison (short OCR junk like "им" is dropped).
+// Words of a name for comparison (short OCR junk like "им" is dropped). Any alphabet.
 const words = (s: string) =>
-  s.toLowerCase().replace(/ё/g, "е").split(/[^a-zа-я0-9]+/).filter((w) => w.length >= 3);
+  s.toLowerCase().replace(/ё/g, "е").split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 3);
 
 const wordSim = (a: string, b: string) => 1 - lev(a, b) / Math.max(a.length, b.length);
 
@@ -88,8 +93,8 @@ export function bestMatch(texts: string[], pool: Candidate[]): Match | null {
 
 // The squad's relics narrow the choice, but one can be missing from the log (its model was already
 // loaded), so they win only when not clearly worse than the whole reward list.
-export function matchCard(texts: string[], squad: Candidate[]): Match | null {
-  const a = bestMatch(texts, allRewards());
+export function matchCard(texts: string[], squad: Candidate[], lang: string): Match | null {
+  const a = bestMatch(texts, allRewards(lang));
   const s = squad.length ? bestMatch(texts, squad) : null;
   if (s && (!a || s.score >= a.score - 0.08)) return s;
   return a;

@@ -1,12 +1,13 @@
 <script lang="ts">
+  import { t, type Key } from "$lib/i18n/index.svelte";
   import { onDestroy } from "svelte";
   import { getFissures, type Fissure } from "$lib/api";
 
   type Mode = "normal" | "hard" | "storm";
-  const MODES: { id: Mode; label: string }[] = [
-    { id: "normal", label: "Обычные" },
-    { id: "hard", label: "Стальной путь" },
-    { id: "storm", label: "Бури Бездны" },
+  const MODES: { id: Mode; label: Key }[] = [
+    { id: "normal", label: "fissures.normal" },
+    { id: "hard", label: "fissures.hard" },
+    { id: "storm", label: "fissures.stormFull" },
   ];
 
   let mode = $state<Mode>("normal");
@@ -50,24 +51,24 @@
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
     const sec = s % 60;
-    return h ? `${h} ч ${m} мин` : `${m}:${String(sec).padStart(2, "0")}`;
+    return h ? t("unit.hm", { h, m }) : `${m}:${String(sec).padStart(2, "0")}`;
   }
 </script>
 
 <div class="page">
   <div class="head">
-    <h1>Разломы Бездны</h1>
+    <h1>{t("fissures.title")}</h1>
     <div class="modes">
       {#each MODES as m}
-        <button class:on={mode === m.id} onclick={() => (mode = m.id)}>{m.label}</button>
+        <button class:on={mode === m.id} onclick={() => (mode = m.id)}>{t(m.label)}</button>
       {/each}
     </div>
   </div>
 
   {#if error}
-    <p class="muted">Не удалось получить разломы: {error}</p>
+    <p class="muted">{t("fissures.error", { error })}</p>
   {:else if !list.length}
-    <p class="muted">Загрузка…</p>
+    <p class="muted">{t("common.loading")}</p>
   {/if}
 
   {#each tiers as [tier, items] (tier)}

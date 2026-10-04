@@ -1,5 +1,6 @@
 <script lang="ts">
   // Slot editor: search a mod / arcane by Russian or English name, set the rank, or clear the slot.
+  import { locale, t } from "$lib/i18n/index.svelte";
   import { normalize } from "$lib/db";
   import { modsForSlot, rankOf, type Arcane, type Frame, type FramesDb, type Mod } from "$lib/frames";
   import ModCard from "./ModCard.svelte";
@@ -39,7 +40,7 @@
       kind === "arcane"
         ? Object.entries(db.arcanes)
             .filter(([, a]) => a.wf)
-            .sort(([, a], [, b]) => a.ru.localeCompare(b.ru, "ru"))
+            .sort(([, a], [, b]) => a.name.localeCompare(b.name, locale()))
         : modsForSlot(db, frame, kind);
     // Every word must match, in any order ("умбра сил" finds "Усиление Умбра").
     const words = normalize(query).split(/\s+/).filter(Boolean);
@@ -67,41 +68,41 @@
   <div class="dialog" onclick={(e) => e.stopPropagation()}>
     <div class="head">
       <b>{title}</b>
-      <button class="x" onclick={onclose} aria-label="Закрыть">✕</button>
+      <button class="x" onclick={onclose} aria-label={t("common.close")}>✕</button>
     </div>
 
     {#if cur}
       <div class="current">
-        <span class="cname">{cur.ru}</span>
+        <span class="cname">{cur.name}</span>
         {#if kind !== "arcane"}
           {@const m = cur as Mod}
-          <div class="stepper" title="Ранг мода">
+          <div class="stepper" title={t("mpick.rank")}>
             <button onclick={() => onrank(Math.max(0, curRank - 1))} disabled={curRank <= 0}>−</button>
-            <span>Ранг <b>{curRank}</b> / {m.max}</span>
+            <span>{t("bb.rank")} <b>{curRank}</b> / {m.max}</span>
             <button onclick={() => onrank(Math.min(m.max, curRank + 1))} disabled={curRank >= m.max}>+</button>
           </div>
         {/if}
-        <button class="clear" onclick={() => onpick(null)}>Убрать</button>
+        <button class="clear" onclick={() => onpick(null)}>{t("mpick.remove")}</button>
       </div>
     {/if}
 
     <!-- svelte-ignore a11y_autofocus -->
-    <input bind:value={query} placeholder="Поиск по названию (рус. или англ.)" spellcheck="false" autofocus />
+    <input bind:value={query} placeholder={t("mpick.search")} spellcheck="false" autofocus />
 
     <div class="grid" class:arcanes={kind === "arcane"}>
       {#each list as [id, item] (id)}
         {@const taken = used.has(id) && id !== current}
-        <button class="pick" class:taken class:on={id === current} disabled={taken} onclick={() => onpick(id)} title={taken ? "Уже стоит в билде" : undefined}>
+        <button class="pick" class:taken class:on={id === current} disabled={taken} onclick={() => onpick(id)} title={taken ? t("mpick.taken") : undefined}>
           {#if kind === "arcane"}
             <ArcaneCard arcane={item as Arcane} scale={0.2} bare />
-            <span class="aname">{item.ru}</span>
+            <span class="aname">{item.name}</span>
             <span class="astats">{item.stats}</span>
           {:else}
             <ModCard mod={item as Mod} scale={0.62} bare onhover={(el) => (hover = el ? { el, mod: item as Mod } : null)} />
           {/if}
         </button>
       {:else}
-        <p class="muted">Ничего не нашлось.</p>
+        <p class="muted">{t("search.none")}</p>
       {/each}
     </div>
   </div>

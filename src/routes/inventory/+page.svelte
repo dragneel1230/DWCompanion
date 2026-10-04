@@ -1,5 +1,6 @@
 <script lang="ts">
   // Inventory: mod scan of the in-game Mods screen (the user scrolls by hand, we only look).
+  import { fromRust, t } from "$lib/i18n/index.svelte";
   import { loadFrames, type FramesDb } from "$lib/frames";
   import { modScan } from "$lib/modScan.svelte";
   import { owned } from "$lib/owned.svelte";
@@ -18,73 +19,72 @@
     const ids = modScan.keptIds();
     if (replace) {
       const lost = owned.count - ids.filter((id) => owned.has(id)).length;
-      const ask = `Отметки станут ровно списком скана (${kept} модов).` + (lost > 0 ? ` Снимется отметок: ${lost}.` : "") + " Продолжить?";
+      const ask = t("inv.askReplace", { n: kept }) + (lost > 0 ? ` ${t("inv.askLost", { v: lost })}` : "") + ` ${t("inv.askContinue")}`;
       if (!confirm(ask)) return;
     }
     undo = replace ? owned.replace(ids) : owned.addMany(ids);
-    saved = replace ? `Отметки заменены: ${kept} модов` : `Добавлено к отметкам: ${kept} модов`;
+    saved = replace ? t("inv.replaced", { n: kept }) : t("inv.added", { n: kept });
     modScan.clear();
   }
 
   function revert() {
     if (undo) owned.replace(undo);
     undo = null;
-    saved = "Сохранение отменено";
+    saved = t("inv.reverted");
   }
 </script>
 
 <div class="page">
-  <h1>Инвентарь</h1>
+  <h1>{t("inv.title")}</h1>
 
   <div class="card">
     <div class="head">
       <span>
-        <b>Сканирование модов</b>
+        <b>{t("inv.scan")}</b>
         <small>
-          Нажми «Начать», открой в игре «Моды» и медленно листай список сам. Приложение смотрит на окно игры и
-          распознаёт названия. Снимки остаются в памяти, на диск ничего не пишется.
+          {t("inv.scanHint")}
         </small>
       </span>
       {#if modScan.running}
-        <button class="btn stop" onclick={() => modScan.stop()}>Остановить</button>
+        <button class="btn stop" onclick={() => modScan.stop()}>{t("inv.stop")}</button>
       {:else}
-        <button class="btn" onclick={() => modScan.start()}>Начать</button>
+        <button class="btn" onclick={() => modScan.start()}>{t("inv.start")}</button>
       {/if}
     </div>
     {#if modScan.running}
-      <div class="status"><span class="dot"></span> Идёт сканирование · кадров: {modScan.frames}{#if modScan.frames} · {modScan.ocrMs} мс{/if}</div>
+      <div class="status"><span class="dot"></span> {t("inv.scanning", { v: modScan.frames })}{#if modScan.frames} · {t("inv.ms", { v: modScan.ocrMs })}{/if}</div>
     {/if}
-    {#if modScan.error}<p class="err">{modScan.error}</p>{/if}
-    <p class="hint">Игра должна быть в режиме «окно без рамки» или «в окне» и не свёрнута. Уже отмечено модов: {owned.count}.</p>
+    {#if modScan.error}<p class="err">{fromRust(modScan.error)}</p>{/if}
+    <p class="hint">{t("inv.windowHint", { v: owned.count })}</p>
   </div>
 
   {#if saved && !modScan.found.length}
     <p class="ok">
-      {saved}. Отметки «Есть» видны на страницах билдов.
-      {#if undo}<button class="link" onclick={revert}>Отменить</button>{/if}
+      {saved}. {t("inv.savedHint")}
+      {#if undo}<button class="link" onclick={revert}>{t("inv.undo")}</button>{/if}
     </p>
   {/if}
 
   {#if modScan.found.length}
-    <div class="section-title">Найдено: {modScan.found.length} · сохранить: {kept}</div>
+    <div class="section-title">{t("inv.found", { a: modScan.found.length, b: kept })}</div>
     <div class="list">
       {#each modScan.found as f (f.name)}
         <label class="mod" class:off={!f.keep}>
           <input type="checkbox" bind:checked={f.keep} />
           <span>{f.name}</span>
-          {#if isFrameMod(f.ids)}<span class="tag">варфрейм</span>{/if}
+          {#if isFrameMod(f.ids)}<span class="tag">{t("craft.kind.frame")}</span>{/if}
         </label>
       {/each}
     </div>
     <div class="actions">
-      <button class="btn" onclick={() => save(false)} disabled={!kept}>Добавить к отметкам</button>
-      <button class="btn ghost" onclick={() => save(true)} disabled={!kept} title="Всё, что не найдено, станет «Нет»">Заменить все отметки</button>
-      <button class="btn ghost" onclick={() => modScan.clear()}>Сбросить</button>
+      <button class="btn" onclick={() => save(false)} disabled={!kept}>{t("inv.add")}</button>
+      <button class="btn ghost" onclick={() => save(true)} disabled={!kept} title={t("inv.replaceHint")}>{t("inv.replace")}</button>
+      <button class="btn ghost" onclick={() => modScan.clear()}>{t("inv.clear")}</button>
     </div>
   {/if}
 
   {#if DEV && modScan.unmatched.length}
-    <div class="section-title">Отладка: нераспознанный текст последнего кадра</div>
+    <div class="section-title">{t("inv.debug")}</div>
     <div class="raw">{modScan.unmatched.join(" · ")}</div>
   {/if}
 </div>

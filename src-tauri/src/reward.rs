@@ -37,12 +37,32 @@ pub struct Squad {
     scanning: bool,
     last_scan: Option<Instant>,
     enabled: bool, // overlay switched on in the app; off = the screen is not captured at all
-    names: Vec<String>, // every relic reward as shown on the card, compacted (sent by the app)
+    pub(crate) names: Vec<String>, // every relic reward as shown on the card, compacted (sent by the app)
+    mission: Mission,
+    pub(crate) lang: String, // the game client's language, from EE.log ("ru", "en"): OCR and the card names follow it
+}
+
+// Where the player is, from EE.log (for the hub's "Сейчас" block).
+#[derive(Clone, Default, Serialize)]
+pub struct Mission {
+    pub active: bool,
+    pub name: Option<String>, // "Martialis (Марс) - Разрыв: Лит", in the client's language
+    pub node: Option<String>, // "SolNode763" when joining a mission in progress (no name line then)
+    pub relics: Vec<String>,
+    pub my_relic: Option<String>, // the relic the player took, as the game names it ("Реликвия Лит P9 [СИЯЮЩАЯ]")
+    pub lobby: Option<Lobby>,     // on the ship with a mission picked, before it starts
+}
+
+#[derive(Clone, Default, Serialize)]
+pub struct Lobby {
+    pub tier: Option<String>, // "VoidT1" for a fissure
+    pub node: Option<String>, // "SolNode36"
+    pub name: Option<String>, // "Martialis (Марс) - Разрыв: Лит"
 }
 
 impl Default for Squad {
     fn default() -> Self {
-        Self { relics: Vec::new(), scanning: false, last_scan: None, enabled: true, names: Vec::new() }
+        Self { relics: Vec::new(), scanning: false, last_scan: None, enabled: true, names: Vec::new(), mission: Mission::default(), lang: "ru".into() }
     }
 }
 
@@ -68,6 +88,7 @@ pub struct Scan {
     pub ocr_ms: u64,   // OCR time of the accepted frame
     pub frames: u32,   // frames looked at
     pub relics: Vec<String>,
+    pub lang: String, // client language the names were read in
 }
 
 pub fn init() -> SquadState {
@@ -77,6 +98,14 @@ pub fn init() -> SquadState {
 // Every EE.log line goes through here (called from the log tail in bench.rs).
 pub fn on_line(app: &AppHandle, line: &str) {
     let Some(squad) = app.try_state::<SquadState>().map(|s| s.inner().clone()) else { return };
+    if track_lang(&squad, line) {
+        let lang = squad.lock().unwrap().lang.clone();
+        let _ = app.emit("client-lang", lang);
+    }
+    if track_mission(&squad, line) {
+        let m = squad.lock().unwrap().mission.clone();
+        let _ = app.emit("mission-state", m);
+    }
     if line.contains("ThemedSquadOverlay.lua: Mission name:") {
         squad.lock().unwrap().relics.clear();
         let _ = app.emit("squad-relics", Vec::<String>::new());
@@ -92,6 +121,89 @@ pub fn on_line(app: &AppHandle, line: &str) {
         let _ = app.emit("reward-close", ());
         crate::overlay::hide(app);
     }
+}
+
+// The client's language, written at the game's start: "Process Command-line: ... -language:ru ..." and
+// "Sys [Info]: Using language: _ru". Returns true on a change. Also fed with the log written before the
+// app started (bench.rs).
+pub fn track_lang(squad: &SquadState, line: &str) -> bool {
+    let code = if let Some(i) = line.find("Sys [Info]: Using language: _") {
+        &line[i + "Sys [Info]: Using language: _".len()..]
+    } else if let (true, Some(i)) = (line.contains("Process Command-line:"), line.find(" -language:")) {
+        &line[i + " -language:".len()..]
+    } else {
+        return false;
+    };
+    let code: String = code.chars().take_while(|c| c.is_ascii_alphanumeric()).collect::<String>().to_lowercase();
+    let mut s = squad.lock().unwrap();
+    if code.is_empty() || s.lang == code {
+        return false;
+    }
+    s.lang = code;
+    true
+}
+
+// Mission state lines (checked on the 2026-09 log of the ru client). Returns true on a change.
+// Also fed with the log written before the app started (bench.rs), so a mission in progress is known.
+pub fn track_mission(squad: &SquadState, line: &str) -> bool {
+    let mut s = squad.lock().unwrap();
+    let m = &mut s.mission;
+    // {"difficulty":"","voidTier":"VoidT1","quest":"","name":"SolNode36_ActiveMission"} -> field value
+    let field = |key: &str| {
+        line.split(&format!("\"{key}\":\"")).nth(1).and_then(|r| r.split('"').next()).filter(|v| !v.is_empty()).map(str::to_string)
+    };
+    if let Some(i) = line.find("ThemedSquadOverlay.lua: Mission name: ") {
+        let name = line[i + "ThemedSquadOverlay.lua: Mission name: ".len()..].trim().to_string();
+        let my_relic = m.my_relic.take();
+        *m = Mission { active: true, name: Some(name), my_relic, ..Default::default() };
+    } else if line.contains("Client joining mission in-progress:") {
+        // ... in-progress: {"difficulty":1,"wager":"2","name":"SolNode763"}
+        let node = field("name").map(|n| n.trim_end_matches("_ActiveMission").to_string());
+        let my_relic = m.my_relic.take();
+        *m = Mission { active: true, node, my_relic, ..Default::default() };
+    } else if line.contains("ServerFramework:OpenLevel - /Lotus/Levels/Proc/PlayerShip") {
+        if !m.active && m.relics.is_empty() && m.lobby.is_none() && m.my_relic.is_none() {
+            return false;
+        }
+        *m = Mission::default();
+    } else if line.contains("Net [Info]: Set squad mission: {") || line.contains("Net [Info]: Requested mission: {") {
+        if m.active {
+            return false;
+        }
+        let node = field("name").map(|n| n.trim_end_matches("_ActiveMission").to_string());
+        let lobby = m.lobby.get_or_insert_with(Lobby::default);
+        if node != lobby.node {
+            lobby.name = None;
+        }
+        lobby.tier = field("voidTier");
+        lobby.node = node;
+    } else if let Some(i) = line.find("ThemedSquadOverlay.lua: Cached mission name=") {
+        if m.active {
+            return false;
+        }
+        // "Martialis (Марс) - Разрыв: Лит (SolNode36)"
+        let raw = line[i + "ThemedSquadOverlay.lua: Cached mission name=".len()..].trim();
+        let name = raw.rfind(" (SolNode").map_or(raw, |j| &raw[..j]).to_string();
+        m.lobby.get_or_insert_with(Lobby::default).name = Some(name);
+    } else if line.contains("ThemedSquadOverlay.lua: ResetSquadMission") {
+        if m.active || m.lobby.is_none() {
+            return false;
+        }
+        m.lobby = None;
+    } else if let Some(r) = crate::journal::relic_in_dialog(line) {
+        if m.my_relic.as_ref() == Some(&r) {
+            return false;
+        }
+        m.my_relic = Some(r);
+    } else if let Some(r) = relic_in(line) {
+        if !m.active || m.relics.contains(&r) {
+            return false;
+        }
+        m.relics.push(r);
+    } else {
+        return false;
+    }
+    true
 }
 
 // "(/Lotus/Types/Game/Projections/T1VoidProjectionProteaPrimeAPlatinum)" -> the type name.
@@ -113,9 +225,9 @@ fn start_scan(app: &AppHandle, squad: &SquadState) {
         s.scanning = true;
         s.last_scan = Some(Instant::now());
     }
-    let (relics, names) = {
+    let (relics, names, lang) = {
         let s = squad.lock().unwrap();
-        (s.relics.clone(), s.names.clone())
+        (s.relics.clone(), s.names.clone(), s.lang.clone())
     };
     let _ = app.emit("reward-open", relics.clone());
     let (app, squad) = (app.clone(), squad.clone());
@@ -130,7 +242,7 @@ fn start_scan(app: &AppHandle, squad: &SquadState) {
                 MinimumUpdateIntervalSettings::Custom(Duration::from_millis(15)),
                 DirtyRegionSettings::Default,
                 ColorFormat::Rgba8,
-                ScanFlags { app: app.clone(), relics, names },
+                ScanFlags { app: app.clone(), relics, names, lang },
             );
             Scanner::start(settings).map_err(|e| e.to_string())
         })();
@@ -145,12 +257,14 @@ struct ScanFlags {
     app: AppHandle,
     relics: Vec<String>,
     names: Vec<String>,
+    lang: String,
 }
 
 struct Scanner {
     app: AppHandle,
     relics: Vec<String>,
     names: Vec<String>,
+    lang: String,
     ocr: Ocr,
     start: Instant,
     last: Option<Instant>,
@@ -167,7 +281,8 @@ impl GraphicsCaptureApiHandler for Scanner {
             app: ctx.flags.app,
             relics: ctx.flags.relics,
             names: ctx.flags.names,
-            ocr: Ocr::new()?,
+            ocr: Ocr::new(&ctx.flags.lang).map_err(|e| format!("rust.ocrMissing|{} ({e})", ctx.flags.lang))?,
+            lang: ctx.flags.lang,
             start: Instant::now(),
             last: None,
             frames: 0,
@@ -177,7 +292,7 @@ impl GraphicsCaptureApiHandler for Scanner {
 
     fn on_frame_arrived(&mut self, frame: &mut Frame, control: InternalCaptureControl) -> Result<(), Self::Error> {
         if self.start.elapsed() > SCAN_FOR {
-            let _ = self.app.emit("reward-error", "Не удалось прочитать названия наград за 10 с");
+            let _ = self.app.emit("reward-error", "rust.rewardTimeout");
             control.stop();
             return Ok(());
         }
@@ -203,6 +318,7 @@ impl GraphicsCaptureApiHandler for Scanner {
                 ocr_ms: t.elapsed().as_millis() as u64,
                 frames: self.frames,
                 relics: self.relics.clone(),
+                lang: self.lang.clone(),
             };
             crate::bench::save_scan(&self.app, &img, &scan);
             crate::overlay::show(&self.app);
@@ -214,11 +330,13 @@ impl GraphicsCaptureApiHandler for Scanner {
 }
 
 // Runs the recognizer on a saved frame (PNG from the bench session): tests OCR without the game.
+// `lang`: the client language of the recording (default "ru").
 #[tauri::command]
-pub fn reward_scan_file(path: String) -> Result<Option<Scan>, String> {
+pub fn reward_scan_file(path: String, lang: Option<String>) -> Result<Option<Scan>, String> {
+    let lang = lang.unwrap_or_else(|| "ru".into());
     let img = image::open(&path).map_err(|e| e.to_string())?.to_rgba8();
     let (w, h) = img.dimensions();
-    let ocr = Ocr::new().map_err(|e| e.to_string())?;
+    let ocr = Ocr::new(&lang).map_err(|e| format!("rust.ocrMissing|{lang} ({e})"))?;
     let t = Instant::now();
     let cards = read_cards(&ocr, &img, &[]).map_err(|e| e.to_string())?;
     Ok(cards.map(|cards| Scan {
@@ -230,13 +348,14 @@ pub fn reward_scan_file(path: String) -> Result<Option<Scan>, String> {
         ocr_ms: t.elapsed().as_millis() as u64,
         frames: 1,
         relics: Vec::new(),
+        lang,
     }))
 }
 
 // Replays a saved frame through the whole path (recognition -> overlay), for testing without the game.
 #[tauri::command]
-pub fn reward_replay(app: AppHandle, path: String, relics: Vec<String>) -> Result<bool, String> {
-    let Some(mut scan) = reward_scan_file(path)? else { return Ok(false) };
+pub fn reward_replay(app: AppHandle, path: String, relics: Vec<String>, lang: Option<String>) -> Result<bool, String> {
+    let Some(mut scan) = reward_scan_file(path, lang)? else { return Ok(false) };
     scan.relics = relics;
     crate::overlay::show(&app);
     let _ = app.emit("reward-scan", scan);
@@ -250,6 +369,17 @@ pub fn reward_names(app: AppHandle, names: Vec<String>) {
     if let Some(sq) = app.try_state::<SquadState>() {
         sq.lock().unwrap().names = names.iter().map(|n| compact(n)).collect();
     }
+}
+
+// The game client's language (EE.log), for the card names the app sends (reward_names).
+#[tauri::command]
+pub fn client_lang(squad: tauri::State<SquadState>) -> String {
+    squad.lock().unwrap().lang.clone()
+}
+
+#[tauri::command]
+pub fn mission_state(squad: tauri::State<SquadState>) -> Mission {
+    squad.lock().unwrap().mission.clone()
 }
 
 // Settings from the app (saved on its side, sent at start and on change).
@@ -278,16 +408,18 @@ pub fn overlay_demo(app: AppHandle) -> Result<bool, String> {
             }
         }
     }
-    let Some((_, path)) = newest else { return Err("Пока нет сохранённых сканов: открой реликвию с отрядом".into()) };
-    let relics = std::fs::read_to_string(path.with_extension("json"))
+    let Some((_, path)) = newest else { return Err("rust.noScans".into()) };
+    let saved = std::fs::read_to_string(path.with_extension("json"))
         .ok()
         .and_then(|j| serde_json::from_str::<serde_json::Value>(&j).ok())
-        .and_then(|v| serde_json::from_value::<Vec<String>>(v["relics"].clone()).ok())
         .unwrap_or_default();
-    reward_replay(app, path.display().to_string(), relics)
+    let relics = serde_json::from_value::<Vec<String>>(saved["relics"].clone()).unwrap_or_default();
+    // Scans saved before the client language was recorded are from the Russian client.
+    let lang = saved["lang"].as_str().map(str::to_string);
+    reward_replay(app, path.display().to_string(), relics, lang)
 }
 
-// None = the names are not on screen yet (countdown, "Загрузка...", fade-in).
+// None = the names are not on screen yet (countdown, "Загрузка..." / "Loading...", fade-in).
 // With `names` (compacted reward names), at least half of the cards must read like one of them.
 fn read_cards(ocr: &Ocr, img: &RgbaImage, names: &[String]) -> windows::core::Result<Option<Vec<Card>>> {
     let (w, h) = img.dimensions();
@@ -298,7 +430,8 @@ fn read_cards(ocr: &Ocr, img: &RgbaImage, names: &[String]) -> windows::core::Re
     // 1. The whole strip once: is there text, and how many cards (1..4, centered)?
     let (x0, y0) = (cx - 2.0 * step, TEXT_Y * s);
     let (text, words) = ocr.region(img, x0 as u32, y0 as u32, (4.0 * step) as u32, (TEXT_H * s) as u32, 1.0, Prep::Color)?;
-    if words.is_empty() || text.to_lowercase().contains("загрузка") {
+    let lower = text.to_lowercase();
+    if words.is_empty() || lower.contains("загрузка") || lower.contains("loading") {
         return Ok(None);
     }
     let Some(n) = card_count(&words, cx, step) else { return Ok(None) };
@@ -331,7 +464,7 @@ fn compact(s: &str) -> String {
 
 // OCR text close enough to some reward name: similarity ≥ 0.5, or a long piece of a name
 // (two-line names often come out as one half).
-fn like_reward(text: &str, names: &[String]) -> bool {
+pub(crate) fn like_reward(text: &str, names: &[String]) -> bool {
     let t: Vec<char> = compact(text).chars().collect();
     if t.len() < 4 {
         return false;
@@ -384,7 +517,7 @@ mod tests {
     #[ignore]
     fn frames_in_dir() {
         let root = std::path::PathBuf::from(std::env::var("REWARD_DIR").expect("REWARD_DIR"));
-        let ocr = super::Ocr::new().unwrap();
+        let ocr = super::Ocr::new(&std::env::var("REWARD_LANG").unwrap_or("ru".into())).unwrap();
         let names = reward_names();
         let mut dirs: Vec<_> = walk(&root).into_iter().filter(|p| p.is_dir()).collect();
         dirs.sort();
@@ -422,7 +555,7 @@ mod tests {
 
     // Card names of every relic reward, as the app sends them (see rewards.ts screenName).
     fn reward_names() -> Vec<String> {
-        let db: serde_json::Value = serde_json::from_str(&std::fs::read_to_string("../static/data/db.json").unwrap()).unwrap();
+        let db: serde_json::Value = serde_json::from_str(&std::fs::read_to_string("../static/data/ru/db.json").unwrap()).unwrap();
         let mut out = Vec::new();
         for r in db["relics"].as_object().unwrap().values() {
             for rw in r["rewards"].as_array().unwrap() {

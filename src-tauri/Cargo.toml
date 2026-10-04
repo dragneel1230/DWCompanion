@@ -26,7 +26,9 @@ tauri-plugin-http = "~2.7"
 tauri-plugin-clipboard-manager = "2"
 windows-capture = "2.0.1"
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png"] }
-windows = { version = "0.62.2", features = ["Media_Ocr", "Globalization", "Graphics_Imaging", "Storage_Streams", "Foundation", "Foundation_Collections", "Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_System_WinRT"] }
+windows = { version = "0.62.2", features = ["Media_Ocr", "Globalization", "Graphics_Imaging", "Storage_Streams", "Foundation", "Foundation_Collections", "Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi", "Win32_System_WinRT", "Win32_Security_Credentials"] }
+tauri-plugin-global-shortcut = "2"
+base64 = "0.22"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

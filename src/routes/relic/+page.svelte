@@ -1,10 +1,16 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/index.svelte";
   import { page } from "$app/state";
   import { getDb, iconUrl, itemName, RARITY_RU } from "$lib/db";
   import type { Price } from "$lib/api";
   import Plat from "$lib/components/Plat.svelte";
   import Cur from "$lib/components/Cur.svelte";
   import MarketPanel from "$lib/components/MarketPanel.svelte";
+  import DropSources from "$lib/components/DropSources.svelte";
+  import { loadDrops, type DropsDb } from "$lib/drops";
+
+  let drops = $state<DropsDb | null>(null);
+  loadDrops().then((d) => (drops = d));
 
   const db = getDb();
   const id = $derived(page.url.searchParams.get("id") ?? "");
@@ -33,19 +39,19 @@
     <header class="hero">
       <img src={iconUrl(relic.icon)} alt="" />
       <div>
-        <h1>{relic.ru}</h1>
+        <h1>{relic.name}</h1>
         <div class="sub">
           <span>{relic.en}</span>
-          <span class="tag {relic.vaulted ? 'vaulted' : 'active'}">{relic.vaulted ? "в хранилище" : "выпадает сейчас"}</span>
+          <span class="tag {relic.vaulted ? 'vaulted' : 'active'}">{relic.vaulted ? t("tag.inVault") : t("tag.dropsNow")}</span>
         </div>
       </div>
       <div class="price">
         <div class="big"><Plat slug={relic.slug} size={22} /></div>
-        <div class="muted">реликвия (интакт)</div>
+        <div class="muted">{t("detail.relicIntact")}</div>
       </div>
     </header>
 
-    <div class="section-title">Награды</div>
+    <div class="section-title">{t("detail.rewards")}</div>
     <div class="rows">
       {#each relic.rewards as rw (rw.id)}
         {@const it = db.items[rw.id]}
@@ -61,15 +67,28 @@
       {/each}
     </div>
 
+    <div class="section-title where">{t("detail.where")}</div>
+    {#if relic.vaulted}
+      <p class="muted">
+        {relic.era === "Requiem" ? t("relic.requiem") : t("relic.vaulted")}
+      </p>
+    {:else if drops}
+      <DropSources db={drops} drops={drops.relics[id]} />
+    {/if}
+
     {#if relic.slug}
       <MarketPanel slug={relic.slug} item={{ en: relic.mname ?? relic.en, ru: relic.ru }} />
     {/if}
   </div>
 {:else}
-  <div class="page"><p>Реликвия не найдена.</p></div>
+  <div class="page"><p>{t("relic.notFound")}</p></div>
 {/if}
 
 <style>
+  .where {
+    margin-top: 30px;
+    color: var(--text-dim);
+  }
   .price {
     margin-left: auto;
     text-align: right;

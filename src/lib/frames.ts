@@ -1,5 +1,6 @@
 // Warframes, mods and builds (static/data/frames.json, built by scripts/build-frames.mjs).
 import { normalize } from "$lib/db";
+import { dataUrl, labels, locale } from "$lib/i18n/index.svelte";
 import { userBuilds } from "$lib/userBuilds.svelte";
 import { overframeIds, type DecodedBuild } from "$lib/overframe.svelte";
 
@@ -7,14 +8,15 @@ export type Polarity = "madurai" | "vazarin" | "naramon" | "zenurik" | "penjaga"
 export type ModRarity = "Common" | "Uncommon" | "Rare" | "Legendary" | "Peculiar";
 
 export interface Ability {
-  ru: string;
+  name: string;
   en: string;
   desc: string;
   icon: string | null;
 }
 
 export interface Frame {
-  ru: string;
+  ru: string; // Russian name: recognition of the Russian client, search, whispers to RU players
+  name: string;
   en: string;
   icon: string;
   prime: boolean;
@@ -30,7 +32,7 @@ export interface Frame {
   abilities: Ability[];
   r30: { health: number; shield: number; energy: number; armor: number }; // DE's rank-30 scaling
   desc: string;
-  parts: { ru: string; drops: { loc: string; chance: number }[] }[]; // non-prime only
+  parts: { name: string; bp?: boolean; drops: { loc: string; chance: number }[] }[]; // non-prime only
   bpCost?: number; // market blueprint price, credits
 }
 
@@ -43,7 +45,8 @@ export interface ModSet {
 }
 
 export interface Mod {
-  ru: string;
+  ru: string; // Russian name: recognition of the Russian client, search, whispers to RU players
+  name: string;
   en: string;
   icon: string | null;
   pol: Polarity;
@@ -59,10 +62,12 @@ export interface Mod {
   augment?: string;
   slug?: string;
   mname?: string;
+  cat?: string; // mods.json only: PRIMARY, SECONDARY, MELEE, STANCE, ARCH-GUN...
 }
 
 export interface Arcane {
-  ru: string;
+  ru: string; // Russian name: recognition of the Russian client, search, whispers to RU players
+  name: string;
   en: string;
   icon: string | null;
   rarity: ModRarity;
@@ -122,8 +127,18 @@ let cache: Promise<FramesDb> | null = null;
 
 // Loaded lazily: only the Warframes tab needs it.
 export function loadFrames(): Promise<FramesDb> {
-  cache ??= fetch("/data/frames.json").then((r) => r.json() as Promise<FramesDb>);
+  cache ??= fetch(dataUrl("frames.json")).then((r) => r.json() as Promise<FramesDb>);
   return cache;
+}
+
+// Every other mod (weapons, companions, archwing, stances): static/data/<lang>/mods.json, same shape.
+let other: Promise<Record<string, Mod>> | null = null;
+export function loadOtherMods(): Promise<Record<string, Mod>> {
+  other ??= fetch(dataUrl("mods.json"))
+    .then((r) => r.json() as Promise<{ mods: Record<string, Mod> }>)
+    .then((d) => d.mods);
+  other.catch(() => (other = null));
+  return other;
 }
 
 export function searchFrames(db: FramesDb, query: string): [string, Frame][] {
@@ -132,7 +147,7 @@ export function searchFrames(db: FramesDb, query: string): [string, Frame][] {
   const hits = q
     ? list.filter(([, f]) => normalize(f.ru).includes(q) || normalize(f.en).includes(q))
     : list;
-  return hits.sort(([, a], [, b]) => a.ru.localeCompare(b.ru, "ru"));
+  return hits.sort(([, a], [, b]) => a.name.localeCompare(b.name, locale()));
 }
 
 // Bundled builds plus the ones the user imported (saved locally).
@@ -159,14 +174,14 @@ export function modCost(mod: Mod, slotPol?: Polarity | null, rank = mod.max): nu
   return Math.round(full * 1.25);
 }
 
-export const POLARITY_RU: Record<Polarity, string> = {
-  madurai: "Мадурай", vazarin: "Вазарин", naramon: "Нарамон", zenurik: "Зенурик",
-  penjaga: "Пенджага", unairu: "Унайру", umbra: "Умбра", any: "Любая",
-};
+export const POLARITY_RU = labels<Polarity>({
+  madurai: "focus.madurai", vazarin: "focus.vazarin", naramon: "focus.naramon", zenurik: "focus.zenurik",
+  penjaga: "polarity.penjaga", unairu: "focus.unairu", umbra: "polarity.umbra", any: "polarity.any",
+});
 
-export const RARITY_RU: Record<ModRarity, string> = {
-  Common: "Обычный", Uncommon: "Необычный", Rare: "Редкий", Legendary: "Легендарный", Peculiar: "Особый",
-};
+export const RARITY_RU = labels<ModRarity>({
+  Common: "modRarity.common", Uncommon: "modRarity.uncommon", Rare: "modRarity.rare", Legendary: "modRarity.legendary", Peculiar: "modRarity.peculiar",
+});
 
 export const SLOT_POLARITIES: Polarity[] = ["madurai", "vazarin", "naramon", "zenurik", "unairu", "penjaga", "umbra"];
 
@@ -315,7 +330,7 @@ export function modsForSlot(db: FramesDb, frame: Frame, kind: "aura" | "exilus" 
     const prev = best.get(m.en);
     if (!prev || betterMod(m, prev[1])) best.set(m.en, [id, m]);
   }
-  return [...best.values()].sort(([, a], [, b]) => a.ru.localeCompare(b.ru, "ru"));
+  return [...best.values()].sort(([, a], [, b]) => a.name.localeCompare(b.name, locale()));
 }
 
 // ---------- Overframe import

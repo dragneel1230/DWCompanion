@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { labels, num, t } from "$lib/i18n/index.svelte";
   import { page } from "$app/state";
   import { goto } from "$app/navigation";
   import { loadFrames, buildsFor, getBuild, emptyBuild, formaInfo, buildEndo, type Build, type FramesDb } from "$lib/frames";
@@ -42,8 +43,8 @@
     userBuilds.save(bid, {
       ...$state.snapshot(build),
       frame: id,
-      title: title.trim() || "Мой билд",
-      author: prev?.author ?? "мой билд",
+      title: title.trim() || t("frame.myBuild"),
+      author: prev?.author ?? t("frame.myBuildAuthor"),
       source: prev?.source,
       url: prev?.url,
       votes: 0,
@@ -66,12 +67,12 @@
     return set.parts.map((pid) => {
       const it = wdb.items[pid];
       const relics = it.relics
-        .map((r) => ({ ...r, vaulted: wdb.relics[r.relic]?.vaulted ?? true, ru: wdb.relics[r.relic]?.ru ?? r.relic }))
+        .map((r) => ({ ...r, vaulted: wdb.relics[r.relic]?.vaulted ?? true, name: wdb.relics[r.relic]?.s ?? r.relic }))
         .sort((a, b) => Number(a.vaulted) - Number(b.vaulted));
       return { id: pid, name: itemName(it), relics };
     });
   });
-  const RARITY_RU = { COMMON: "обычн.", UNCOMMON: "необычн.", RARE: "редк." } as const;
+  const RARITY_RU = labels({ COMMON: "frame.rar.common", UNCOMMON: "frame.rar.uncommon", RARE: "frame.rar.rare" });
 
   let importing = $state(false);
 </script>
@@ -83,21 +84,21 @@
       <div class="head">
         <div class="title-row">
           <div>
-            <h1>{frame.ru}{#if frame.prime}<span class="tag prime">прайм</span>{/if}</h1>
-            <input class="title" bind:value={title} placeholder={editId ? "Название билда" : "Новый билд — название"} spellcheck="false" />
+            <h1>{frame.name}{#if frame.prime}<span class="tag prime">{t("frame.prime")}</span>{/if}</h1>
+            <input class="title" bind:value={title} placeholder={editId ? t("frame.buildName") : t("frame.newBuildName")} spellcheck="false" />
           </div>
           <div class="actions">
-            {#if editId}<button class="act" onclick={reset}>Новый</button>{/if}
-            <button class="act primary" onclick={save} disabled={empty}>{own ? "Сохранить" : "Сохранить в мои"}</button>
+            {#if editId}<button class="act" onclick={reset}>{t("frame.new")}</button>{/if}
+            <button class="act primary" onclick={save} disabled={empty}>{own ? t("common.save") : t("frame.saveToMine")}</button>
           </div>
         </div>
         <div class="costs">
-          <span title="Форм нужно (изменённые полярности)"><img src="/icons/forma.png" alt="Форма" /> {forma}</span>
-          <span title="Эндо на прокачку всех модов с 0 до выбранных рангов"><img src="/icons/endo.png" alt="Эндо" /> {endo.toLocaleString("ru-RU")}</span>
-          {#if savedAt && own}<span class="saved">сохранено</span>{/if}
+          <span title={t("frame.formaHint")}><img src="/icons/forma.png" alt={t("frame.forma")} /> {forma}</span>
+          <span title={t("frame.endoHint")}><img src="/icons/endo.png" alt={t("frame.endo")} /> {num(endo)}</span>
+          {#if savedAt && own}<span class="saved">{t("frame.saved")}</span>{/if}
         </div>
         <p class="desc">{frame.desc}</p>
-        {#if frame.passive}<p class="passive"><b>Пассивка.</b> {frame.passive}</p>{/if}
+        {#if frame.passive}<p class="passive"><b>{t("frame.passive")}</b> {frame.passive}</p>{/if}
       </div>
     </header>
 
@@ -105,7 +106,7 @@
 
     <div class="cols">
       <section>
-        <div class="section-title">Части и где добыть</div>
+        <div class="section-title">{t("frame.parts")}</div>
         {#if frame.prime}
           {#if primeParts.length}
             <div class="parts">
@@ -115,31 +116,31 @@
                   <div class="drops">
                     {#each p.relics as r}
                       <a class="relic" class:vaulted={r.vaulted} href="/relic?id={encodeURIComponent(r.relic)}">
-                        {r.ru}<small>{RARITY_RU[r.rarity]}</small>
+                        {r.name}<small>{RARITY_RU[r.rarity]}</small>
                       </a>
                     {/each}
                   </div>
                 </div>
               {/each}
             </div>
-            <p class="hint">Серым — реликвии в хранилище. <a href="/set?id={encodeURIComponent(id)}">Весь набор и цены →</a></p>
+            <p class="hint">{t("frame.greyVaulted")} <a href="/set?id={encodeURIComponent(id)}">{t("frame.wholeSet")} →</a></p>
           {:else}
-            <p class="muted">Нет данных о частях.</p>
+            <p class="muted">{t("frame.noParts")}</p>
           {/if}
         {:else}
           <div class="parts">
             {#each frame.parts as p}
               <div class="part">
-                <span class="pname">{p.ru}</span>
+                <span class="pname">{p.name}</span>
                 <div class="drops list">
-                  {#if p.ru === "Чертёж" && !p.drops.length && frame.bpCost}
-                    <span>Рынок · {frame.bpCost.toLocaleString("ru-RU")} кредитов</span>
+                  {#if p.bp && !p.drops.length && frame.bpCost}
+                    <span>{t("frame.bpMarket", { v: num(frame.bpCost) })}</span>
                   {/if}
                   {#each p.drops.slice(0, 6) as d}
-                    <span>{d.loc} <b>{d.chance.toFixed(2).replace(".", ",")}%</b></span>
+                    <span>{d.loc} <b>{num(d.chance, 2)}%</b></span>
                   {/each}
-                  {#if p.drops.length > 6}<span class="more">и ещё {p.drops.length - 6}</span>{/if}
-                  {#if !p.drops.length && !(p.ru === "Чертёж" && frame.bpCost)}<span class="muted">квест, рынок или особый способ</span>{/if}
+                  {#if p.drops.length > 6}<span class="more">{t("coll.andMore", { v: p.drops.length - 6 })}</span>{/if}
+                  {#if !p.drops.length && !(p.bp && frame.bpCost)}<span class="muted">{t("frame.otherWay")}</span>{/if}
                 </div>
               </div>
             {/each}
@@ -149,8 +150,8 @@
 
       <section>
         <div class="builds-head">
-          <div class="section-title">Билды</div>
-          {#if !importing}<button class="import-btn" onclick={() => (importing = true)}>+ Импорт с Overframe</button>{/if}
+          <div class="section-title">{t("frame.builds")}</div>
+          {#if !importing}<button class="import-btn" onclick={() => (importing = true)}>+ {t("frame.import")}</button>{/if}
         </div>
         {#if importing}<ImportBuild {db} frameId={id} onclose={() => (importing = false)} />{/if}
         {#if builds.length}
@@ -161,20 +162,20 @@
                   {b.title}
                   <small>{b.author}{#each b.tags as t}<span class="tag">{t}</span>{/each}</small>
                 </span>
-                <span class="bf" title="Форм"><img src="/icons/forma.png" alt="" /> {formaInfo(frame, b.pols).count}</span>
-                {#if b.demo}<span class="tag vaulted">демо</span>{/if}
-                {#if b.source !== "overframe" && !userBuilds.all[bid]}<span class="votes" title="Голоса">▲ {b.votes}</span>{/if}
+                <span class="bf" title={t("frame.forma")}><img src="/icons/forma.png" alt="" /> {formaInfo(frame, b.pols).count}</span>
+                {#if b.demo}<span class="tag vaulted">{t("frame.demo")}</span>{/if}
+                {#if b.source !== "overframe" && !userBuilds.all[bid]}<span class="votes" title={t("frame.votes")}>▲ {b.votes}</span>{/if}
               </a>
             {/each}
           </div>
         {:else}
-          <p class="muted">Билдов пока нет. Собери свой выше или импортируй с Overframe.</p>
+          <p class="muted">{t("frame.noBuilds")}</p>
         {/if}
       </section>
     </div>
   </div>
 {:else if db}
-  <div class="page"><p>Варфрейм не найден.</p></div>
+  <div class="page"><p>{t("frame.notFound")}</p></div>
 {/if}
 
 <style>

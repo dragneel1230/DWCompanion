@@ -15,7 +15,7 @@ const { buildIndex, namesIn } = await import(pathToFileURL(tmp).href);
 
 const text = readFileSync(process.argv[2], "utf8");
 const lines = JSON.parse(text.slice(text.indexOf("JSON") + 4).split("\n")[0]);
-const idx = buildIndex(JSON.parse(readFileSync("static/data/frames.json", "utf8")).modNames);
+const idx = buildIndex(JSON.parse(readFileSync("static/data/ru/frames.json", "utf8")).modNames);
 const t = performance.now();
 const { hits, used } = namesIn(lines, idx);
 console.log(`${hits.length} hits, ${(performance.now() - t).toFixed(0)} ms`);

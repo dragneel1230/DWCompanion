@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/index.svelte";
   import { onDestroy } from "svelte";
   import { getTimers, type Timers } from "$lib/api";
-  import { cycles, left, type Cycle } from "$lib/cycles";
-  import { getDb } from "$lib/db";
+  import { cycles, left, CYCLE_ICON } from "$lib/cycles";
+  import { goto } from "$app/navigation";
+  import Resurgence from "$lib/components/Resurgence.svelte";
 
   let timers = $state<Timers | null>(null);
   let error = $state("");
@@ -26,46 +28,32 @@
   });
 
   const list = $derived(cycles(now, timers?.cetusEnd ?? 0));
-  const sets = getDb().sets;
   const baroHere = $derived(!!timers?.baro && now >= timers.baro.from && now < timers.baro.to);
 
-  // Simple glyphs per state (24×24 strokes).
-  const ICON: Record<Cycle["kind"], string> = {
-    day: "M12 4v2M12 18v2M4 12h2M18 12h2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z",
-    night: "M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z",
-    warm: "M12 3c3 4 5 6 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-5.5 1-8.5Z",
-    cold: "M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9M9.5 4.5 12 7l2.5-2.5M9.5 19.5 12 17l2.5 2.5",
-    fass: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 5a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z",
-    vome: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm-3 9h6",
-  };
 </script>
 
 <div class="page">
-  <h1>Время</h1>
+  <h1>{t("nav.time")}</h1>
 
   {#if error}
-    <p class="muted">Не удалось получить состояние мира: {error}</p>
+    <p class="muted">{t("world.error", { error })}</p>
   {/if}
 
   <div class="pills">
     {#if timers?.resurgence}
       {@const r = timers.resurgence}
-      <div class="pill resurgence" title="Возрождение Праймов: предметы за Эйя Прайм у Варзии">
-        <b>Возрождение Праймов</b>
-        {#each r.frames as f}
-          {#if sets[f]}<a href="/set?id={encodeURIComponent(f)}">{sets[f].ru}</a>{/if}
-        {/each}
-        <span class="muted">ещё {left(r.to - now)}</span>
+      <div class="surge" title={t("timepage.resurgenceHint")}>
+        <Resurgence {r} {now} onpick={(id) => goto(`/set?id=${encodeURIComponent(id)}`)} />
       </div>
     {/if}
     {#if timers?.baro}
       {@const b = timers.baro}
       <div class="pill baro" class:here={baroHere}>
-        <b>Баро Ки'Тиир</b>
+        <b>{t("world.baro")}</b>
         {#if baroHere}
-          <span>на реле {b.relay}, уйдёт через {left(b.to - now)}</span>
+          <span>{t("world.baroHere", { relay: b.relay, left: left(b.to - now) })}</span>
         {:else}
-          <span>прибудет через {left(b.from - now)} · {b.relay}</span>
+          <span>{t("world.baroComing", { relay: b.relay, left: left(b.from - now) })}</span>
         {/if}
       </div>
     {/if}
@@ -74,7 +62,7 @@
   <div class="grid">
     {#each list as c (c.id)}
       <div class="cycle {c.kind}">
-        <div class="icon"><svg viewBox="0 0 24 24"><path d={ICON[c.kind]} /></svg></div>
+        <div class="icon"><svg viewBox="0 0 24 24"><path d={CYCLE_ICON[c.kind]} /></svg></div>
         <div>
           <div class="title"><span>{c.place}</span> <b>{c.state}</b></div>
           <div class="timer">{left(c.ends - now)}</div>
@@ -82,7 +70,7 @@
       </div>
     {/each}
   </div>
-  <p class="hint">Таймер — до смены состояния. Цетус и Камбионский Дрейф идут по циклу баунти из данных DE, Земля и Долина Сфер — по игровым часам.</p>
+  <p class="hint">{t("timepage.hint")}</p>
 </div>
 
 <style>
@@ -108,12 +96,12 @@
     border: 1px solid var(--line);
     font-size: 13px;
   }
-  .pill.resurgence {
-    border-color: rgba(143, 120, 255, 0.45);
+  .surge {
+    flex-basis: 100%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(143, 120, 255, 0.45);
     background: rgba(110, 90, 220, 0.14);
-  }
-  .pill.resurgence a {
-    color: var(--accent);
   }
   .pill.baro.here {
     border-color: rgba(111, 207, 151, 0.45);

@@ -1,5 +1,6 @@
-// Builds static/data/frames.json: warframes, warframe mods/arcanes and builds.
-// Stats/texts from WFCD @wfcd/items (MIT, has Russian i18n), icons/flags from Public Export Plus.
+// Builds static/data/<lang>/frames.json per interface language: warframes, warframe mods/arcanes and builds.
+// Stats/texts from WFCD @wfcd/items (MIT, English base + Russian i18n), icons/flags from Public Export Plus.
+// Records keep `ru` / `en` names (search, the Russian client's mod screen) and get `name` + texts in the file's language.
 // Run: pnpm data
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -12,14 +13,14 @@ const PE = "node_modules/warframe-public-export-plus";
 const wfFrames = read(`${WFCD}/Warframes.json`);
 const wfMods = read(`${WFCD}/Mods.json`);
 const wfArcanes = read(`${WFCD}/Arcanes.json`);
-const ruI18n = read(`${WFCD}/i18n/ru.json`);
+const ruI18nAll = read(`${WFCD}/i18n/ru.json`);
 const peFrames = read(`${PE}/ExportWarframes.json`);
 const peUpgrades = read(`${PE}/ExportUpgrades.json`);
 const peArcanes = read(`${PE}/ExportArcanes.json`);
 const pe = (f) => read(`${PE}/${f}`);
 const wfComponents = new Map(read(`${WFCD}/Components.json`).map((c) => [c.uniqueName, c]));
 const dictEn = pe("dict.en.json");
-const dictRu = pe("dict.ru.json");
+const dictRuAll = pe("dict.ru.json");
 const peModSets = pe("ExportModSet.json");
 // DE's own rank scaling (health/shield/energy/armor at rank 30), shipped with Public Export Plus.
 const scaled = createRequire(import.meta.url)(resolvePath(PE, "supplementals/getScaledPowersuitValues.js"));
@@ -45,9 +46,26 @@ const POLARITY = {
   AP_PRECEPT: "penjaga", AP_WARD: "unairu", AP_UMBRA: "umbra", AP_UNIVERSAL: "any", AP_ANY: "any",
 };
 
-// ---------- Drop locations: "Sedna/Merrow (Assassination), Rotation C" -> Russian where the
-// official dictionary knows the node / mission type; anything else stays in English.
+// warframe.market slugs by gameRef (= our uniqueName), for the market page.
+console.log("Fetching warframe.market items...");
+const wfmRes = await fetch("https://api.warframe.market/v2/items");
+if (!wfmRes.ok) throw new Error(`warframe.market ${wfmRes.status}`);
+const wfm = new Map((await wfmRes.json()).data.filter((x) => x.gameRef).map((x) => [x.gameRef, x]));
+
 const unshout = (s) => (s && s === s.toUpperCase() ? s[0] + s.slice(1).toLowerCase() : s);
+// Our own wording around DE's names, per language.
+const GLUE = {
+  ru: { bounty: "заказ", rotation: "ротация", simaris: "Цефалон Симарис: после «$1»", blueprint: "Чертёж" },
+  en: { bounty: "bounty", rotation: "rotation", simaris: "Cephalon Simaris: after “$1”", blueprint: "Blueprint" },
+};
+for (const LANG of ["ru", "en"]) {
+const G = GLUE[LANG];
+// Texts of the file's language: WFCD's Russian i18n for ru, its English base otherwise.
+const ruI18n = LANG === "ru" ? ruI18nAll : {};
+const dictRu = LANG === "ru" ? dictRuAll : dictEn;
+
+// ---------- Drop locations: "Sedna/Merrow (Assassination), Rotation C" -> the file's language where the
+// official dictionary knows the node / mission type; anything else stays in English.
 const nodeRu = new Map();
 for (const r of Object.values(pe("ExportRegions.json"))) {
   const en = dictEn[r.name], sys = dictEn[r.systemName];
@@ -62,25 +80,18 @@ for (const mt of Object.values(pe("ExportMissionTypes.json"))) {
 }
 // Railjack drops name the planet ("Pluto/Fenton's Field") while the region says "Pluto Proxima".
 const nodeByName = new Map([...nodeRu].map(([k, v]) => [k.split("/")[1], v]));
-const simarisRu = "Цефалон Симарис";
 function dropLocation(loc) {
   let [, place, rot] = /^(.*?)(?:, Rotation ([A-C]))?$/.exec(loc);
   const m = /^([^/()]+)\/([^()]+?) \(([^()]+)\)$/.exec(place);
   if (m) {
     const node = nodeRu.get(`${m[1]}/${m[2]}`) ?? nodeByName.get(m[2]);
     const bounty = /^Level\s+(\d+) - (\d+) .*Bounty$/.exec(m[3]);
-    const what = bounty ? `баунти ${bounty[1]}–${bounty[2]}` : (missionRu.get(m[3].toLowerCase()) ?? m[3]);
+    const what = bounty ? `${G.bounty} ${bounty[1]}–${bounty[2]}` : (missionRu.get(m[3].toLowerCase()) ?? m[3]);
     if (node) place = `${node}, ${what}`;
   }
-  place = place.replace(/^Cephalon Simaris, Complete (.+)$/, `${simarisRu}: после «$1»`);
-  return rot ? `${place} · ротация ${rot}` : place;
+  place = place.replace(/^Cephalon Simaris, Complete (.+)$/, G.simaris);
+  return rot ? `${place} · ${G.rotation} ${rot}` : place;
 }
-
-// warframe.market slugs by gameRef (= our uniqueName), for the market page.
-console.log("Fetching warframe.market items...");
-const wfmRes = await fetch("https://api.warframe.market/v2/items");
-if (!wfmRes.ok) throw new Error(`warframe.market ${wfmRes.status}`);
-const wfm = new Map((await wfmRes.json()).data.filter((x) => x.gameRef).map((x) => [x.gameRef, x]));
 
 // ---------- Warframes
 const frames = {};
@@ -98,16 +109,19 @@ for (const f of wfFrames) {
         .filter((c) => c.uniqueName.includes("/Recipes/"))
         .map((c) => {
           const w = wfComponents.get(c.uniqueName);
+          const bp = c.uniqueName.endsWith("Blueprint");
           return {
-            ru: c.uniqueName.endsWith("Blueprint") ? "Чертёж" : (ruI18n[c.uniqueName]?.name ?? w?.name ?? "?"),
+            name: bp ? G.blueprint : (ruI18n[c.uniqueName]?.name ?? w?.name ?? "?"),
+            bp: bp || undefined,
             drops: (w?.drops ?? [])
               .map((d) => ({ loc: dropLocation(d.location), chance: d.chance }))
               .sort((a, b) => b.chance - a.chance),
           };
         });
   frames[f.uniqueName] = {
-    ru: ru.name ?? f.name,
+    ru: ruI18nAll[f.uniqueName]?.name ?? f.name,
     en: f.name,
+    name: ru.name ?? f.name,
     icon: img(pe.icon),
     prime: !!f.isPrime,
     health: f.health,
@@ -126,7 +140,7 @@ for (const f of wfFrames) {
     abilities: (f.abilities ?? []).map((a) => {
       const r = ruAbilities.get(a.uniqueName);
       return {
-        ru: r?.abilityName ?? a.name,
+        name: r?.abilityName ?? a.name,
         en: a.name,
         desc: clean(r?.description ?? a.description),
         icon: img(pe.abilities?.find((x) => x.uniqueName === a.uniqueName)?.icon),
@@ -168,21 +182,37 @@ const sets = {};
 // ---------- Mods usable on warframes: generic, aura, augments (compatName = frame name).
 const frameCompat = new Set(wfFrames.map((f) => f.name.replace(/ Prime$/, "").toUpperCase()));
 const mods = {};
+// The rest (weapon, companion, archwing mods, stances): own file, loaded lazily (Baro's stock, the hub's detail panel).
+const otherMods = {};
 for (const m of wfMods) {
   const pe = peUpgrades[m.uniqueName];
   if (!pe || m.isFrivolous) continue;
   const isAura = m.compatName === "AURA";
   const forFrames = m.type === "Warframe Mod" || isAura || frameCompat.has(m.compatName);
-  if (!forFrames) continue;
+  if (!forFrames) {
+    if (m.type === "Focus Way" || m.type.includes("Riven")) continue;
+    otherMods[m.uniqueName] = { ...modRow(m, pe), fx: undefined, cat: pe.type };
+    continue;
+  }
+  mods[m.uniqueName] = {
+    ...modRow(m, pe),
+    aura: isAura || undefined,
+    exilus: pe.isUtility || undefined,
+    augment: m.isAugment && frameCompat.has(m.compatName) ? m.compatName : undefined,
+  };
+}
+
+function modRow(m, pe) {
   const ru = ruI18n[m.uniqueName] ?? {};
   const stats = ru.levelStats ?? m.levelStats ?? [];
   if (m.modSet && !sets[m.modSet]) {
     const ps = peModSets[m.modSet];
     sets[m.modSet] = { desc: clean(dictRu[ps?.description] ?? ""), n: ps?.numUpgradesInSet ?? 0, values: m.modSetValues ?? [] };
   }
-  mods[m.uniqueName] = {
-    ru: ru.name ?? m.name,
+  return {
+    ru: ruI18nAll[m.uniqueName]?.name ?? m.name,
     en: m.name,
+    name: ru.name ?? m.name,
     icon: img(pe.icon),
     pol: POLARITY[pe.polarity] ?? m.polarity ?? "any",
     rarity: m.rarity, // Common | Uncommon | Rare | Legendary | Peculiar
@@ -192,9 +222,6 @@ for (const m of wfMods) {
     levels: stats.map((l) => clean((l.stats ?? []).join("\n"))),
     fx: parseFx(m.levelStats ?? []),
     set: m.modSet,
-    aura: isAura || undefined,
-    exilus: pe.isUtility || undefined,
-    augment: m.isAugment && frameCompat.has(m.compatName) ? m.compatName : undefined,
     slug: wfm.get(m.uniqueName)?.slug,
     mname: wfm.get(m.uniqueName)?.i18n?.en?.name,
   };
@@ -206,7 +233,7 @@ const modNames = {};
 for (const m of wfMods) {
   // Rivens: names on screen are generated ("Болтор Ampiata"), veiled ones are not in the Mods list.
   if (m.isFrivolous || m.type === "Focus Way" || m.type.includes("Riven")) continue;
-  const ru = ruI18n[m.uniqueName]?.name ?? m.name;
+  const ru = ruI18nAll[m.uniqueName]?.name ?? m.name;
   (modNames[ru] ??= []).push(m.uniqueName);
 }
 
@@ -217,8 +244,9 @@ for (const a of wfArcanes) {
   const ru = ruI18n[a.uniqueName] ?? {};
   const stats = ru.levelStats ?? a.levelStats ?? [];
   arcanes[a.uniqueName] = {
-    ru: ru.name ?? a.name,
+    ru: ruI18nAll[a.uniqueName]?.name ?? a.name,
     en: a.name,
+    name: ru.name ?? a.name,
     icon: img(pe.icon),
     rarity: a.rarity,
     max: stats.length - 1,
@@ -268,9 +296,12 @@ if (existsSync(seedFile)) {
   }
 }
 
-mkdirSync("static/data", { recursive: true });
-writeFileSync("static/data/frames.json", JSON.stringify({ frames, mods, arcanes, builds, sets, modNames }));
+mkdirSync(`static/data/${LANG}`, { recursive: true });
+writeFileSync(`static/data/${LANG}/frames.json`, JSON.stringify({ frames, mods, arcanes, builds, sets, modNames }));
+writeFileSync(`static/data/${LANG}/mods.json`, JSON.stringify({ mods: otherMods }));
+console.log(`${LANG}: other mods ${Object.keys(otherMods).length}, size ${(JSON.stringify(otherMods).length / 1024).toFixed(0)} KB`);
 console.log(
-  `frames ${Object.keys(frames).length}, mods ${Object.keys(mods).length}, arcanes ${Object.keys(arcanes).length}, ` +
+  `${LANG}: frames ${Object.keys(frames).length}, mods ${Object.keys(mods).length}, arcanes ${Object.keys(arcanes).length}, ` +
   `builds ${Object.keys(builds).length}`,
 );
+}

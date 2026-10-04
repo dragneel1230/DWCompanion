@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { num, t } from "$lib/i18n/index.svelte";
   import { page } from "$app/state";
   import { goto } from "$app/navigation";
   import { loadFrames, getBuild, formaInfo, buildEndo, rankOf, POLARITY_RU, RARITY_RU, type Build, type FramesDb, type Mod, type Arcane, type Polarity } from "$lib/frames";
@@ -44,10 +45,10 @@
     const r = build.ranks;
     const addMod = (mid: string | null, slot: string, pol?: Polarity | null, rank?: number | null) =>
       mid && db!.mods[mid] && out.push({ id: mid, kind: "mod", slot, mod: db!.mods[mid], pol, rank: rankOf(db!.mods[mid], rank) });
-    addMod(build.aura, "Аура", p?.aura, r?.aura);
-    addMod(build.exilus, "Эксилус", p?.exilus, r?.exilus);
-    build.slots.forEach((m, i) => addMod(m, `Слот ${i + 1}`, p?.slots[i], r?.slots[i]));
-    build.arcanes.forEach((a, i) => db!.arcanes[a] && out.push({ id: a, kind: "arcane", slot: `Мистификатор ${i + 1}`, arcane: db!.arcanes[a] }));
+    addMod(build.aura, t("bb.aura"), p?.aura, r?.aura);
+    addMod(build.exilus, t("bb.exilus"), p?.exilus, r?.exilus);
+    build.slots.forEach((m, i) => addMod(m, t("bb.slot", { n: i + 1 }), p?.slots[i], r?.slots[i]));
+    build.arcanes.forEach((a, i) => db!.arcanes[a] && out.push({ id: a, kind: "arcane", slot: t("bb.arcaneN", { n: i + 1 }), arcane: db!.arcanes[a] }));
     return out;
   });
 
@@ -64,7 +65,7 @@
           <div>
             <h1>{build.title}</h1>
             <div class="sub">
-              <a class="frame-link" href="/frame?id={encodeURIComponent(build.frame)}">{frame.ru}</a>
+              <a class="frame-link" href="/frame?id={encodeURIComponent(build.frame)}">{frame.name}</a>
               <span>· {build.author}</span>
               {#if build.source !== "overframe" && !own}<span>· ▲ {build.votes}</span>{/if}
               {#each build.tags as t}<span class="tag">{t}</span>{/each}
@@ -72,13 +73,13 @@
           </div>
           <div class="actions">
             {#if build.url}<a class="act" href={build.url} target="_blank" rel="noreferrer">Overframe ↗</a>{/if}
-            {#if own}<button class="act danger" onclick={remove}>Удалить</button>{/if}
-            <a class="act primary" href={editUrl}>{own ? "Изменить" : "Скопировать и изменить"}</a>
+            {#if own}<button class="act danger" onclick={remove}>{t("build.delete")}</button>{/if}
+            <a class="act primary" href={editUrl}>{own ? t("build.edit") : t("build.copyEdit")}</a>
           </div>
         </div>
         <div class="costs">
-          <span title="Форм нужно (изменённые полярности)"><img src="/icons/forma.png" alt="Форма" /> {forma}</span>
-          <span title="Эндо на прокачку всех модов с 0"><img src="/icons/endo.png" alt="Эндо" /> {endo.toLocaleString("ru-RU")}</span>
+          <span title={t("frame.formaHint")}><img src="/icons/forma.png" alt={t("frame.forma")} /> {forma}</span>
+          <span title={t("build.endoHint")}><img src="/icons/endo.png" alt={t("frame.endo")} /> {num(endo)}</span>
         </div>
         {#if build.demo || build.note}
           <p class="note" class:demo={build.demo}>{build.note}</p>
@@ -89,18 +90,17 @@
     <BuildBoard {db} {frame} bind:build={view} />
 
     <div class="have-head">
-      <div class="section-title">Моды билда</div>
-      <div class="have" title="Сколько модов из билда у тебя есть">
+      <div class="section-title">{t("build.mods")}</div>
+      <div class="have" title={t("build.haveHint")}>
         <svg viewBox="0 0 36 36">
           <circle cx="18" cy="18" r="15" class="track" />
           <circle cx="18" cy="18" r="15" class="fill" style:stroke-dasharray="{ring * 94.25} 94.25" />
         </svg>
-        <span>Есть <b>{have}</b> из {lines.length}</span>
+        <span>{t("build.have")} <b>{have}</b> {t("coll.ofAll", { n: lines.length })}</span>
       </div>
     </div>
     <p class="hint">
-      Пока отметки ручные: нажми «Есть», и они сохранятся для всех билдов. Когда DE подтвердят разрешённый
-      способ читать инвентарь, проверка станет автоматической.
+      {t("build.manualHint")}
     </p>
 
     <div class="rows">
@@ -113,22 +113,22 @@
               {#if l.mod}<ModCard mod={l.mod} slotPol={l.pol} rank={l.rank} scale={0.4} bare />{:else if l.arcane}<ArcaneCard arcane={l.arcane} scale={0.23} bare />{/if}
             </div>
             <span class="name">
-              {item.ru}
+              {item.name}
               <small>
                 {l.slot} · {RARITY_RU[item.rarity]}
-                {#if l.mod}· <img class="pol" src="/icons/{l.mod.pol}.png" alt="" /> {POLARITY_RU[l.mod.pol]} · ранг {l.rank} / {l.mod.max}{/if}
+                {#if l.mod}· <img class="pol" src="/icons/{l.mod.pol}.png" alt="" /> {POLARITY_RU[l.mod.pol]} · {t("mp.rankLower", { r: `${l.rank} / ${l.mod.max}` })}{/if}
               </small>
               <span class="stats">{l.mod ? (l.mod.levels[l.rank ?? l.mod.max] ?? item.stats) : item.stats}</span>
             </span>
-            {#if item.slug}<a class="market" href="/market?id={encodeURIComponent(l.id)}" title="Заявки на warframe.market">Рынок</a>{/if}
-            <button class="own" class:yes={has} onclick={() => owned.toggle(l.id)}>{has ? "✓ Есть" : "Нет"}</button>
+            {#if item.slug}<a class="market" href="/market?id={encodeURIComponent(l.id)}" title={t("build.ordersHint")}>{t("hub.tab.market")}</a>{/if}
+            <button class="own" class:yes={has} onclick={() => owned.toggle(l.id)}>{has ? `✓ ${t("build.have")}` : t("build.no")}</button>
           </div>
         {/if}
       {/each}
     </div>
   </div>
 {:else if db}
-  <div class="page"><p>Билд не найден.</p></div>
+  <div class="page"><p>{t("build.notFound")}</p></div>
 {/if}
 
 <style>

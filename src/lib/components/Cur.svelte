@@ -1,13 +1,16 @@
 <script lang="ts">
   // Amount with the in-game currency icon (platinum or ducats).
+  import { labels, num } from "$lib/i18n/index.svelte";
   let { kind, value, size = 15 }: { kind: "plat" | "ducats"; value: number | string; size?: number } = $props();
 
   const ICON = { plat: "/icons/platinum.png", ducats: "/icons/ducats.png" };
-  const TITLE = { plat: "платина", ducats: "дукаты" };
+  const TITLE = labels({ plat: "cur.plat", ducats: "cur.ducats" });
+  // Fractions come from pack prices (23 for 6 = 3.8 each); written by the UI language.
+  const text = $derived(typeof value === "number" && !Number.isInteger(value) ? num(value, 1) : value);
 </script>
 
 <span class="cur {kind}" title={TITLE[kind]}>
-  {value}<img src={ICON[kind]} alt={TITLE[kind]} style:width="{size}px" style:height="{size}px" />
+  {text}<img src={ICON[kind]} alt={TITLE[kind]} style:width="{size}px" style:height="{size}px" />
 </span>
 
 <style>

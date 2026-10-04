@@ -2,6 +2,7 @@
   // Build editor / viewer in the style of the in-game arsenal: abilities, rank, capacity and stats
   // on the left; aura, exilus, 8 slots with their polarities and arcanes in the middle.
   // Editable: click a slot to pick a mod, click a polarity chip to forma the slot.
+  import { num, t } from "$lib/i18n/index.svelte";
   import { iconUrl } from "$lib/db";
   import {
     buildCapacity,
@@ -75,10 +76,10 @@
     build.arcanes = a.filter(Boolean);
   }
 
-  const slotTitle = (s: SlotKey) => (s === "aura" ? "Аура" : s === "exilus" ? "Эксилус" : `Слот ${s + 1}`);
+  const slotTitle = (s: SlotKey) => (s === "aura" ? t("bb.aura") : s === "exilus" ? t("bb.exilus") : t("bb.slot", { n: s + 1 }));
   const polOptions = (s: SlotKey): Polarity[] => (s === "aura" ? [...SLOT_POLARITIES.filter((p) => p !== "umbra"), "any"] : SLOT_POLARITIES);
 
-  const int = (n: number) => Math.round(n).toLocaleString("ru-RU");
+  const int = (n: number) => num(Math.round(n));
   const pct = (n: number) => `${Math.round(n)}%`;
 </script>
 
@@ -93,7 +94,7 @@
       class="chip"
       class:forma={changedAt(s)}
       class:match
-      title={`${pol ? POLARITY_RU[pol] : "Без полярности"}${changedAt(s) ? " · изменена формой" : ""}`}
+      title={`${pol ? POLARITY_RU[pol] : t("bb.noPol")}${changedAt(s) ? ` · ${t("bb.formaChanged")}` : ""}`}
       onclick={() => editable && (polMenu = polMenu === s ? null : s)}
     >
       {#if pol}<PolIcon {pol} size={13} />{:else}<span class="dash">–</span>{/if}
@@ -101,7 +102,7 @@
     </svelte:element>
     {#if polMenu === s}
       <div class="menu">
-        <button onclick={() => setPol(s, null)} title="Без полярности"><span class="dash">–</span></button>
+        <button onclick={() => setPol(s, null)} title={t("bb.noPol")}><span class="dash">–</span></button>
         {#each polOptions(s) as p}
           <button class:on={p === pol} onclick={() => setPol(s, p)} title={POLARITY_RU[p]}><PolIcon pol={p} size={15} /></button>
         {/each}
@@ -121,7 +122,7 @@
       slotPol={polAt(s)}
       {rank}
       polRow={false}
-      label={s === "aura" ? "Аура" : s === "exilus" ? "Эксилус" : ""}
+      label={s === "aura" || s === "exilus" ? s : ""}
       onclick={editable ? () => (picking = { kind: "mod", slot: s }) : undefined}
       onhover={(el) => (hoverMod = el && mod ? { el, mod, rank } : null)}
     />
@@ -135,7 +136,7 @@
         <div
           class="ability"
           role="img"
-          aria-label={a.ru}
+          aria-label={a.name}
           onmouseenter={(e) => (hoverAbility = { el: e.currentTarget as HTMLElement, i })}
           onmouseleave={() => (hoverAbility = null)}
         >
@@ -146,7 +147,7 @@
     </div>
 
     <div class="rankrow">
-      <span>Ранг</span>
+      <span>{t("bb.rank")}</span>
       {#if editable}
         <input type="number" min="0" max="30" bind:value={build.rank} />
       {:else}
@@ -158,28 +159,28 @@
       <span>{cap.used} / {cap.total}</span>
     </div>
     <label class="toggle">
-      <span>Реактор Орокин</span>
+      <span>{t("bb.reactor")}</span>
       <input type="checkbox" checked={build.reactor !== false} disabled={!editable} onchange={(e) => (build.reactor = e.currentTarget.checked)} />
     </label>
 
     <dl class="stats">
-      <dt>Здоровье</dt><dd>{int(stats.health)}</dd>
-      <dt>Щиты</dt><dd>{int(stats.shield)}</dd>
-      <dt>Броня</dt><dd>{int(stats.armor)}</dd>
-      <dt>Энергия</dt><dd>{int(stats.energy)}</dd>
-      <dt>Скорость бега</dt><dd>{stats.sprint.toFixed(2).replace(".", ",")}</dd>
+      <dt>{t("stat.health")}</dt><dd>{int(stats.health)}</dd>
+      <dt>{t("stat.shield")}</dt><dd>{int(stats.shield)}</dd>
+      <dt>{t("stat.armor")}</dt><dd>{int(stats.armor)}</dd>
+      <dt>{t("stat.energy")}</dt><dd>{int(stats.energy)}</dd>
+      <dt>{t("bb.sprint")}</dt><dd>{num(stats.sprint, 2)}</dd>
     </dl>
     <dl class="stats">
-      <dt>Сила</dt><dd class:up={stats.str > 100} class:down={stats.str < 100}>{pct(stats.str)}</dd>
-      <dt>Длительность</dt><dd class:up={stats.dur > 100} class:down={stats.dur < 100}>{pct(stats.dur)}</dd>
-      <dt>Зона поражения</dt><dd class:up={stats.rng > 100} class:down={stats.rng < 100}>{pct(stats.rng)}</dd>
-      <dt>Эффективность</dt><dd class:up={stats.eff > 100} class:down={stats.eff < 100}>{pct(stats.eff)}</dd>
+      <dt>{t("bb.str")}</dt><dd class:up={stats.str > 100} class:down={stats.str < 100}>{pct(stats.str)}</dd>
+      <dt>{t("bb.dur")}</dt><dd class:up={stats.dur > 100} class:down={stats.dur < 100}>{pct(stats.dur)}</dd>
+      <dt>{t("bb.rng")}</dt><dd class:up={stats.rng > 100} class:down={stats.rng < 100}>{pct(stats.rng)}</dd>
+      <dt>{t("bb.eff")}</dt><dd class:up={stats.eff > 100} class:down={stats.eff < 100}>{pct(stats.eff)}</dd>
     </dl>
     <dl class="stats">
-      <dt title="Эффективное здоровье: здоровье с учётом брони + щиты">Живучесть (EHP)</dt><dd>{int(stats.ehp)}</dd>
-      <dt>Снижение урона</dt><dd>{(stats.dr * 100).toFixed(1).replace(".", ",")}%</dd>
+      <dt title={t("bb.ehpHint")}>{t("bb.ehp")}</dt><dd>{int(stats.ehp)}</dd>
+      <dt>{t("bb.dr")}</dt><dd>{num(stats.dr * 100, 1)}%</dd>
     </dl>
-    <p class="note">Статы на 30 ранге, с модами без условий (без шардов, Гельминта и мистификаторов).</p>
+    <p class="note">{t("bb.note")}</p>
   </aside>
 
   <section class="board">
@@ -198,7 +199,7 @@
         {#if id && db.arcanes[id]}
           <ArcaneCard arcane={db.arcanes[id]} scale={0.26} onclick={editable ? () => (picking = { kind: "arcane", index: i }) : undefined} />
         {:else if editable && i <= build.arcanes.length}
-          <button class="arc-empty" onclick={() => (picking = { kind: "arcane", index: i })}>+ Мистификатор</button>
+          <button class="arc-empty" onclick={() => (picking = { kind: "arcane", index: i })}>+ {t("kind.arcane")}</button>
         {/if}
       {/each}
     </div>
@@ -212,7 +213,7 @@
   {#if hoverAbility}
     {@const a = frame.abilities[hoverAbility.i]}
     <div class="ability-tip">
-      <b>{a.ru}</b>
+      <b>{a.name}</b>
       <p>{a.desc}</p>
     </div>
   {/if}
@@ -224,7 +225,7 @@
     {db}
     {frame}
     kind={p.kind === "arcane" ? "arcane" : p.slot === "aura" ? "aura" : p.slot === "exilus" ? "exilus" : "slot"}
-    title={p.kind === "arcane" ? `Мистификатор ${p.index + 1}` : slotTitle(p.slot)}
+    title={p.kind === "arcane" ? t("bb.arcaneN", { n: p.index + 1 }) : slotTitle(p.slot)}
     current={p.kind === "arcane" ? (build.arcanes[p.index] ?? null) : modAt(p.slot)}
     rank={p.kind === "arcane" ? null : rankAt(p.slot)}
     {used}

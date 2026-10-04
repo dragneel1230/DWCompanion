@@ -120,6 +120,19 @@ pub fn init(app: &AppHandle) -> BenchState {
 // means the game restarted and wrote a fresh log.
 fn tail_log(app: AppHandle, bench: BenchState, path: PathBuf) {
     let mut pos: u64 = fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+    // What was written before the app started only restores the mission state (a mission in progress).
+    // Same for the relic journal (relics opened before the app started).
+    if let Ok(old) = fs::read(&path) {
+        let text = String::from_utf8_lossy(&old[..(pos as usize).min(old.len())]).into_owned();
+        if let Some(squad) = app.try_state::<crate::reward::SquadState>() {
+            let squad = squad.inner().clone();
+            for line in text.lines() {
+                crate::reward::track_lang(&squad, line);
+                crate::reward::track_mission(&squad, line);
+            }
+        }
+        crate::journal::history(&app, &text);
+    }
     let mut carry: Vec<u8> = Vec::new();
     loop {
         thread::sleep(Duration::from_millis(100));
@@ -161,6 +174,8 @@ fn tail_log(app: AppHandle, bench: BenchState, path: PathBuf) {
 
 fn on_line(app: &AppHandle, bench: &BenchState, line: &str) {
     crate::reward::on_line(app, line);
+    crate::journal::on_line(app, line);
+    crate::kiosk::on_line(app, line);
     let trigger = TRIGGER.iter().any(|k| line.contains(k));
     if !trigger && !KEEP.iter().any(|k| line.contains(k)) {
         return;

@@ -47,7 +47,7 @@ pub fn inv_scan_start(app: AppHandle, state: tauri::State<InvState>) -> Result<(
     if let Some(old) = slot.take() {
         let _ = old.stop();
     }
-    let window = Window::from_name(GAME_TITLE).map_err(|_| "Окно Warframe не найдено: запусти игру".to_string())?;
+    let window = Window::from_name(GAME_TITLE).map_err(|_| "rust.noGameWindow".to_string())?;
     let settings = Settings::new(
         window,
         CursorCaptureSettings::WithoutCursor,
@@ -91,7 +91,7 @@ impl GraphicsCaptureApiHandler for InvScanner {
     fn new(ctx: Context<Self::Flags>) -> Result<Self, Self::Error> {
         Ok(Self {
             app: ctx.flags,
-            ocr: Ocr::new()?,
+            ocr: Ocr::new("ru")?, // the mod names it matches are Russian only (frames.json modNames)
             start: Instant::now(),
             last_look: None,
             prev: Vec::new(),
@@ -102,7 +102,7 @@ impl GraphicsCaptureApiHandler for InvScanner {
 
     fn on_frame_arrived(&mut self, frame: &mut Frame, control: InternalCaptureControl) -> Result<(), Self::Error> {
         if self.start.elapsed() > MAX_RUN {
-            let _ = self.app.emit("inv-stopped", "Сканирование остановлено: прошло 30 минут");
+            let _ = self.app.emit("inv-stopped", "rust.scanTimeout");
             control.stop();
             return Ok(());
         }
@@ -132,7 +132,7 @@ impl GraphicsCaptureApiHandler for InvScanner {
     }
 
     fn on_closed(&mut self) -> Result<(), Self::Error> {
-        let _ = self.app.emit("inv-stopped", "Окно игры закрыто");
+        let _ = self.app.emit("inv-stopped", "rust.gameClosed");
         Ok(())
     }
 }
@@ -204,7 +204,7 @@ mod tests {
         // Crops are placed on a 1920x1080 canvas so the upscale matches a real frame.
         let mut img = image::RgbaImage::new(1920.max(src.width()), 1080.max(src.height()));
         image::imageops::overlay(&mut img, &src, 0, 0);
-        let ocr = super::Ocr::new().unwrap();
+        let ocr = super::Ocr::new("ru").unwrap();
         let t = std::time::Instant::now();
         let lines = super::read_lines(&ocr, &img).unwrap();
         eprintln!("ocr {} ms", t.elapsed().as_millis());

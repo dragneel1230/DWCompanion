@@ -1,5 +1,6 @@
 <script lang="ts">
   // Paste an Overframe "Copy" link -> build saved locally. Unknown Overframe ids are resolved by hand once.
+  import { t } from "$lib/i18n/index.svelte";
   import { goto } from "$app/navigation";
   import ModCard from "./ModCard.svelte";
   import ArcaneCard from "./ArcaneCard.svelte";
@@ -27,8 +28,8 @@
     const id = `of-${decoded.buildId ?? Date.now()}`;
     userBuilds.save(id, {
       ...result.build,
-      title: title.trim() || "Билд с Overframe",
-      author: "импорт с Overframe",
+      title: title.trim() || t("imp.defaultTitle"),
+      author: t("imp.author"),
       votes: 0,
       note: "",
       tags: [],
@@ -40,28 +41,28 @@
 
 <div class="import">
   <div class="head">
-    <b>Импорт с Overframe</b>
-    <button class="x" onclick={onclose} aria-label="Закрыть">✕</button>
+    <b>{t("frame.import")}</b>
+    <button class="x" onclick={onclose} aria-label={t("common.close")}>✕</button>
   </div>
-  <p class="hint">На странице билда Overframe нажми «Copy» и вставь сюда адрес открывшейся страницы (он содержит <code>?bs=</code>).</p>
+  <p class="hint">{t("imp.hint")} (<code>?bs=</code>).</p>
 
   <input bind:value={link} placeholder="https://overframe.gg/build/new/53/saryn-prime/?bs=..." spellcheck="false" />
 
   {#if link.trim() && !decoded}
-    <p class="bad">Не похоже на ссылку «Copy» с Overframe: в ней нет кода <code>?bs=</code>.</p>
+    <p class="bad">{t("imp.bad")} <code>?bs=</code>.</p>
   {:else if result}
     {#if otherFrame}
-      <p class="warn">Этот билд для «{otherFrame.ru}», он сохранится туда.</p>
+      <p class="warn">{t("imp.otherFrame", { name: otherFrame.name })}</p>
     {/if}
-    <p class="ok">Распознано {result.total - result.unknown.length} из {result.total}</p>
+    <p class="ok">{t("imp.recognized", { a: result.total - result.unknown.length, b: result.total })}</p>
 
     {#each result.unknown as ofId (ofId)}
       <div class="unknown">
-        <span>Неизвестный мод Overframe #{ofId}. Какой это?</span>
+        <span>{t("imp.unknown", { id: ofId })}</span>
         <input
           value={pick[ofId] ?? ""}
           oninput={(e) => (pick = { ...pick, [ofId]: e.currentTarget.value })}
-          placeholder="Начни вводить название..."
+          placeholder={t("imp.typeName")}
           spellcheck="false"
         />
         <div class="options">
@@ -77,9 +78,9 @@
       </div>
     {/each}
 
-    <input bind:value={title} placeholder="Название билда (необязательно)" spellcheck="false" />
+    <input bind:value={title} placeholder={t("imp.nameOptional")} spellcheck="false" />
     <button class="save" disabled={!result.build || result.unknown.length > 0} onclick={save}>
-      {result.unknown.length ? `Сначала укажи ${result.unknown.length} мод(а)` : "Сохранить билд"}
+      {result.unknown.length ? t("imp.pickFirst", { n: result.unknown.length }) : t("imp.save")}
     </button>
   {/if}
 </div>

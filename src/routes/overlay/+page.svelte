@@ -2,16 +2,19 @@
   // Overlay window content (transparent, click-through, over the game). Rust shows the window when
   // the card names are read (event "reward-scan"); we hide it after the reward countdown.
   // Look: in the spirit of the game's own UI — dark glass, thin gold lines, corner brackets.
+  import { labels, t } from "$lib/i18n/index.svelte";
   import { onDestroy } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-  import { getPrice, cachedPrice, type Price } from "$lib/api";
-  import { getDb, type Rarity } from "$lib/db";
+  import { getPrice, cachedPrice, loadBulk, bulkSell, type Price } from "$lib/api";
+  import { getDb, type Item, type Rarity } from "$lib/db";
   import { matchCard, relicKey, squadRewards, type Candidate, type Match } from "$lib/rewards";
+  import { client } from "$lib/clientLang.svelte";
   import { readOverlaySettings, type Priority } from "$lib/overlaySettings.svelte";
+  import KioskLayer from "$lib/components/KioskLayer.svelte";
 
   type Card = { x: number; y: number; w: number; h: number; texts: string[] };
-  type Scan = { cards: Card[]; screen_w: number; screen_h: number; scale: number; ms: number; relics: string[] };
+  type Scan = { cards: Card[]; screen_w: number; screen_h: number; scale: number; ms: number; relics: string[]; lang?: string };
   type Shown = { card: Card; match: Match | null; price: Price | null; vaulted: boolean; rarity: Rarity | null };
 
   document.documentElement.style.background = "transparent";
@@ -27,6 +30,14 @@
   // Prices of the squad's possible rewards are fetched ahead, so the reward screen needs no network.
   function prefetch(pool: Candidate[]) {
     for (const c of pool) if (c.item.slug && !cachedPrice(c.item.slug)) getPrice(c.item.slug).catch(() => {});
+  }
+
+  // Live price if already fetched, else the day's average from the bulk file (no waiting), else nothing.
+  function quickPrice(slug: string): Price | null {
+    const live = cachedPrice(slug);
+    if (live) return live;
+    const b = bulkSell(slug);
+    return b != null ? { sell: b, buy: null, sellers: 0, at: Date.now() } : null;
   }
 
   const vaultedItem = (id: string) => {
@@ -46,28 +57,33 @@
   }
 
   async function show(s: Scan) {
+    await loadBulk();
     priority = readOverlaySettings().priority; // may have changed in the main window
     const squad = s.relics.length ? s.relics : relics;
-    const pool = squadRewards(squad);
+    const lang = s.lang ?? client.lang; // the client's language the cards were read in
+    const pool = squadRewards(squad, lang);
     scan = s;
     shown = s.cards.map((card) => {
-      const match = matchCard(card.texts, pool);
+      const match = matchCard(card.texts, pool, lang);
       const id = match?.cand.id;
       const slug = match?.cand.item.slug;
       return {
         card,
         match,
-        price: slug ? cachedPrice(slug) : null,
+        price: slug ? quickPrice(slug) : null,
         vaulted: id ? vaultedItem(id) : false,
         rarity: id ? rarityOf(id, squad) : null,
       };
     });
+    // The relic journal keeps what was on offer (the log only has the player's own relic reward).
+    const offer = shown.map((sh) => sh.match?.cand.id).filter((x): x is string => !!x);
+    if (offer.length) invoke("journal_offer", { items: offer }).catch(() => {});
     await Promise.all(
       shown.map(async (sh, i) => {
         const slug = sh.match?.cand.item.slug;
-        if (slug && !sh.price) {
+        if (slug && !cachedPrice(slug)) {
           const p = await getPrice(slug).catch(() => null);
-          shown[i] = { ...shown[i], price: p };
+          if (p) shown[i] = { ...shown[i], price: p };
         }
       }),
     );
@@ -96,15 +112,16 @@
     return bi;
   });
 
-  // Item name split into the part and what it belongs to:
-  // "Чертёж: Протея Прайм: Система" -> "Система" under "Чертёж · Протея Прайм".
-  function nameParts(name: string) {
-    const parts = name.split(": ");
+  // Item name in the interface language, split into the part and what it belongs to:
+  // "Протея Прайм: Система" (blueprint) -> "Система" under "Чертёж · Протея Прайм".
+  // (Recognition matches the client's screen text, cand.name; this is only what is shown.)
+  function nameParts(it: Item) {
+    const parts = it.name.split(": ");
     const title = parts.pop()!;
-    return { title, over: parts.join(" · ") };
+    return { title, over: [it.bp ? t("overlay.bp") : "", ...parts].filter(Boolean).join(" · ") };
   }
 
-  const RARITY_RU: Record<Rarity, string> = { COMMON: "обычная", UNCOMMON: "необычная", RARE: "редкая" };
+  const RARITY_RU = labels<Rarity>({ COMMON: "overlay.rar.common", UNCOMMON: "overlay.rar.uncommon", RARE: "overlay.rar.rare" });
 
   priority = readOverlaySettings().priority;
   const onStorage = (e: StorageEvent) => {
@@ -116,9 +133,9 @@
   const un: Promise<UnlistenFn>[] = [
     listen<string[]>("squad-relics", (e) => {
       relics = e.payload;
-      prefetch(squadRewards(relics));
+      prefetch(squadRewards(relics, client.lang));
     }),
-    listen<string[]>("reward-open", (e) => prefetch(squadRewards(e.payload))),
+    listen<string[]>("reward-open", (e) => prefetch(squadRewards(e.payload, client.lang))),
     listen<Scan>("reward-scan", (e) => show(e.payload)),
     listen("reward-close", close),
   ];
@@ -129,7 +146,7 @@
   <!-- Sizes are the game's 1080p pixels times --k, so the look follows the resolution. -->
   <div class="layer" style:--k={scan.scale / dpr}>
     {#each shown as s, i (i)}
-      {@const n = s.match ? nameParts(s.match.cand.name) : null}
+      {@const n = s.match ? nameParts(s.match.cand.item) : null}
       <div
         class="panel r-{s.rarity ?? 'none'}"
         class:best={i === best}
@@ -138,7 +155,7 @@
         style:width="{s.card.w / dpr}px"
         style:animation-delay="{i * 70}ms"
       >
-        {#if i === best}<div class="ribbon">Лучший выбор</div>{/if}
+        {#if i === best}<div class="ribbon">{t("overlay.best")}</div>{/if}
         <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
 
         {#if s.match && n}
@@ -150,7 +167,7 @@
                 <img src="/icons/ducats.png" alt="" />
                 <b>{ducats}</b>
               {:else}
-                <span class="none">без дукатов</span>
+                <span class="none">{t("overlay.noDucats")}</span>
               {/if}
             </div>
             <div class="buy hidden">.</div>
@@ -162,10 +179,10 @@
               {:else if s.match.cand.item.slug}
                 <span class="wait">…</span>
               {:else}
-                <span class="none">не торгуется</span>
+                <span class="none">{t("overlay.notTradable")}</span>
               {/if}
             </div>
-            <div class="buy" class:hidden={s.price?.buy == null}>покупают за {s.price?.buy ?? 0}</div>
+            <div class="buy" class:hidden={s.price?.buy == null}>{t("overlay.buyers", { v: s.price?.buy ?? 0 })}</div>
           {/if}
 
           <div class="line"></div>
@@ -182,16 +199,18 @@
               <span class="ducats"><img src="/icons/ducats.png" alt="" />{s.match.cand.item.ducats}</span>
             {/if}
             {#if s.rarity}<span class="rar">{RARITY_RU[s.rarity]}</span>{/if}
-            {#if s.vaulted}<span class="vault">хранилище</span>{/if}
-            {#if s.match.score < 0.7}<span class="doubt">не уверен</span>{/if}
+            {#if s.vaulted}<span class="vault">{t("tag.vault")}</span>{/if}
+            {#if s.match.score < 0.7}<span class="doubt">{t("overlay.unsure")}</span>{/if}
           </div>
         {:else}
-          <div class="none big">не распознано</div>
+          <div class="none big">{t("overlay.unread")}</div>
         {/if}
       </div>
     {/each}
   </div>
 {/if}
+
+<KioskLayer />
 
 <style>
   :global(html),

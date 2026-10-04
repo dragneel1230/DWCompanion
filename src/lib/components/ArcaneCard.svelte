@@ -3,6 +3,7 @@
   // "Media Policy/Arcane Images"), on the 512×512 canvas. The wiki recipe (343px icon, up 60px)
   // is for its padded icons; DE CDN icons are tight, so they sit smaller inside the dark well
   // (well center ≈ 256,200). Only the arch's rows (≈40–345) are shown.
+  import { t } from "$lib/i18n/index.svelte";
   import { iconUrl } from "$lib/db";
   import type { Arcane } from "$lib/frames";
 
@@ -35,9 +36,9 @@
       <img class="bg" src="/modframe/ArcaneBackground{bg}.png" alt="" />
       <img class="icon" src={iconUrl(arcane.icon)} alt="" loading="lazy" />
     </div>
-    {#if owned}<div class="own" title="Есть у меня">✓</div>{/if}
+    {#if owned}<div class="own" title={t("card.owned")}>✓</div>{/if}
   </div>
-  {#if !bare}<div class="name">{arcane.ru}</div>{/if}
+  {#if !bare}<div class="name">{arcane.name}</div>{/if}
 </svelte:element>
 
 <style>

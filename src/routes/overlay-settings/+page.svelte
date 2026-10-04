@@ -1,17 +1,34 @@
 <script lang="ts">
   // Overlay settings. Debug tools (EE.log lines, screen recording) only in development builds.
+  import { fromRust, locale, t, type Key } from "$lib/i18n/index.svelte";
   import { onDestroy } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { overlaySettings, type Priority } from "$lib/overlaySettings.svelte";
+  import { hubSettings, acceleratorOf, shortcutKeys, DEFAULT_SHORTCUT } from "$lib/hubSettings.svelte";
 
   const s = $derived(overlaySettings.value);
 
-  const PRIORITIES: { id: Priority; label: string; hint: string; soon?: boolean }[] = [
-    { id: "platinum", label: "Платина", hint: "самая дорогая на warframe.market" },
-    { id: "ducats", label: "Дукаты", hint: "больше всего дукатов у Баро" },
-    { id: "collection", label: "Коллекция", hint: "чего нет у тебя — после доступа к инвентарю", soon: true },
+  const PRIORITIES: { id: Priority; label: Key; hint: Key; soon?: boolean }[] = [
+    { id: "platinum", label: "market.col.plat", hint: "settings.prio.platHint" },
+    { id: "ducats", label: "market.col.ducats", hint: "settings.prio.ducatsHint" },
+    { id: "collection", label: "nav.collection", hint: "settings.prio.collHint", soon: true },
   ];
+
+  // ---------- hub hotkey: click the field, press the combination
+  let recording = $state(false);
+  function onRecordKey(e: KeyboardEvent) {
+    if (!recording) return;
+    e.preventDefault();
+    if (e.key === "Escape") {
+      recording = false;
+      return;
+    }
+    const acc = acceleratorOf(e);
+    if (!acc) return; // only modifiers so far
+    recording = false;
+    hubSettings.set({ shortcut: acc });
+  }
 
   // ---------- debug (dev builds only)
   const DEV = import.meta.env.DEV;
@@ -20,7 +37,7 @@
   let demoError = $state("");
   const un: Promise<UnlistenFn>[] = DEV ? [listen<Line>("bench-line", (e) => (lines = [e.payload, ...lines].slice(0, 100)))] : [];
   onDestroy(() => un.forEach((u) => u.then((f) => f())));
-  const time = (t: number) => new Date(t).toLocaleTimeString("ru-RU") + "." + String(t % 1000).padStart(3, "0");
+  const time = (t: number) => new Date(t).toLocaleTimeString(locale()) + "." + String(t % 1000).padStart(3, "0");
 
   function demo() {
     demoError = "";
@@ -28,37 +45,72 @@
   }
 </script>
 
+<svelte:window onkeydown={onRecordKey} />
+
 <div class="page">
-  <h1>Оверлей</h1>
+  <h1>{t("nav.overlay")}</h1>
+
+  <div class="row switch hotkey">
+    <span>
+      <b>{t("settings.hub")}</b>
+      <small>{t("settings.hubHint")}</small>
+    </span>
+    <button class="keys" class:rec={recording} onclick={() => (recording = !recording)} onblur={() => (recording = false)}>
+      {#if recording}
+        {t("settings.pressKeys")}
+      {:else}
+        {#each shortcutKeys(hubSettings.value.shortcut) as k}<kbd>{k}</kbd>{/each}
+      {/if}
+    </button>
+  </div>
+  {#if hubSettings.error}<p class="err hot">{fromRust(hubSettings.error)}</p>{/if}
+  <div class="links">
+    <button onclick={() => invoke("hub_toggle")}>{t("settings.openNow")}</button>
+    {#if hubSettings.value.shortcut !== DEFAULT_SHORTCUT}
+      <button onclick={() => hubSettings.set({ shortcut: DEFAULT_SHORTCUT })}>{t("settings.resetKeys", { keys: DEFAULT_SHORTCUT })}</button>
+    {/if}
+  </div>
+
+  <div class="section-title">{t("settings.rewards")}</div>
 
   <label class="row switch">
     <span>
-      <b>Цены наград за реликвии поверх игры</b>
-      <small>Показывается на экране выбора награды в разрыве Бездны</small>
+      <b>{t("settings.rewardsOn")}</b>
+      <small>{t("settings.rewardsHint")}</small>
     </span>
     <input type="checkbox" checked={s.enabled} onchange={(e) => overlaySettings.set({ enabled: e.currentTarget.checked })} />
   </label>
 
-  <div class="section-title">Лучший выбор</div>
+  <div class="section-title">{t("overlay.best")}</div>
   <div class="choices" class:off={!s.enabled}>
     {#each PRIORITIES as p}
       <button class="choice" class:on={s.priority === p.id} disabled={p.soon} onclick={() => overlaySettings.set({ priority: p.id })}>
-        <b>{p.label}{#if p.soon}<span class="soon">позже</span>{/if}</b>
-        <small>{p.hint}</small>
+        <b>{t(p.label)}{#if p.soon}<span class="soon">{t("settings.soon")}</span>{/if}</b>
+        <small>{t(p.hint)}</small>
       </button>
     {/each}
   </div>
 
+  <div class="section-title">{t("settings.kiosk")}</div>
+
+  <label class="row switch">
+    <span>
+      <b>{t("settings.kioskOn")}</b>
+      <small>{t("settings.kioskHint")}</small>
+    </span>
+    <input type="checkbox" checked={s.kiosk} onchange={(e) => overlaySettings.set({ kiosk: e.currentTarget.checked })} />
+  </label>
+
   {#if DEV}
-    <div class="section-title">Отладка</div>
+    <div class="section-title">{t("settings.debug")}</div>
     <div class="debug">
-      <label><input type="checkbox" checked={s.record} onchange={(e) => overlaySettings.set({ record: e.currentTarget.checked })} /> Записывать экран наград и сканы на диск</label>
+      <label><input type="checkbox" checked={s.record} onchange={(e) => overlaySettings.set({ record: e.currentTarget.checked })} /> {t("settings.record")}</label>
       <div class="actions">
-        <button onclick={demo}>Показать пример</button>
-        <button onclick={() => invoke("bench_test")}>Проверить захват</button>
-        <button onclick={() => invoke("bench_open_dir")}>Папка сессии</button>
+        <button onclick={demo}>{t("settings.demo")}</button>
+        <button onclick={() => invoke("bench_test")}>{t("settings.testCapture")}</button>
+        <button onclick={() => invoke("bench_open_dir")}>{t("settings.sessionDir")}</button>
       </div>
-      {#if demoError}<p class="err">{demoError}</p>{/if}
+      {#if demoError}<p class="err">{fromRust(demoError)}</p>{/if}
       <div class="log">
         {#each lines as l}
           <div class:trigger={l.trigger}><span class="t">{time(l.t)}</span> {l.line}</div>
@@ -93,6 +145,56 @@
   .choice small {
     color: var(--text-dim);
     font-size: 12px;
+  }
+  .hotkey {
+    cursor: default;
+  }
+  .keys {
+    flex: none;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    min-width: 110px;
+    justify-content: center;
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .keys:hover {
+    border-color: var(--text-faint);
+  }
+  .keys.rec {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  kbd {
+    min-width: 22px;
+    padding: 2px 7px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    border-bottom-width: 2px;
+    font: 600 12px var(--font);
+    color: var(--text);
+    background: var(--surface-2);
+  }
+  .err.hot {
+    margin: 8px 2px 0;
+    font-size: 13px;
+  }
+  .links {
+    display: flex;
+    gap: 16px;
+    margin: 8px 2px 0;
+  }
+  .links button {
+    padding: 0;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .links button:hover {
+    color: var(--text);
   }
   .switch input {
     width: 18px;

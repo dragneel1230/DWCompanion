@@ -3,6 +3,7 @@
   // WARFRAME wiki "Mod/Assets", originally from DE's companion app / Arsenal Twitch extension).
   // Laid out in the assets' native pixels (292 × 150) and scaled down as a whole.
   // Above the card: the slot's forma polarity, green when it matches (drain halved, aura doubled).
+  import { t } from "$lib/i18n/index.svelte";
   import { iconUrl } from "$lib/db";
   import { modCost, type Mod, type Polarity } from "$lib/frames";
   import PolIcon from "./PolIcon.svelte";
@@ -21,7 +22,7 @@
   }: {
     mod?: Mod | null;
     slotPol?: Polarity | null;
-    label?: "Аура" | "Эксилус" | "";
+    label?: "aura" | "exilus" | ""; // special slot: its frame and caption
     owned?: boolean;
     scale?: number;
     bare?: boolean; // thumbnail: no slot polarity row, not clickable
@@ -45,7 +46,7 @@
   const mismatch = $derived(!!mod && !!slotPol && !match && !mod.aura);
   const ranks = $derived(Math.min(mod?.max ?? 0, 10));
   const active = $derived(Math.min(r, 10));
-  const kindIcon = $derived(label === "Аура" ? "/modframe/SilverAura.png" : label === "Эксилус" ? "/modframe/GoldExilus.png" : null);
+  const kindIcon = $derived(label === "aura" ? "/modframe/SilverAura.png" : label === "exilus" ? "/modframe/GoldExilus.png" : null);
 </script>
 
 <div class="slot" style:--s={scale}>
@@ -75,17 +76,17 @@
           <span>{mod.aura ? `+${-cost}` : cost}</span>
           <PolIcon pol={mod.pol} size={17} />
         </div>
-        <div class="name">{mod.ru}</div>
+        <div class="name">{mod.name}</div>
         <div class="stars">
           {#each { length: ranks } as _, i}<img class:off={i >= active} src="/modframe/RankSlotActive.png" alt="" />{/each}
         </div>
         <img class="line" src="/modframe/RankCompleteLine.png" alt="" />
-        {#if owned}<div class="own" title="Есть у меня">✓</div>{/if}
+        {#if owned}<div class="own" title={t("card.owned")}>✓</div>{/if}
       </div>
     </svelte:element>
   {:else}
     <svelte:element this={onclick && !bare ? "button" : "div"} class="card empty" class:add={!!onclick} {onclick} role={onclick ? "button" : undefined}>
-      <span>{#if onclick}<b>+</b>{/if}{label || (onclick ? "Мод" : "Пусто")}</span>
+      <span>{#if onclick}<b>+</b>{/if}{label === "aura" ? t("bb.aura") : label === "exilus" ? t("bb.exilus") : onclick ? t("kind.mod") : t("card.empty")}</span>
     </svelte:element>
   {/if}
 </div>

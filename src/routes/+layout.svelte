@@ -1,13 +1,22 @@
 <script lang="ts">
   import "../app.css";
   import { page } from "$app/state";
+  import { goto } from "$app/navigation";
   import { invoke } from "@tauri-apps/api/core";
+  import { listen } from "@tauri-apps/api/event";
   import { loadDb } from "$lib/db";
+  import { loadBulk } from "$lib/api";
+  import { startImageCache } from "$lib/imageCache";
   import { allRewards } from "$lib/rewards";
+  import { client } from "$lib/clientLang.svelte";
   import SearchBox from "$lib/components/SearchBox.svelte";
   import { overlaySettings } from "$lib/overlaySettings.svelte";
+  import { hubSettings } from "$lib/hubSettings.svelte";
+  import { i18n, LANGS, t, type Key } from "$lib/i18n/index.svelte";
 
   let { children } = $props();
+
+  startImageCache();
 
   let ready = $state(false);
   let error = $state("");
@@ -16,10 +25,16 @@
   loadDb()
     .then(() => {
       ready = true;
-      // The reward scanner checks card text against these (skips countdowns and other text).
-      if (!bare) invoke("reward_names", { names: allRewards().map((c) => c.name) }).catch(() => {});
+      loadBulk(); // prime prices in one request, before any page asks
     })
     .catch((e) => (error = String(e)));
+
+  // The reward scanner checks card text against these (skips countdowns and other text): names as the
+  // game client shows them, sent again when the client's language changes (game restarted in another one).
+  $effect(() => {
+    if (!ready || bare) return;
+    invoke("reward_names", { names: allRewards(client.lang).map((c) => c.name) }).catch(() => {});
+  });
 
   function onkeydown(ev: KeyboardEvent) {
     if ((ev.ctrlKey || ev.metaKey) && ev.code === "KeyK") {
@@ -30,22 +45,31 @@
     }
   }
 
-  const NAV = [
-    { href: "/", label: "Поиск", icon: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm9 16-4.3-4.3" },
-    { href: "/frames", label: "Варфреймы", icon: "M12 3 5 7v6c0 4 3 7 7 8 4-1 7-4 7-8V7l-7-4Zm0 5v8" },
+  const NAV: { href: string; label: Key; icon: string }[] = [
+    { href: "/", label: "nav.search", icon: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm9 16-4.3-4.3" },
+    { href: "/frames", label: "nav.frames", icon: "M12 3 5 7v6c0 4 3 7 7 8 4-1 7-4 7-8V7l-7-4Zm0 5v8" },
     // Inventory (mod scan, /inventory) is hidden: too much manual work, waiting for DE (docs/DE_REQUEST.md).
-    { href: "/fissures", label: "Разломы", icon: "M12 3v18M5 7l14 10M19 7 5 17" },
-    { href: "/time", label: "Время", icon: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l3 2" },
-    { href: "/overlay-settings", label: "Оверлей", icon: "M4 6h16v9H4zM8 19h8M12 15v4" },
+    { href: "/collection", label: "nav.collection", icon: "M12 3a9 9 0 1 0 9 9M12 7a5 5 0 1 0 5 5M12 12l7-7" },
+    { href: "/journal", label: "nav.journal", icon: "M6 3h10l3 3v15H6zM9 9h7M9 13h7M9 17h4" },
+    { href: "/resources", label: "nav.resources", icon: "M12 3 4 7.5v9L12 21l8-4.5v-9L12 3Zm0 0v18M4 7.5l8 4.5 8-4.5" },
+    { href: "/orders", label: "nav.orders", icon: "M4 7h16M4 12h16M4 17h10M18 15v6M15 18h6" },
+    { href: "/fissures", label: "nav.fissures", icon: "M12 3v18M5 7l14 10M19 7 5 17" },
+    { href: "/time", label: "nav.time", icon: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l3 2" },
+    { href: "/overlay-settings", label: "nav.overlay", icon: "M4 6h16v9H4zM8 19h8M12 15v4" },
   ];
 
   // Frame and build pages belong to the Warframes tab.
   const SECTION: Record<string, string> = { "/frame": "/frames", "/build": "/frames", "/market": "/frames" };
   const current = $derived(SECTION[page.url.pathname] ?? page.url.pathname);
-  // The overlay window (over the game) renders its page alone, without the app shell.
-  const bare = page.url.pathname === "/overlay";
-  // Saved overlay settings reach the Rust side once, from the main window.
-  if (!bare) overlaySettings.sync();
+  // Windows over the game (reward overlay, hub) render their page alone, without the app shell.
+  const bare = page.url.pathname === "/overlay" || page.url.pathname === "/hub";
+  // Saved settings reach the Rust side once, from the main window.
+  if (!bare) {
+    overlaySettings.sync();
+    hubSettings.sync();
+    // "Открыть в приложении" in the hub.
+    listen<string>("navigate", (e) => goto(e.payload));
+  }
 </script>
 
 <svelte:window {onkeydown} />
@@ -57,17 +81,23 @@
   <nav>
     <div class="logo" title="Dragneel's Warframe Companion">DW</div>
     {#each NAV as n}
-      <a href={n.href} class:current={current === n.href} title={n.label}>
+      <a href={n.href} class:current={current === n.href} title={t(n.label)}>
         <svg viewBox="0 0 24 24"><path d={n.icon} /></svg>
-        <span>{n.label}</span>
+        <span>{t(n.label)}</span>
       </a>
     {/each}
-    <button class="palette-btn" onclick={() => (paletteOpen = true)} title="Быстрый поиск (Ctrl+K)">Ctrl K</button>
+    <!-- Interface language: remembered (localStorage), the hub and the reward overlay follow it. -->
+    <div class="lang" role="group" aria-label={t("nav.language")}>
+      {#each LANGS as l}
+        <button class:on={i18n.lang === l.id} onclick={() => i18n.set(l.id)} title={l.label}>{l.id.toUpperCase()}</button>
+      {/each}
+    </div>
+    <button class="palette-btn" onclick={() => (paletteOpen = true)} title={t("nav.quickSearch")}>Ctrl K</button>
   </nav>
 
   <main>
     {#if error}
-      <div class="page"><p>Не удалось загрузить базу: {error}</p></div>
+      <div class="page"><p>{t("app.dbError", { error })}</p></div>
     {:else if ready}
       {@render children()}
     {/if}
@@ -131,8 +161,28 @@
     stroke-width: 1.8;
     stroke-linecap: round;
   }
-  .palette-btn {
+  .lang {
     margin-top: auto;
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    border-radius: 7px;
+    background: var(--surface);
+  }
+  .lang button {
+    padding: 2px 6px;
+    border-radius: 5px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text-faint);
+  }
+  .lang button.on {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+  .palette-btn {
+    margin-top: 6px;
     font-size: 10px;
     color: var(--text-faint);
     border: 1px solid var(--line);

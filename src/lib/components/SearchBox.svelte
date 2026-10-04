@@ -1,7 +1,8 @@
 <script lang="ts">
+  import { labels, t } from "$lib/i18n/index.svelte";
   import { goto } from "$app/navigation";
   import { search, iconUrl, type Entry } from "$lib/db";
-  import { loadFrames, type FramesDb } from "$lib/frames";
+  import { loadFrames, loadOtherMods, type FramesDb, type Mod } from "$lib/frames";
   import ModCard from "./ModCard.svelte";
   import ArcaneCard from "./ArcaneCard.svelte";
 
@@ -13,9 +14,13 @@
   // Mods and arcanes are drawn in their game frames, not as bare art.
   let frames = $state<FramesDb | null>(null);
   loadFrames().then((f) => (frames = f));
+  // Weapon, companion, archwing mods and stances.
+  let otherMods = $state<Record<string, Mod>>({});
+  loadOtherMods().then((m) => (otherMods = m)).catch(() => {});
+  const modOf = (id: string): Mod | undefined => frames?.mods[id] ?? otherMods[id];
 
   const results = $derived(search(query));
-  const KIND_LABEL = { set: "Набор", item: "Предмет", relic: "Реликвия", frame: "Варфрейм", mod: "Мод", arcane: "Мистификатор" } as const;
+  const KIND_LABEL = labels({ set: "kind.set", item: "kind.item", relic: "kind.relic", frame: "kind.frame", mod: "kind.mod", arcane: "kind.arcane", resource: "kind.resource", craft: "kind.craft" });
 
   $effect(() => {
     query;
@@ -28,7 +33,8 @@
 
   function href(e: Entry): string {
     // Mods and arcanes have their own page only for the market.
-    const route = e.kind === "mod" || e.kind === "arcane" ? "market" : e.kind;
+    if (e.kind === "craft") return `/resources?craft=${encodeURIComponent(e.id)}`;
+    const route = e.kind === "mod" || e.kind === "arcane" ? "market" : e.kind === "resource" ? "resources" : e.kind;
     return `/${route}?id=${encodeURIComponent(e.id)}`;
   }
 
@@ -56,7 +62,7 @@
     bind:this={input}
     bind:value={query}
     {onkeydown}
-    placeholder="Сарина прайм, лит s18, nikana..."
+    placeholder={t("search.placeholderApp")}
     spellcheck="false"
   />
   {#if results.length}
@@ -65,8 +71,8 @@
         <li>
           <button class:active={i === active} onmouseenter={() => (active = i)} onclick={() => pick(e)}>
             <span class="thumb">
-              {#if e.kind === "mod" && frames?.mods[e.id]}
-                <ModCard mod={frames.mods[e.id]} scale={0.22} bare />
+              {#if e.kind === "mod" && modOf(e.id)}
+                <ModCard mod={modOf(e.id)!} scale={0.22} bare />
               {:else if e.kind === "arcane" && frames?.arcanes[e.id]}
                 <ArcaneCard arcane={frames.arcanes[e.id]} scale={0.12} bare />
               {:else}
@@ -74,17 +80,17 @@
               {/if}
             </span>
             <span class="name">
-              {e.ru}
-              <small>{e.en}</small>
+              {e.name}
+              {#if e.name !== e.en}<small>{e.en}</small>{/if}
             </span>
-            {#if e.vaulted}<span class="tag vaulted">в хранилище</span>{/if}
+            {#if e.vaulted}<span class="tag vaulted">{t("tag.inVault")}</span>{/if}
             <span class="kind">{KIND_LABEL[e.kind]}</span>
           </button>
         </li>
       {/each}
     </ul>
   {:else if query.trim()}
-    <p class="empty">Ничего не нашлось</p>
+    <p class="empty">{t("search.none")}</p>
   {/if}
 </div>
 

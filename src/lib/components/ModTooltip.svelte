@@ -1,6 +1,7 @@
 <script lang="ts">
   // Expanded mod card, like hovering a mod in the game: art, name, stats at the current rank,
   // set progress and the type tab. Built from the same wiki frame parts as ModCard.
+  import { t } from "$lib/i18n/index.svelte";
   import { iconUrl } from "$lib/db";
   import { modCost, type FramesDb, type Mod } from "$lib/frames";
   import PolIcon from "./PolIcon.svelte";
@@ -12,7 +13,7 @@
   const set = $derived(mod.set ? db.sets[mod.set] : null);
   const text = $derived(mod.levels[rank] ?? mod.stats);
   const bonus = $derived(set ? (set.values[setCount - 2] ?? 0) : 0);
-  const kind = $derived(`${set ? "Набор: " : ""}${mod.aura ? "Аура" : mod.augment ? "Аугмент" : "Варфрейм"}`);
+  const kind = $derived(`${set ? t("tip.setPrefix") : ""}${mod.aura ? t("bb.aura") : mod.augment ? t("tip.augment") : t("kind.frame")}`);
 </script>
 
 <div class="tip" style:zoom={scale}>
@@ -27,14 +28,14 @@
   </div>
 
   <div class="body">
-    <div class="name">{mod.ru}</div>
+    <div class="name">{mod.name}</div>
     <div class="stats">{text}</div>
     {#if set}
       <div class="set">
         {#each { length: set.n } as _, i}<i class:on={i < setCount}></i>{/each}
       </div>
       {#if set.desc}<div class="stats">{set.desc}</div>{/if}
-      {#if bonus > 0}<div class="stats bonus">Бонус набора: эффекты +{Math.round(bonus * 100)}%</div>{/if}
+      {#if bonus > 0}<div class="stats bonus">{t("tip.setBonus", { v: Math.round(bonus * 100) })}</div>{/if}
     {/if}
   </div>
 

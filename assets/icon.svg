@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#232836"/>
+      <stop offset="1" stop-color="#0e1014"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f1d58e"/>
+      <stop offset="0.55" stop-color="#c9a66b"/>
+      <stop offset="1" stop-color="#9c7a42"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="216" fill="url(#bg)"/>
+  <rect x="32" y="32" width="960" height="960" rx="216" fill="none" stroke="#c9a66b" stroke-opacity="0.35" stroke-width="12"/>
+  <!-- outer diamond -->
+  <path d="M512 150 L790 512 L512 874 L234 512 Z" fill="none" stroke="url(#gold)" stroke-width="64" stroke-linejoin="miter"/>
+  <!-- inner diamond -->
+  <path d="M512 372 L620 512 L512 652 L404 512 Z" fill="url(#gold)"/>
+  <!-- side spurs -->
+  <path d="M120 512 L200 470 L200 554 Z" fill="url(#gold)"/>
+  <path d="M904 512 L824 470 L824 554 Z" fill="url(#gold)"/>
+</svg>

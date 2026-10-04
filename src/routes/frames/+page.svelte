@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/index.svelte";
   import { loadFrames, searchFrames, buildsFor, type FramesDb } from "$lib/frames";
   import { iconUrl } from "$lib/db";
 
@@ -16,16 +17,16 @@
 
 <div class="page wide">
   <div class="head">
-    <h1>Варфреймы</h1>
+    <h1>{t("nav.frames")}</h1>
     <div class="modes">
-      <button class:on={filter === "all"} onclick={() => (filter = "all")}>Все</button>
-      <button class:on={filter === "prime"} onclick={() => (filter = "prime")}>Прайм</button>
-      <button class:on={filter === "base"} onclick={() => (filter = "base")}>Обычные</button>
+      <button class:on={filter === "all"} onclick={() => (filter = "all")}>{t("mp.all")}</button>
+      <button class:on={filter === "prime"} onclick={() => (filter = "prime")}>{t("coll.prime")}</button>
+      <button class:on={filter === "base"} onclick={() => (filter = "base")}>{t("fissures.normal")}</button>
     </div>
   </div>
 
   <!-- svelte-ignore a11y_autofocus -->
-  <input class="find" bind:value={query} placeholder="Найти варфрейм: сарина, mesa, вольт..." spellcheck="false" autofocus />
+  <input class="find" bind:value={query} placeholder={t("frames.find")} spellcheck="false" autofocus />
 
   {#if db}
     <div class="grid">
@@ -33,12 +34,12 @@
         {@const n = buildsFor(db, id).length}
         <a class="frame" href="/frame?id={encodeURIComponent(id)}">
           <img src={iconUrl(f.icon)} alt="" loading="lazy" />
-          <span class="name">{f.ru}</span>
-          <span class="meta">{n ? `билдов: ${n}` : f.en}</span>
+          <span class="name">{f.name}</span>
+          <span class="meta">{n ? t("frames.builds", { v: n }) : f.en}</span>
         </a>
       {/each}
     </div>
-    {#if !list.length}<p class="muted">Ничего не нашлось</p>{/if}
+    {#if !list.length}<p class="muted">{t("search.none")}</p>{/if}
   {/if}
 </div>
 

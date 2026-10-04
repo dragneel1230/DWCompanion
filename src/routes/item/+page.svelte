@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from "$lib/i18n/index.svelte";
   import { page } from "$app/state";
   import { getDb, iconUrl, itemName, RARITY_RU } from "$lib/db";
   import Plat from "$lib/components/Plat.svelte";
@@ -30,7 +31,7 @@
 {#snippet relicRow(r: (typeof relics)[number])}
   <a class="row" href="/relic?id={encodeURIComponent(r.key)}">
     <img src={iconUrl(r.relic.icon)} alt="" loading="lazy" />
-    <span class="name">{r.relic.ru}</span>
+    <span class="name">{r.relic.name}</span>
     <span class="rarity-{r.rarity}">{RARITY_RU[r.rarity]}</span>
     <span class="num"><Plat slug={r.relic.slug} /></span>
   </a>
@@ -44,7 +45,7 @@
         <h1>{itemName(item)}</h1>
         <div class="sub">
           <span>{item.en}</span>
-          {#if set}<a class="tag" href="/set?id={encodeURIComponent(item.set ?? '')}">набор: {set.ru}</a>{/if}
+          {#if set}<a class="tag" href="/set?id={encodeURIComponent(item.set ?? '')}">{t("detail.setOf", { name: set.name })}</a>{/if}
         </div>
       </div>
       <div class="price">
@@ -53,17 +54,17 @@
       </div>
     </header>
 
-    <div class="section-title">Выпадает сейчас · {active.length}</div>
+    <div class="section-title">{t("detail.dropsNow")} · {active.length}</div>
     {#if active.length}
       <div class="rows">
         {#each active as r (r.key)}{@render relicRow(r)}{/each}
       </div>
     {:else}
-      <p class="muted">Ни в одной активной реликвии — только в хранилище или у Варзии.</p>
+      <p class="muted">{t("detail.noActive")}</p>
     {/if}
 
     {#if vaulted.length}
-      <div class="section-title">В хранилище · {vaulted.length}</div>
+      <div class="section-title">{t("detail.vaulted")} · {vaulted.length}</div>
       <div class="rows dim">
         {#each vaulted as r (r.key)}{@render relicRow(r)}{/each}
       </div>
@@ -74,7 +75,7 @@
     {/if}
   </div>
 {:else}
-  <div class="page"><p>Предмет не найден.</p></div>
+  <div class="page"><p>{t("item.notFound")}</p></div>
 {/if}
 
 <style>

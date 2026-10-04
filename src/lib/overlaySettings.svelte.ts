@@ -9,10 +9,11 @@ export interface OverlaySettings {
   enabled: boolean;
   priority: Priority;
   record: boolean; // debug: save screen recordings and scan frames
+  kiosk: boolean; // hints at the ducat kiosk (kiosk.rs)
 }
 
 const KEY = "dwc.overlay";
-const DEFAULTS: OverlaySettings = { enabled: true, priority: "platinum", record: false };
+const DEFAULTS: OverlaySettings = { enabled: true, priority: "platinum", record: false, kiosk: true };
 
 export function readOverlaySettings(): OverlaySettings {
   try {
@@ -37,6 +38,7 @@ class Store {
 
   sync() {
     invoke("overlay_config", { enabled: this.value.enabled, record: this.value.record }).catch(() => {});
+    invoke("kiosk_config", { enabled: this.value.kiosk }).catch(() => {});
   }
 }
 
