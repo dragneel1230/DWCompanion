@@ -3,6 +3,8 @@ name = "dwc"
 version = "0.2.0"
 description = "Dragneel's Warframe Companion"
 authors = ["Dragneel"]
+license = "MIT"
+repository = "https://github.com/dragneel1230/DWCompanion"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

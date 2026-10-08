@@ -1,6 +1,6 @@
 // Release: pnpm release <version> "<what's new>"   (or --notes-file <file>; --allow-dirty to skip the clean-tree check)
 // Bumps the version (package.json, tauri.conf.json, Cargo.toml), builds the signed NSIS installer, writes
-// latest.json, commits + tags vX.Y.Z here and publishes a GitHub release in the public releases repo
+// latest.json, commits + tags vX.Y.Z, pushes them and publishes a GitHub release in the public repo
 // (installed apps read releases/latest/download/latest.json, src/lib/updater.svelte.ts).
 // Signing key: %USERPROFILE%\.tauri\dwcompanion.key (or TAURI_SIGNING_PRIVATE_KEY); see docs/RELEASE.md.
 import { execFileSync, spawnSync } from "node:child_process";
@@ -8,7 +8,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-const REPO = "dragneel1230/DWCompanion-releases";
+const REPO = "dragneel1230/DWCompanion";
 const KEY = process.env.TAURI_SIGNING_PRIVATE_KEY ?? join(homedir(), ".tauri", "dwcompanion.key");
 
 const args = process.argv.slice(2);
@@ -100,8 +100,10 @@ writeFileSync(notesPath, notes + "\n");
 run("git", ["add", "package.json", confPath, cargoPath, "src-tauri/Cargo.lock"]);
 run("git", ["commit", "-m", `Release ${tag}`]);
 run("git", ["tag", "-a", tag, "-F", notesPath]);
+// The source is public in the same repo: the release's tag points at the pushed commit.
+run("git", ["push", "origin", "HEAD:main", tag]);
 console.log(`\n▶ publishing ${tag} to ${REPO}…`);
-run("gh", ["release", "create", tag, exePath, latestPath, "-R", REPO, "--title", `DWCompanion ${version}`, "--notes-file", notesPath]);
+run("gh", ["release", "create", tag, exePath, latestPath, "-R", REPO, "--verify-tag", "--title", `DWCompanion ${version}`, "--notes-file", notesPath]);
 
 console.log(`\n✓ ${tag} published: https://github.com/${REPO}/releases/tag/${tag}`);
 console.log("  Installed apps will offer it within 6 hours (or at their next start).");

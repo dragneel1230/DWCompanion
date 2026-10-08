@@ -1,11 +1,12 @@
 # Выпуск версии и автообновления
 
-Код — только локально (приватные репозитории GitHub недоступны в регионе). Установщики и `latest.json` —
-в публичном репозитории **https://github.com/dragneel1230/DWCompanion-releases** (раздел Releases, без кода).
+Исходники и выпуски — в одном публичном репозитории **https://github.com/dragneel1230/DWCompanion** (MIT):
+код в `main`, установщики и `latest.json` — в Releases. Старое имя `DWCompanion-releases` GitHub перенаправляет
+(на него смотрит версия 0.2.0).
 
 ## Как это работает
 - Приложение (`src/lib/updater.svelte.ts`, плагин `tauri-plugin-updater`) при запуске (через 15 с) и раз в 6 часов
-  читает `https://github.com/dragneel1230/DWCompanion-releases/releases/latest/download/latest.json`.
+  читает `https://github.com/dragneel1230/DWCompanion/releases/latest/download/latest.json`.
   В dev-сборке не проверяет. Выключается: Настройки → «Обновления».
 - Есть версия новее → баннер в углу (`components/UpdateBanner.svelte`: что нового, «Обновить» / «Позже») и одно
   уведомление Windows на версию. «Обновить» → скачивание, проверка подписи, тихая установка NSIS, перезапуск.
@@ -17,10 +18,10 @@
 3. `pnpm release 0.2.0 "Что нового: …"` (или `--notes-file notes.md` для многострочных заметок).
 
 Скрипт `scripts/release.mjs`: поднимает версию (`package.json`, `tauri.conf.json`, `Cargo.toml`), собирает подписанный
-установщик (`pnpm tauri build`), пишет `latest.json`, делает коммит `Release vX.Y.Z` и тег, создаёт GitHub Release
+установщик (`pnpm tauri build`), пишет `latest.json`, делает коммит `Release vX.Y.Z` и тег, отправляет их в `origin` (`main`), создаёт GitHub Release
 через `gh` с установщиком и `latest.json`. Версия должна быть выше текущей.
 
-Тестеру для первой установки — ссылка https://github.com/dragneel1230/DWCompanion-releases/releases/latest
+Тестеру для первой установки — ссылка https://github.com/dragneel1230/DWCompanion/releases/latest
 (SmartScreen: «Подробнее» → «Выполнить в любом случае» — нет сертификата подписи кода).
 
 ## Ключ подписи обновлений
