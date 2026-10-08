@@ -1,7 +1,7 @@
 // UI state of the hub tabs that should survive closing the hub (its content unmounts when hidden).
 // «Добыча» keeps its own (src/lib/views/farmState.svelte.ts), shared with the app's page.
-export type HubTab = "now" | "goals" | "builds" | "relics" | "trade" | "resources" | "collection";
-const TABS: HubTab[] = ["now", "goals", "builds", "relics", "trade", "resources", "collection"];
+export type HubTab = "now" | "goals" | "builds" | "relics" | "trade" | "resources" | "ship" | "collection";
+const TABS: HubTab[] = ["now", "goals", "builds", "relics", "trade", "resources", "ship", "collection"];
 // Tabs of earlier versions -> where their content lives now.
 const OLD: Record<string, HubTab> = { overview: "now", time: "now", market: "trade", orders: "trade" };
 

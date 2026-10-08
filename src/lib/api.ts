@@ -197,6 +197,26 @@ interface WorldState {
   SyndicateMissions?: { Tag: string; Activation: WsDate; Expiry: WsDate }[];
   VoidTraders?: { Activation: WsDate; Expiry: WsDate; Node: string; Manifest?: { ItemType: string; PrimePrice: number; RegularPrice: number }[] }[];
   PrimeVaultTraders?: { Activation: WsDate; Expiry: WsDate; Manifest?: { ItemType: string }[] }[];
+  Invasions?: WsInvasion[];
+  Alerts?: WsAlert[];
+}
+
+type WsReward = { countedItems?: { ItemType: string; ItemCount: number }[]; items?: string[]; credits?: number };
+interface WsInvasion {
+  _id: { $oid: string };
+  Node: string;
+  Faction: string;
+  DefenderFaction: string;
+  Count: number;
+  Goal: number;
+  Completed: boolean;
+  AttackerReward?: WsReward | unknown[];
+  DefenderReward?: WsReward | unknown[];
+}
+interface WsAlert {
+  _id: { $oid: string };
+  Expiry: WsDate;
+  MissionInfo?: { location?: string; missionType?: string; missionReward?: WsReward };
 }
 
 // One request serves every page for a short while (the file is ~140 KB).
@@ -279,6 +299,60 @@ export async function getFissures(): Promise<Fissure[]> {
     ...(ws.ActiveMissions ?? []).filter((m) => m.Modifier?.startsWith("VoidT")).map((m) => map(m, false)),
     ...(ws.VoidStorms ?? []).map((m) => map(m, true)),
   ];
+}
+
+// Invasions and alerts (notification filters). Rewards keep their game paths; store paths
+// ("/Lotus/StoreItems/...") are turned into item paths. Names are resolved by whoever shows them.
+export interface Reward {
+  id: string;
+  n: number;
+}
+export interface Invasion {
+  id: string;
+  node: string;
+  rewards: Reward[]; // both sides
+  pct: number; // 0..1 progress to either side's win
+}
+export interface Alert {
+  id: string;
+  node: string;
+  mission: string;
+  expiry: number;
+  rewards: Reward[];
+}
+
+const itemPath = (p: string) => p.replace("/StoreItems/", "/");
+function rewardsOf(r: WsReward | unknown[] | undefined): Reward[] {
+  if (!r || Array.isArray(r)) return [];
+  return [
+    ...(r.countedItems ?? []).map((x) => ({ id: itemPath(x.ItemType), n: x.ItemCount ?? 1 })),
+    ...(r.items ?? []).map((x) => ({ id: itemPath(x), n: 1 })),
+  ];
+}
+
+export async function getInvasions(): Promise<Invasion[]> {
+  const ws = await worldState();
+  const w = getDb().world;
+  return (ws.Invasions ?? [])
+    .filter((v) => !v.Completed)
+    .map((v) => ({
+      id: v._id.$oid,
+      node: w.regions[v.Node]?.n ?? v.Node,
+      rewards: [...rewardsOf(v.AttackerReward), ...rewardsOf(v.DefenderReward)],
+      pct: v.Goal ? Math.min(1, Math.abs(v.Count) / v.Goal) : 0,
+    }));
+}
+
+export async function getAlerts(): Promise<Alert[]> {
+  const ws = await worldState();
+  const w = getDb().world;
+  return (ws.Alerts ?? [])
+    .filter((a) => ms(a.Expiry) > Date.now())
+    .map((a) => {
+      const node = a.MissionInfo?.location ?? "";
+      const mt = a.MissionInfo?.missionType ?? "";
+      return { id: a._id.$oid, node: w.regions[node]?.n ?? node, mission: w.missionType[mt] ?? mt, expiry: ms(a.Expiry), rewards: rewardsOf(a.MissionInfo?.missionReward) };
+    });
 }
 
 // ---------- warframe.market: all orders of an item

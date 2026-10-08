@@ -26,6 +26,7 @@
   import { farmState } from "$lib/views/farmState.svelte";
   import Time from "$lib/hub/Time.svelte";
   import GoalsView from "$lib/goals/GoalsView.svelte";
+  import ShipView from "$lib/views/ShipView.svelte";
   import { tabs, saveTabs, type HubTab } from "$lib/hub/tabState.svelte";
 
   document.documentElement.style.background = "transparent";
@@ -55,6 +56,7 @@
     { id: "relics", label: "nav.relics" },
     { id: "trade", label: "nav.trade" },
     { id: "resources", label: "nav.resources" },
+    { id: "ship", label: "nav.ship" },
     { id: "collection", label: "nav.collection" },
   ];
   const stack = $derived(stacks[tabs.tab] ?? []);
@@ -234,6 +236,8 @@
           <div class="swap panel coll"><div class="body"><RelicsView compact /></div></div>
         {:else if tab === "trade"}
           <div class="swap panel coll"><div class="body"><TradeView bind:this={trade} compact onopen={openView} /></div></div>
+        {:else if tab === "ship"}
+          <div class="swap panel coll"><div class="body"><ShipView compact /></div></div>
         {:else if tab === "collection"}
           <div class="swap panel coll"><div class="body"><Collection bind:this={collection} onopen={fromCollection} compact ongoal={() => ((tabs.tab = "goals"), saveTabs(), setStack([]))} /></div></div>
         {:else}

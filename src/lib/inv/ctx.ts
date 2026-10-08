@@ -55,5 +55,7 @@ export function describe(c: InvCtx, id: string): { name: string; icon: string; s
   if (res) return { name: res.name, icon: iconUrl(res.icon) };
   const built = c.bpOf.get(id);
   if (built) return { name: t("inv.bpOf", { n: c.craft.items[built].name }), icon: iconUrl(c.craft.items[built].icon) };
+  const bn = c.craft.bpNames?.[id];
+  if (bn) return { name: t("inv.bpOf", { n: bn[0] }), icon: iconUrl(bn[1]) };
   return { name: id.split("/").pop()!.replace(/([a-z])([A-Z])/g, "$1 $2"), icon: "" };
 }

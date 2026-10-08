@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Settings (the gear at the bottom of the menu): hub hotkey, reward overlay, ducat kiosk, inventory
+  // Settings (the gear at the bottom of the menu): notifications (NotifySettings), hub hotkey, reward overlay, ducat kiosk, inventory
   // (what to keep, warframe-api-helper). Debug tools (EE.log lines, screen recording) only in development builds.
   import { fromRust, locale, t, type Key } from "$lib/i18n/index.svelte";
   import { onDestroy } from "svelte";
@@ -12,6 +12,7 @@
   import { profile } from "$lib/profile.svelte";
   import type { CollMode } from "$lib/collection/need";
   import InvAsk from "$lib/inv/InvAsk.svelte";
+  import NotifySettings from "$lib/notify/NotifySettings.svelte";
 
   const s = $derived(overlaySettings.value);
 
@@ -88,6 +89,8 @@
     </span>
     <input type="checkbox" checked={appSettings.value.tray} onchange={(e) => appSettings.set({ tray: e.currentTarget.checked })} />
   </label>
+
+  <NotifySettings />
 
   <div class="section-title">{t("settings.overlay")}</div>
   <label class="row switch">

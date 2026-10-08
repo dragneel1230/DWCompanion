@@ -17,6 +17,7 @@
   import { wfmStatus } from "$lib/wfm.svelte";
   import { startGoalWatch } from "$lib/goals/watch.svelte";
   import { startInventoryAuto } from "$lib/inventory.svelte";
+  import { startNotifyWatch } from "$lib/notify/watch.svelte";
   import { i18n, LANGS, t, type Key } from "$lib/i18n/index.svelte";
 
   let { children } = $props();
@@ -59,6 +60,7 @@
     { href: "/relics", label: "nav.relics", icon: "M12 3 6 9l6 12 6-12-6-6ZM6 9h12" },
     { href: "/trade", label: "nav.trade", icon: "M4 7h16M4 12h16M4 17h10M18 15v6M15 18h6" },
     { href: "/resources", label: "nav.resources", icon: "M12 3 4 7.5v9L12 21l8-4.5v-9L12 3Zm0 0v18M4 7.5l8 4.5 8-4.5" },
+    { href: "/ship", label: "nav.ship", icon: "M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm0 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM3 12h3M18 12h3" },
     { href: "/collection", label: "nav.collection", icon: "M12 3a9 9 0 1 0 9 9M12 7a5 5 0 1 0 5 5M12 12l7-7" },
   ];
   const GEAR =
@@ -77,6 +79,8 @@
     wfmStatus.restore();
     // Goals: what the overlay / hub / journal mark as needed, fissure notifications.
     loadDb().then(startGoalWatch).catch(() => {});
+    // Notification filters and the foundry's "ready" (Settings → «Уведомления»).
+    loadDb().then(startNotifyWatch).catch(() => {});
     // Inventory refresh after missions, when the player turned it on.
     startInventoryAuto();
     // "Открыть в приложении" in the hub.

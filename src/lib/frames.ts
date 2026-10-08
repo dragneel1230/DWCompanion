@@ -149,6 +149,15 @@ export interface FramesDb {
   sets: Record<string, ModSet>;
   shards: Record<string, { item: string; name: string; icon: string | null }>; // "ACC_RED", "ACC_RED_MYTHIC"
   helminth: Record<string, { name: string; icon: string | null }>; // Helminth's own abilities
+  infest?: Infest; // absent in data built before 2026-10-08
+}
+
+// Helminth (scripts/build-frames.mjs): secretion counts are tenths of a percent, as in the inventory.
+export interface Infest {
+  secretions: Record<string, { name: string; icon: string | null }>;
+  // Warframe -> the ability subsuming it gives, the subsume cost, the cost of each injection, subsume time (s).
+  subsume: Record<string, { ab: string; cost: [string, number][]; inject: [string, number][]; time: number }>;
+  base: Record<string, string>; // warframe -> base suit (Invigoration offers name these)
 }
 
 // Name and icon of an ability by its game path: a frame's (subsumed through Helminth) or Helminth's own.

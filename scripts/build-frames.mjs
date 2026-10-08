@@ -395,8 +395,30 @@ for (const [id, a] of Object.entries(pe("ExportAbilities.json"))) {
   if (name) helminth[id] = { name: unshout(name), icon: img(a.icon) };
 }
 
+// ---------- Helminth's foundry (src/lib/ship/helminth.ts): secretions, what subsuming each warframe gives
+// and costs (ExportRecipes "AbilityOverrides": result = the ability; secret ingredients = the warframe + the
+// subsume cost; ingredients = the cost of each injection). Counts are tenths of a percent, as in the inventory.
+// `base`: warframe -> its base suit (DE's parentName), how the weekly Invigoration offers name warframes.
+const peRecipes = pe("ExportRecipes.json");
+const secretions = {};
+for (const [id, r] of Object.entries(resources)) {
+  if (!id.startsWith("/Lotus/Types/Items/InfestedFoundry/Helminth") || !/Secretion/.test(r.name)) continue;
+  secretions[id] = { name: unshout(dictRu[r.name] ?? dictEn[r.name] ?? id.split("/").pop()), icon: img(r.icon) };
+}
+const pairs = (list) => (list ?? []).filter((x) => secretions[x.ItemType]).map((x) => [x.ItemType, x.ItemCount]);
+const subsume = {};
+for (const [id, r] of Object.entries(peRecipes)) {
+  if (!id.includes("/AbilityOverrides/") || r.secretIngredientAction !== "SIA_WARFRAME_ABILITY") continue;
+  const frame = r.secretIngredients?.find((x) => x.ItemType.startsWith("/Lotus/Powersuits/"))?.ItemType;
+  if (!frame) continue;
+  subsume[frame] = { ab: r.resultType, cost: pairs(r.secretIngredients), inject: pairs(r.ingredients), time: r.buildTime };
+}
+const base = {};
+for (const [id, f] of Object.entries(peFrames)) if (f.productCategory === "Suits" && f.parentName) base[id] = f.parentName;
+const infest = { secretions, subsume, base };
+
 mkdirSync(`static/data/${LANG}`, { recursive: true });
-writeFileSync(`static/data/${LANG}/frames.json`, JSON.stringify({ frames, mods, arcanes, builds, sets, shards, helminth }));
+writeFileSync(`static/data/${LANG}/frames.json`, JSON.stringify({ frames, mods, arcanes, builds, sets, shards, helminth, infest }));
 writeFileSync(`static/data/${LANG}/mods.json`, JSON.stringify({ mods: otherMods }));
 console.log(`${LANG}: other mods ${Object.keys(otherMods).length}, size ${(JSON.stringify(otherMods).length / 1024).toFixed(0)} KB`);
 console.log(

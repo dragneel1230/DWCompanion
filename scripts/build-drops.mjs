@@ -678,7 +678,16 @@ for (const [id, e] of [...Object.entries(upgrades), ...Object.entries(arcanes)])
 }
 out.mods = modSrc;
 // Prime parts as ingredients are relic rewards: their blueprints drop, they are built from them.
-writeFileSync(`static/data/${LANG}/craft.json`, JSON.stringify({ items: craft, names }));
+// Blueprints whose result is not in the tree (Orokin Reactor, Exilus Adapter, decorations…): recipe id -> the
+// result's name and icon, so the foundry, invasion rewards and the inventory name them.
+const bpNames = {};
+const inTree = new Set(Object.values(craft).flatMap((c) => [c.r, c.bp]).filter(Boolean));
+for (const [rid, r] of Object.entries(recipes)) {
+  if (inTree.has(rid) || r.hidden || !r.resultType || craft[r.resultType]) continue;
+  const n = nameOf(r.resultType);
+  if (n?.name) bpNames[rid] = [n.name, n.icon, r.buildTime ?? 0];
+}
+writeFileSync(`static/data/${LANG}/craft.json`, JSON.stringify({ items: craft, names, bpNames }));
 writeFileSync(`static/data/${LANG}/drops.json`, JSON.stringify(out));
 console.log(
   `${LANG} craft: ${Object.values(craft).filter((c) => c.kind !== "part").length} items, ` +

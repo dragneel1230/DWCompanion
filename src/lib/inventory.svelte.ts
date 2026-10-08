@@ -29,6 +29,11 @@ export interface InvData {
   // Absent before 2026-10-08.
   equipped?: Record<string, number>;
   xp: Record<string, number>; // item -> affinity (also for things sold or used up)
+  // Blueprints building in the foundry: recipe id, when it is ready (ms), ItemId (one notification each).
+  // Absent before 2026-10-08.
+  foundry?: InvFoundry[];
+  // Helminth (InfestedFoundry), when the player has it. Absent before 2026-10-08.
+  helminth?: InvHelminth;
   credits: number;
   plat: number;
   ducats: number;
@@ -42,6 +47,21 @@ export interface InvLoadout {
   cfg: { n?: string; m: ([string, number] | null)[]; h?: [string, number] }[]; // index = config; mod / arcane id + rank; Helminth ability + replaced slot
   // Archon shards (5 sockets, ids as in shards.ts). Absent in snapshots taken before 2026-10-07.
   shards?: (string | null)[];
+}
+
+export interface InvFoundry {
+  id: string;
+  done: number;
+  oid: string;
+}
+
+export interface InvHelminth {
+  xp: number; // DE's value: 100 × the affinity the game shows
+  res: Record<string, number>; // secretion -> tenths of a percent
+  fed: string[]; // warframes subsumed
+  offers: string[]; // this week's Invigoration warframes (base suits)
+  // Invigorated warframes now: warframe -> [offensive, utility, until ms]. Fields as SpaceNinjaServer names them.
+  invig: Record<string, [string, string, number]>;
 }
 
 type Raw = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -75,6 +95,13 @@ const STACKS = ["MiscItems", "Recipes", "Consumables", "FusionTreasures", "Level
 function oidTime(v: unknown): number {
   const hex = typeof v === "object" && v ? (v as Raw).$oid : null;
   return typeof hex === "string" && hex.length >= 8 ? parseInt(hex.slice(0, 8), 16) * 1000 : 0;
+}
+
+// Mongo date: { $date: { $numberLong } } (or a plain number of ms).
+function dateMs(v: unknown): number {
+  const d = typeof v === "object" && v ? (v as Raw).$date : v;
+  const n = typeof d === "object" && d ? Number((d as Raw).$numberLong) : Number(d);
+  return Number.isFinite(n) ? n : 0;
 }
 
 function rankOf(fp: unknown): number {
@@ -153,6 +180,24 @@ export function parseInventory(text: string): InvData {
   if (suit?.ItemType) current = { frame: suit.ItemType, cfg: Number(preset.s.mod) || 0 };
   const xp: Record<string, number> = {};
   for (const x of j.XPInfo ?? []) if (x?.ItemType) xp[x.ItemType] = x.XP ?? 0;
+  const foundry: InvFoundry[] = (j.PendingRecipes ?? [])
+    .filter((r: Raw) => r?.ItemType)
+    .map((r: Raw) => ({ id: r.ItemType, done: dateMs(r.CompletionDate), oid: r.ItemId?.$oid ?? `${r.ItemType}:${dateMs(r.CompletionDate)}` }));
+  const f = j.InfestedFoundry as Raw | undefined;
+  const invig: InvHelminth["invig"] = {};
+  for (const x of j.Suits ?? []) {
+    const until = dateMs(x?.UpgradesExpiry);
+    if (x?.ItemType && until > Date.now() && (x.OffensiveUpgrade || x.DefensiveUpgrade)) invig[x.ItemType] = [x.OffensiveUpgrade ?? "", x.DefensiveUpgrade ?? "", until];
+  }
+  const helminth: InvHelminth | undefined = f
+    ? {
+        xp: Number(f.XP) || 0,
+        res: Object.fromEntries((f.Resources ?? []).filter((r: Raw) => r?.ItemType).map((r: Raw) => [r.ItemType, Number(r.Count) || 0])),
+        fed: (f.ConsumedSuits ?? []).map((c: Raw) => c?.s).filter((s: unknown) => typeof s === "string"),
+        offers: (f.InvigorationSuitOfferings ?? []).filter((s: unknown) => typeof s === "string"),
+        invig,
+      }
+    : undefined;
   return {
     at: oidTime(j.LastInventorySync) || Date.now(),
     got: Date.now(),
@@ -164,6 +209,8 @@ export function parseInventory(text: string): InvData {
     current,
     equipped,
     xp,
+    foundry,
+    helminth,
     credits: j.RegularCredits ?? 0,
     plat: (j.PremiumCredits ?? 0) + (j.PremiumCreditsFree ?? 0),
     ducats: j.PrimeTokens ?? 0,

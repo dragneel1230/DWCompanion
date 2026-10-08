@@ -25,6 +25,7 @@ export interface CraftItem {
 export interface CraftDb {
   items: Record<string, CraftItem>;
   names: Record<string, { ru: string; en: string; name: string; icon: string | null }>; // other ingredients
+  bpNames?: Record<string, [string, string | null, number]>; // blueprints of things outside the tree: recipe id -> result name, icon, build time (s)
 }
 
 let cache: Promise<CraftDb> | null = null;
