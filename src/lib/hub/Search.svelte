@@ -1,6 +1,7 @@
 <script lang="ts">
   // Hub search: the same index as Ctrl+K in the app, results drop down over the widgets.
   // Picking opens the entry in the hub's detail panel (no page navigation in this window).
+  import Facts from "$lib/components/Facts.svelte";
   import { labels, t } from "$lib/i18n/index.svelte";
   import { search, iconUrl, type Entry } from "$lib/db";
   import { loadFrames, loadOtherMods, type FramesDb, type Mod } from "$lib/frames";
@@ -85,6 +86,7 @@
             {/if}
           </span>
           <span class="name">{e.name}{#if e.name !== e.en}<small>{e.en}</small>{/if}</span>
+          <Facts kind={e.kind} id={e.id} slug={e.kind === "mod" ? modOf(e.id)?.slug : e.kind === "arcane" ? frames?.arcanes[e.id]?.slug : undefined} />
           {#if e.vaulted}<span class="tag vaulted">{t("tag.inVault")}</span>{/if}
           <span class="kind">{KIND_LABEL[e.kind]}</span>
         </button>

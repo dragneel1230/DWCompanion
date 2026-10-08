@@ -67,7 +67,7 @@
             <div class="sub">
               <a class="frame-link" href="/frame?id={encodeURIComponent(build.frame)}">{frame.name}</a>
               <span>· {build.author}</span>
-              {#if build.source !== "overframe" && !own}<span>· ▲ {build.votes}</span>{/if}
+              {#if !build.source && !own}<span>· ▲ {build.votes}</span>{/if}
               {#each build.tags as t}<span class="tag">{t}</span>{/each}
             </div>
           </div>
@@ -121,7 +121,11 @@
               <span class="stats">{l.mod ? (l.mod.levels[l.rank ?? l.mod.max] ?? item.stats) : item.stats}</span>
             </span>
             {#if item.slug}<a class="market" href="/market?id={encodeURIComponent(l.id)}" title={t("build.ordersHint")}>{t("hub.tab.market")}</a>{/if}
-            <button class="own" class:yes={has} onclick={() => owned.toggle(l.id)}>{has ? `✓ ${t("build.have")}` : t("build.no")}</button>
+            {#if owned.fromInv(l.id)}
+              <span class="own yes" title={t("build.fromInv")}>✓ {t("build.have")}</span>
+            {:else}
+              <button class="own" class:yes={has} onclick={() => owned.toggle(l.id)}>{has ? `✓ ${t("build.have")}` : t("build.no")}</button>
+            {/if}
           </div>
         {/if}
       {/each}
@@ -295,6 +299,7 @@
     flex: none;
     align-self: center;
     min-width: 74px;
+    text-align: center;
     padding: 6px 10px;
     border-radius: 8px;
     border: 1px solid var(--line);

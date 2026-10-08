@@ -10,6 +10,7 @@ export interface Source {
   name: string; // "Olympus (Mars)" / "Olympus (Марс)", "Cetus", ...
   sub?: string; // "Disruption · Grineer", "Bounty, lvl 15–25"
   node?: string; // SolNode key for missions
+  at?: string[]; // enemies met only in some missions (demolishers): where, "Node (Planet) lvl 5–15"
 }
 
 // [source index, [[rotation "A"|"B"|"C"|"", chance %, qty?], ...], score], best first.
@@ -43,7 +44,8 @@ export type Src =
   | { k: "market"; cr?: number; pl?: number }
   | { k: "lab"; lab: string }
   | { k: "quest"; name: string | null }
-  | { k: "vendor"; place?: string; npc?: string; event?: true; direct?: true; cost: [string, number][]; syn?: [string, number, number] };
+  | { k: "syndicate"; name: string; rank: number; title?: string; standing: number; direct?: true }
+  | { k: "vendor"; place?: string; npc?: string; event?: true; direct?: true; cost: [string, number | string][]; syn?: [string, number, number] };
 
 // DE's own words for the farming tips (dict of the file's language).
 export type Terms = Record<
@@ -52,6 +54,12 @@ export type Terms = Record<
   string
 >;
 
+// Where a mod or arcane comes from: the best drops per kind, vendors and syndicates (build-drops.mjs).
+export interface ModSrc {
+  drops?: Drop[];
+  src?: Src[];
+}
+
 export interface DropsDb {
   builtAt: string;
   wikiAt?: string;
@@ -59,6 +67,7 @@ export interface DropsDb {
   sources: Source[];
   relics: Record<string, Drop[]>;
   resources: Record<string, Resource>;
+  mods?: Record<string, ModSrc>; // mod / arcane id
 }
 
 let cache: Promise<DropsDb> | null = null;

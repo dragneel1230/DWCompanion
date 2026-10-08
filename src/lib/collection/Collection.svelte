@@ -7,24 +7,62 @@
   import { getDb, iconUrl, itemName, setParts } from "$lib/db";
   import { profile, ID_RE } from "$lib/profile.svelte";
   import { loadMastery, summarize, mrPlan, duration, CAT_RU, CAT_ORDER, MR_NAME, perRank, type MasteryDb, type MasteryCat, type Row, type Status } from "$lib/mastery";
-  import { loadFrames, type FramesDb } from "$lib/frames";
   import { loadBulk, bulkSell } from "$lib/api";
   import Plat from "$lib/components/Plat.svelte";
   import CollSyndicates from "./CollSyndicates.svelte";
   import CollStats from "./CollStats.svelte";
   import { record, readHistory, type History } from "./history";
   import { skip, skipped, skipCount, toggleCat, toggleId, toggleSp } from "./skip.svelte";
+  import { goto } from "$app/navigation";
+  import { loadDrops, type DropsDb } from "$lib/drops";
+  import { loadCraft, type CraftDb } from "$lib/craft";
+  import { journal } from "$lib/journal.svelte";
+  import { goals } from "$lib/goals/goals.svelte";
+  import HowToGet from "$lib/goals/HowToGet.svelte";
+  import { inventory } from "$lib/inventory.svelte";
+  import type { Profile } from "$lib/profile.svelte";
 
-  let { onopen, compact = false }: { onopen: (kind: "set" | "frame" | "item" | "relic", id: string) => void; compact?: boolean } = $props();
+  // `ongoal`: add / open the item in the guide. The app goes to /goals; the hub switches to its Goals tab.
+  let {
+    onopen,
+    compact = false,
+    ongoal,
+  }: {
+    onopen: (kind: "set" | "frame" | "item" | "relic", id: string) => void;
+    compact?: boolean;
+    ongoal?: (id: string) => void;
+  } = $props();
+  const toGoal = (id: string) => {
+    if (goals.get(id)) goals.open(id);
+    else goals.add(id);
+    if (ongoal) ongoal(id);
+    else goto("/goals");
+  };
 
   const db = getDb();
   let mdb = $state<MasteryDb | null>(null);
-  let frames = $state<FramesDb | null>(null);
   loadMastery().then((m) => (mdb = m));
-  loadFrames().then((f) => (frames = f));
   profile.start();
 
-  const sum = $derived(mdb && profile.data ? summarize(mdb, profile.data) : null);
+  // The inventory snapshot knows affinity too, often newer than the public profile: the larger wins.
+  function withInventory(p: Profile | null): Profile | null {
+    const inv = inventory.data;
+    if (!p || !inv) return p;
+    const xp = { ...p.xp };
+    for (const [id, v] of Object.entries(inv.xp)) if (v > (xp[id] ?? -1)) xp[id] = v;
+    return { ...p, xp, at: Math.max(p.at, inv.at) };
+  }
+  const pdata = $derived(withInventory(profile.data));
+  const sum = $derived(mdb && pdata ? summarize(mdb, pdata) : null);
+
+  // Arsenal facts of a ranked item: forma and reactor / catalyst, or that it left the arsenal (sold, fed to Helminth).
+  const FRAMEISH = new Set(["warframe", "archwing", "necramech", "companion"]);
+  function gearOf(id: string, cat: string): { text: string; gone: boolean } | null {
+    if (!inventory.inArsenal(id)) return { text: t("fact.gone"), gone: true };
+    const g = inventory.gearOf(id);
+    const parts = [g?.forma ? t("fact.forma", { n: g.forma }) : null, g?.potato ? (FRAMEISH.has(cat) ? t("fact.reactor") : t("fact.catalyst")) : null].filter(Boolean);
+    return parts.length ? { text: parts.join(" · "), gone: false } : null;
+  }
 
   // ---------- sub-tabs (remembered; shared by the app and the hub)
   type Sub = "overview" | "items" | "syndicates" | "stats";
@@ -56,9 +94,9 @@
   // ---------- snapshots: "what's new" and the mastery chart
   let hist = $state<History>(readHistory());
   $effect(() => {
-    if (sum && profile.data && mdb) {
+    if (sum && pdata && mdb) {
       const m = mdb;
-      hist = record(profile.data.at, sum.counted, sum.mr, sum.rows, (id) => m.items[id]?.max ?? 30);
+      hist = record(pdata.at, sum.counted, sum.mr, sum.rows, (id) => m.items[id]?.max ?? 30);
     }
   });
   const change = $derived(hist.change);
@@ -78,7 +116,7 @@
   });
 
   // ---------- plan to the next rank
-  const plan = $derived(sum && mdb && profile.data ? mrPlan(mdb, profile.data, sum, skipped, skip.sp) : null);
+  const plan = $derived(sum && mdb && pdata ? mrPlan(mdb, pdata, sum, skipped, skip.sp) : null);
   // "Put aside" panel: categories / Steel Path / single items the plan leaves out.
   let skipOpen = $state(false);
   const SKIP_CATS = [...CAT_ORDER, "other"] as MasteryCat[];
@@ -240,8 +278,28 @@
 
   // ---------- item card
   let open = $state<Row | null>(null);
+  // The guide's data (where blueprints and parts come from): loaded with the first card opened.
+  let gd = $state<{ drops: DropsDb; craft: CraftDb } | null>(null);
+  $effect(() => {
+    // With an inventory the cards need it too ("blueprint ready", parts collected).
+    if ((!open && !inventory.data) || gd) return;
+    journal.start();
+    Promise.all([loadDrops(), loadCraft()]).then(([drops, craft]) => (gd = { drops, craft }));
+  });
+  // What the inventory already holds toward an item not built yet.
+  type InvTag = { k: "arsenal" } | { k: "bp" } | { k: "parts"; a: number; b: number };
+  function invTag(id: string): InvTag | null {
+    if (!inventory.data) return null;
+    if (inventory.inArsenal(id)) return { k: "arsenal" };
+    const c = gd?.craft.items[id];
+    if (!c) return null;
+    const has = (x: string | undefined) => !!x && !!inventory.count(x);
+    if (has(c.bp ?? c.r)) return { k: "bp" };
+    const parts = c.parts.filter(([p]) => gd!.craft.items[p]?.kind === "part" || db.items[p]);
+    const a = parts.filter(([p]) => has(p) || has(gd!.craft.items[p]?.bp ?? gd!.craft.items[p]?.r)).length;
+    return a ? { k: "parts", a, b: parts.length } : null;
+  }
   const openSet = $derived(open && db.sets[open.id] ? db.sets[open.id] : null);
-  const openFrame = $derived(open && frames?.frames[open.id] ? frames.frames[open.id] : null);
   const partInfo = (pid: string) => {
     const it = db.items[pid];
     const active = it.relics.filter((r) => !db.relics[r.relic]?.vaulted);
@@ -324,7 +382,11 @@
       <div class="who">
         <h1>{p.name || t("nav.collection")}</h1>
         <div class="xp">
-          <b>{t("unit.pct", { v: Math.round(into * 100) })}</b> {t("coll.toMr", { mr: MR_NAME(sum.mr + 1), xp: fmt(Math.max(0, sum.to - sum.total)) })}
+          {#if sum.total >= sum.to}
+            <b class="ready">{t("coll.mrReady", { mr: MR_NAME(sum.mr + 1) })}</b>
+          {:else}
+            <b>{t("unit.pct", { v: Math.round(into * 100) })}</b> {t("coll.toMr", { mr: MR_NAME(sum.mr + 1), xp: fmt(sum.to - sum.total) })}
+          {/if}
         </div>
         <div class="bar"><i style:width="{into * 100}%"></i></div>
         {#if spark}
@@ -560,12 +622,22 @@
           {#each g.rows as r (r.id)}
             <button class="card {r.status}" class:prime={r.it.prime} onclick={() => (open = r)} title={r.it.name}>
               {#if r.status === "mastered"}<span class="check">✓</span>{/if}
+              {#if goals.get(r.id)}<span class="in-goal" title={t("goal.pick.inGoals")}>⚑</span>{/if}
               {#if r.status === "progress"}
                 <span class="ring-lvl" style:--p="{(r.rank / r.it.max) * 100}%"><b>{r.rank}</b></span>
               {/if}
               <div class="art"><img src={iconUrl(r.it.icon)} alt="" loading="lazy" /></div>
               <b>{r.it.name}</b>
-              <small class="meta-line">{CAT_RU[r.it.cat]}{r.it.mr ? ` · MR ${r.it.mr}` : ""}</small>
+              <!-- Grouped by category the category says nothing new: the arsenal says more (forma, reactor, sold). -->
+              <small class="meta-line">{[group ? null : CAT_RU[r.it.cat], r.it.mr ? `MR ${r.it.mr}` : null].filter(Boolean).join(" · ")}</small>
+              {#if inventory.data && r.status !== "none"}
+                {@const g = gearOf(r.id, r.it.cat)}
+                {#if g}<small class="gear-line" class:gone={g.gone}>{g.text}</small>{/if}
+              {/if}
+              {#if r.status === "none"}
+                {@const it = invTag(r.id)}
+                {#if it}<small class="inv-tag">{it.k === "parts" ? t("coll.inv.parts", { a: it.a, b: it.b }) : t(`coll.inv.${it.k}`)}</small>{/if}
+              {/if}
               <small class="st"><span class="dot"></span>{r.status === "none" ? t("coll.st.none") : r.status === "mastered" ? t("coll.st.mastered") : `${t("coll.lvl", { a: r.rank, b: r.it.max })} · +${fmt(r.left)}`}</small>
               {#if sort === "price" && setPrice(r.id) != null}
                 <span class="price-tag"><img src="/icons/platinum.png" alt="" />{setPrice(r.id)}</span>
@@ -629,6 +701,7 @@
                   {:else}{t("detail.onlyVault")}{/if}
                 </small>
               </span>
+              {#if inventory.count(pid)}<span class="have">{t("coll.inv.have", { v: inventory.count(pid) ?? 0 })}</span>{/if}
               <span class="num"><Plat slug={pi.it.slug} /></span>
             </button>
           {/each}
@@ -637,27 +710,33 @@
           <button onclick={() => onopen("set", r.id)}>{t("coll.setPage")}</button>
           <span class="muted">{t("coll.wholeSet")} <Plat slug={openSet.slug} /></span>
         </div>
-      {:else if openFrame?.parts?.length}
-        <div class="section-title">{t("coll.partsWhere")}</div>
-        <div class="rows">
-          {#each openFrame.parts as part}
-            <div class="row">
-              <span class="name">
-                {part.name}
-                <small>{part.drops.slice(0, 3).map((d) => `${d.loc} ${d.chance}%`).join(" · ") || "—"}</small>
-              </span>
-            </div>
-          {/each}
-        </div>
-        <div class="m-actions"><button onclick={() => onopen("frame", r.id)}>{t("coll.framePage")}</button></div>
       {:else if r.it.cat === "warframe"}
         <div class="m-actions"><button onclick={() => onopen("frame", r.id)}>{t("coll.framePage")}</button></div>
+      {/if}
+      {#if gd && gd.craft.items[r.id]}
+        <HowToGet id={r.id} drops={gd.drops} craft={gd.craft} facts={{ journal: journal.list, profile: profile.data }} ongoal={toGoal} steps={!openSet} />
       {/if}
     </div>
   </div>
 {/if}
 
 <style>
+  .inv-tag {
+    color: var(--accent);
+    font-size: 11px;
+  }
+  .gear-line {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+  .gear-line.gone {
+    color: var(--text-faint);
+  }
+  .have {
+    flex: none;
+    color: var(--good);
+    font-size: 12px;
+  }
   .col {
     display: flex;
     flex-direction: column;
@@ -817,6 +896,9 @@
   }
   .xp b {
     color: var(--accent);
+  }
+  .xp b.ready {
+    color: var(--good);
   }
   .bar,
   .m-bar {
@@ -1111,6 +1193,13 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 8px;
+  }
+  .in-goal {
+    position: absolute;
+    top: 8px;
+    left: 9px;
+    font-size: 12px;
+    color: var(--accent);
   }
   .card {
     position: relative;

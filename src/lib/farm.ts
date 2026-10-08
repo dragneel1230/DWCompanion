@@ -80,6 +80,14 @@ export function findFarm(index: FarmEntry[], query: string, kind: FarmKind | nul
 
 const fmt = (n: number) => num(n);
 
+// Sources in the order a player would try them: Market, clan lab, quest, vendor, syndicate; Conclave (PvP) and
+// events last — Volt's "Conclave, rank Typhoon" is real but not where a newcomer should go.
+const SRC_RANK: Record<Src["k"], number> = { market: 0, lab: 1, quest: 2, vendor: 3, syndicate: 4 };
+const late = (s: Src) => (s.k === "vendor" && s.event) || (s.k === "syndicate" && /Conclave|Конклав/.test(s.name));
+export function orderSrc(list: Src[] | undefined): Src[] {
+  return [...(list ?? [])].sort((a, b) => +late(a) - +late(b) || SRC_RANK[a.k] - SRC_RANK[b.k]);
+}
+
 // One source as a short line: "Рынок · 35 000 кр.", "Лаборатория Тэнно", "Квест «Сердце Деймоса»".
 export function srcText(s: Src): string {
   switch (s.k) {
@@ -89,6 +97,11 @@ export function srcText(s: Src): string {
       return t("farm.src.lab", { lab: s.lab });
     case "quest":
       return s.name ? t("farm.src.quest", { name: s.name }) : t("farm.src.questAny");
+    case "syndicate":
+      // Simaris has no ranks: standing only.
+      return s.title || s.rank
+        ? t("farm.src.syndicate", { name: s.name, title: s.title ? `«${s.title}»` : String(s.rank), v: fmt(s.standing) })
+        : t("farm.src.syndicateNoRank", { name: s.name, v: fmt(s.standing) });
     case "vendor": {
       const who = [s.npc, s.place].filter(Boolean).join(", ");
       const head = s.event ? t("farm.src.eventVendor") : who ? t("farm.src.vendorAt", { who }) : t("farm.src.vendor");
@@ -98,8 +111,9 @@ export function srcText(s: Src): string {
 }
 
 export function costText(s: Extract<Src, { k: "vendor" }>): string {
+  const f = (n: number | string) => (typeof n === "number" ? fmt(n) : n); // a range comes as "15–30"
   const parts = s.cost.map(([what, n]) =>
-    what === "credits" ? t("ct.cr", { v: fmt(n) }) : what === "platinum" ? t("farm.pl", { v: n }) : `${fmt(n)} × ${what}`,
+    what === "credits" ? t("ct.cr", { v: f(n) }) : what === "platinum" ? t("farm.pl", { v: n }) : `${f(n)} × ${what}`,
   );
   if (s.syn) parts.push(t("farm.syn", { name: s.syn[0], rank: s.syn[1], v: fmt(s.syn[2]) }));
   return parts.length ? parts.join(", ") : t("farm.priceVaries");
@@ -115,7 +129,7 @@ export function hintOf(e: FarmEntry, drops: DropsDb, craft: CraftDb): string {
     const m = r.drops?.find(([i]) => drops.sources[i].kind !== "other") ?? r.drops?.[0];
     if (m) return drops.sources[m[0]].name;
     if (r.farm?.length) return drops.sources[r.farm[0]].name;
-    if (r.src?.length) return srcText(r.src[0]);
+    if (r.src?.length) return srcText(orderSrc(r.src)[0]);
     if (r.craft) return t("farm.foundry");
     return r.where ?? "";
   }
@@ -134,9 +148,12 @@ export function craftHint(c: CraftItem | undefined, drops: DropsDb): string {
     const live = prime.relics.filter((x) => !getDb().relics[x.relic]?.vaulted).length;
     return live ? t("farm.relicsLive", { n: live }) : t("farm.vaultedPart");
   }
-  if (c.src?.length) return srcText(c.src[0]);
+  if (c.src?.length) return srcText(orderSrc(c.src)[0]);
   const d = c.drops?.find(([i]) => drops.sources[i].kind !== "other") ?? c.drops?.[0];
-  if (d) return drops.sources[d[0]].name;
+  if (d) {
+    const s = drops.sources[d[0]];
+    return s.at ? `${s.sub?.split(" · ")[0]}: ${s.at[0]}` : s.name;
+  }
   return "";
 }
 

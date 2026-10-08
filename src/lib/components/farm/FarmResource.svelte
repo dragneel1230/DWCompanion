@@ -3,7 +3,7 @@
   // with its origin labelled: DE's planet data, our endless-mission pick, the wiki, the game's text, drop tables.
   import { t, num } from "$lib/i18n/index.svelte";
   import { iconUrl } from "$lib/db";
-  import { PLANET_RARITY_RU, type DropsDb } from "$lib/drops";
+  import { PLANET_RARITY_RU, type DropsDb, type Src } from "$lib/drops";
   import type { CraftDb } from "$lib/craft";
   import { srcText, levels, usedIn } from "$lib/farm";
   import DropSources from "$lib/components/DropSources.svelte";
@@ -20,8 +20,9 @@
   const r = $derived(db.resources[id]);
   const recipe = $derived(r.craft ? craft.items[id] : undefined);
   // Vendors selling the resource itself vs. where its blueprint comes from.
-  const buy = $derived([...(r.src ?? []), ...(recipe?.src ?? []).filter((s) => s.k === "vendor" && s.direct)]);
-  const bpSrc = $derived((recipe?.src ?? []).filter((s) => !(s.k === "vendor" && s.direct)));
+  const isDirect = (s: Src) => (s.k === "vendor" || s.k === "syndicate") && !!s.direct;
+  const buy = $derived([...(r.src ?? []), ...(recipe?.src ?? []).filter(isDirect)]);
+  const bpSrc = $derived((recipe?.src ?? []).filter((s) => !isDirect(s)));
   const best = $derived(r.endless?.[0]);
   const bestMission = $derived(r.planets ? undefined : r.drops?.find(([i]) => db.sources[i].kind === "mission"));
   const bestBounty = $derived(r.drops?.find(([i]) => db.sources[i].kind === "bounty"));

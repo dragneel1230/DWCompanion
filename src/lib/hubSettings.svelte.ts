@@ -4,11 +4,12 @@ import { invoke } from "@tauri-apps/api/core";
 
 export interface HubSettings {
   shortcut: string; // Tauri accelerator: "Alt+X", "Ctrl+Shift+F1"...
+  enabled: boolean; // off: no hotkey, the hub never opens
 }
 
 const KEY = "dwc.hub";
 export const DEFAULT_SHORTCUT = "Alt+X";
-const DEFAULTS: HubSettings = { shortcut: DEFAULT_SHORTCUT };
+const DEFAULTS: HubSettings = { shortcut: DEFAULT_SHORTCUT, enabled: true };
 
 export function readHubSettings(): HubSettings {
   try {
@@ -46,7 +47,7 @@ class Store {
   async set(patch: Partial<HubSettings>) {
     const next = { ...this.value, ...patch };
     try {
-      await invoke("hub_set_shortcut", { accel: next.shortcut });
+      await invoke("hub_set_enabled", { enabled: next.enabled, accel: next.shortcut });
       this.error = "";
     } catch (e) {
       this.error = String(e);
@@ -61,7 +62,7 @@ class Store {
   }
 
   sync() {
-    invoke("hub_set_shortcut", { accel: this.value.shortcut }).catch((e) => (this.error = String(e)));
+    invoke("hub_set_enabled", { enabled: this.value.enabled, accel: this.value.shortcut }).catch((e) => (this.error = String(e)));
   }
 }
 

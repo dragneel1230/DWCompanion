@@ -113,7 +113,7 @@
   }
   .cycles {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
     gap: 16px;
   }
   .cycle {
@@ -171,7 +171,8 @@
   }
   .big {
     margin-top: 14px;
-    font-size: 30px;
+    font-size: clamp(24px, 2.3vw, 30px); /* the app window is narrower than the hub */
+    white-space: nowrap;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
   }

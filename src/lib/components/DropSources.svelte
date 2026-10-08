@@ -32,7 +32,7 @@
         <div class="row src" class:top={best && i === 0 && g.kind === "mission"}>
           <span class="name">
             {r.src.name}
-            {#if r.src.sub}<small>{r.src.sub}</small>{/if}
+            {#if r.src.sub}<small>{r.src.sub}{#if r.src.at}: {r.src.at.join(", ")}{/if}</small>{/if}
           </span>
           {#if best && i === 0 && g.kind === "mission"}<span class="best">{t("drops.best")}</span>{/if}
           <span class="rots">

@@ -1,8 +1,6 @@
-// "Do I have this mod?" — one entry point for every source of truth.
-// Today: manual marks and the Mods screen scan (Inventory tab), saved locally. Later: the inventory source DE approves (see docs/DE_REQUEST.md);
-// it plugs in here and the UI stays the same.
-
-export type OwnSource = "manual" | "inventory";
+// "Do I have this mod?" — one entry point for every source of truth: the inventory snapshot
+// (inventory.svelte.ts) plus manual marks and the Mods screen scan, saved locally.
+import { inventory } from "$lib/inventory.svelte";
 
 const KEY = "dwc.ownedMods";
 
@@ -15,13 +13,18 @@ function readSaved(): string[] {
 }
 
 class Owned {
-  source: OwnSource = "manual";
   #ids = $state(new Set<string>(readSaved()));
 
   has(id: string): boolean {
-    return this.#ids.has(id);
+    return this.#ids.has(id) || inventory.hasMod(id);
   }
 
+  // Known from the inventory: a manual mark can't take it away.
+  fromInv(id: string): boolean {
+    return inventory.hasMod(id);
+  }
+
+  // Manual marks only.
   get count(): number {
     return this.#ids.size;
   }

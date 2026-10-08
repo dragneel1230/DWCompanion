@@ -23,8 +23,14 @@ pub struct Wfm {
     last: Mutex<Option<Instant>>,
 }
 
+impl Wfm {
+    pub fn token(&self) -> Option<String> {
+        self.token.lock().unwrap().clone()
+    }
+}
+
 pub fn init() -> Wfm {
-    Wfm { token: Mutex::new(cred::read()), last: Mutex::new(None) }
+    Wfm { token: Mutex::new(crate::cred::read(CRED_TARGET)), last: Mutex::new(None) }
 }
 
 fn client() -> reqwest::Client {
@@ -97,7 +103,7 @@ async fn send(keep: Option<&Wfm>, token: &str, method: reqwest::Method, path: &s
         let fresh = h.trim_start_matches("Bearer ").trim_start_matches("JWT ").trim();
         if fresh.len() > 100 && fresh != token && fresh.split('.').count() == 3 {
             *state.token.lock().unwrap() = Some(fresh.to_string());
-            cred::write(fresh);
+            crate::cred::write(CRED_TARGET, fresh);
         }
     }
     if status == reqwest::StatusCode::UNAUTHORIZED {
@@ -137,12 +143,13 @@ pub async fn wfm_me(app: AppHandle) -> Result<Option<Value>, String> {
 #[tauri::command]
 pub fn wfm_logout(app: AppHandle) {
     forget(&app.state::<Wfm>());
+    crate::wfm_status::stop(&app);
     let _ = app.emit("wfm-auth", Value::Null);
 }
 
 fn forget(state: &Wfm) {
     *state.token.lock().unwrap() = None;
-    cred::delete();
+    crate::cred::delete(CRED_TARGET);
 }
 
 // Opens the site's sign-in page. A private session: nothing stays in the app's own browser profile.
@@ -182,7 +189,7 @@ pub async fn wfm_login(app: AppHandle) -> Result<(), String> {
             let state = app2.state::<Wfm>();
             wait_turn(&state).await;
             if let Ok(Some(user)) = me(None, &jwt).await {
-                cred::write(&jwt);
+                crate::cred::write(CRED_TARGET, &jwt);
                 *state.token.lock().unwrap() = Some(jwt);
                 let _ = app2.emit("wfm-auth", user);
                 let _ = w.close();
@@ -228,47 +235,3 @@ pub async fn wfm_call(app: AppHandle, method: String, path: String, body: Option
     }
 }
 
-// Windows Credential Manager: a generic credential for this user only.
-mod cred {
-    use super::CRED_TARGET;
-    use windows::core::{HSTRING, PWSTR};
-    use windows::Win32::Security::Credentials::{
-        CredDeleteW, CredFree, CredReadW, CredWriteW, CREDENTIALW, CRED_FLAGS, CRED_PERSIST_LOCAL_MACHINE, CRED_TYPE_GENERIC,
-    };
-
-    pub fn write(token: &str) {
-        let target = HSTRING::from(CRED_TARGET);
-        let mut blob = token.as_bytes().to_vec();
-        let cred = CREDENTIALW {
-            Flags: CRED_FLAGS(0),
-            Type: CRED_TYPE_GENERIC,
-            TargetName: PWSTR(target.as_ptr() as *mut _),
-            CredentialBlobSize: blob.len() as u32,
-            CredentialBlob: blob.as_mut_ptr(),
-            Persist: CRED_PERSIST_LOCAL_MACHINE,
-            ..Default::default()
-        };
-        unsafe {
-            let _ = CredWriteW(&cred, 0);
-        }
-    }
-
-    pub fn read() -> Option<String> {
-        let target = HSTRING::from(CRED_TARGET);
-        let mut p: *mut CREDENTIALW = std::ptr::null_mut();
-        unsafe {
-            CredReadW(&target, CRED_TYPE_GENERIC, None, &mut p).ok()?;
-            let c = &*p;
-            let bytes = std::slice::from_raw_parts(c.CredentialBlob, c.CredentialBlobSize as usize).to_vec();
-            CredFree(p as *const _);
-            String::from_utf8(bytes).ok().filter(|s| !s.is_empty())
-        }
-    }
-
-    pub fn delete() {
-        let target = HSTRING::from(CRED_TARGET);
-        unsafe {
-            let _ = CredDeleteW(&target, CRED_TYPE_GENERIC, None);
-        }
-    }
-}

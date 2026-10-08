@@ -6,6 +6,13 @@
   import { flip } from "svelte/animate";
   import { TIER_COLOR } from "./hub";
   import { world } from "./worldData.svelte";
+  import { invView } from "$lib/inv/invView.svelte";
+
+  invView.start();
+  // Relics the player holds for a tier (inventory): Omnia takes any era.
+  const ERA = ["", "Lith", "Meso", "Neo", "Axi", "Requiem"];
+  const own = (tierNum: number): number =>
+    tierNum === 6 ? Object.values(invView.byEra).reduce((a, b) => a + b, 0) : (invView.byEra[ERA[tierNum]] ?? 0);
 
   let { now }: { now: number } = $props();
 
@@ -66,6 +73,9 @@
     {:else if !world.loaded}
       <div class="empty"><span>{t("common.loading")}</span></div>
     {/if}
+    <!-- Keyed by mode: switching tabs swaps the list at once (local transitions don't play),
+         rows still slide in / out when a refresh adds or drops them. -->
+    {#key mode}
     {#each shown as f (f.id)}
       {@const soon = f.expiry - now < 5 * 60_000}
       <div class="fis" in:slide={{ duration: 220 }} out:slide={{ duration: 220 }} animate:flip={{ duration: 220 }}>
@@ -74,9 +84,14 @@
           {f.mission}
           <small>{f.node}{f.enemy ? ` · ${f.enemy}` : ""}</small>
         </span>
+        {#if invView.stacks.length}
+          {@const n = own(f.tierNum)}
+          <span class="own" class:none={!n} title={t("fissures.ownHint")}>{n ? `×${n}` : "—"}</span>
+        {/if}
         <span class="time" class:soon>{left(f.expiry)}</span>
       </div>
     {/each}
+    {/key}
   </div>
 </section>
 
@@ -123,6 +138,17 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .own {
+    flex: none;
+    min-width: 34px;
+    text-align: right;
+    font-size: 12px;
+    color: var(--good);
+    font-variant-numeric: tabular-nums;
+  }
+  .own.none {
+    color: var(--text-faint);
   }
   .time {
     flex: none;

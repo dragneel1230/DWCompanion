@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Facts from "$lib/components/Facts.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { page } from "$app/state";
   import { getDb, iconUrl, itemName, RARITY_RU } from "$lib/db";
@@ -46,6 +47,7 @@
         <div class="sub">
           <span>{item.en}</span>
           {#if set}<a class="tag" href="/set?id={encodeURIComponent(item.set ?? '')}">{t("detail.setOf", { name: set.name })}</a>{/if}
+          <Facts kind="item" {id} price={false} />
         </div>
       </div>
       <div class="price">

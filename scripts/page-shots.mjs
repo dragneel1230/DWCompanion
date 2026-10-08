@@ -28,9 +28,17 @@ await send("Runtime.enable");
 for (const p of pages) {
   const cut = p.indexOf("=");
   const [name, path] = [p.slice(0, cut), p.slice(cut + 1)];
-  // Menu links when there is one (a detached anchor is sometimes ignored right after a reload).
-  await js(`(() => { const nav = document.querySelector('nav a[href=' + JSON.stringify(${JSON.stringify(path)}) + ']'); if (nav) return nav.click(); const a = document.createElement('a'); a.href = ${JSON.stringify(path)}; document.body.appendChild(a); a.click(); a.remove(); })()`);
-  await sleep(4500);
+  // Menu links when there is one; otherwise an anchor that stays in the page until the router took it
+  // (a removed one is ignored). From Git Bash run with MSYS_NO_PATHCONV=1, or "x=/frames" turns into a Windows path.
+  const P = JSON.stringify(path);
+  await js(`(async () => {
+    let a = [...document.querySelectorAll('nav a')].find((x) => x.getAttribute('href') === ${P});
+    if (!a) { a = document.createElement('a'); a.href = ${P}; a.id = '__shot'; document.body.appendChild(a); }
+    a.click();
+    await new Promise((r) => setTimeout(r, 1500));
+    document.getElementById('__shot')?.remove();
+  })()`);
+  await sleep(3000);
   const res = await send("Page.captureScreenshot", { format: "png" });
   writeFileSync(`${OUT}/${name}.png`, Buffer.from(res.result.data, "base64"));
   console.log("saved", name);

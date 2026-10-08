@@ -22,6 +22,11 @@ const systems = pe("ExportSystems.json");
 const missionTypes = pe("ExportMissionTypes.json");
 const factions = pe("ExportFactions.json");
 const resources = pe("ExportResources.json");
+const upgrades = pe("ExportUpgrades.json"); // mods
+const arcanes = pe("ExportArcanes.json");
+const nightwave = pe("ExportNightwave.json");
+const enemyFaction = new Map(); // English enemy name -> faction ("Corpus", "Infestation"…)
+for (const v of Object.values(pe("ExportEnemies.json").avatars)) if (en[v.name] && !enemyFaction.has(en[v.name])) enemyFaction.set(en[v.name], v.faction);
 const images = pe("ExportImages.json");
 const img = (path) => {
   const hash = path && images[path]?.contentHash;
@@ -35,13 +40,15 @@ const GLUE = {
     bounty: "Заказ", lvl: "ур.", extra: "доп. награда", event: "событие", dark: "Тёмный сектор",
     mode: { caches: "Тайники", conclave: "Конклав", archwing: "Арчвинг", sharkwing: "Акулье крыло" },
     circuit: (n) => `Цепь, уровень ${n}`,
-    words: { "duviri circuit": "Цепь (Дувири)", "zariman ten zero": "Зариман", hard: "Стальной путь", normal: "Обычный" },
+    words: { "duviri circuit": "Цепь (Дувири)", "zariman ten zero": "Зариман", hard: "Стальной путь", normal: "Обычный", relay: "Реле", camp: "Лагерь Скитальца", chipper: "Чиппер", ascension: "режим «Вознесение»", arbitration: "Почести Арбитража" },
+    quest: (q) => `локация квеста «${q}»`,
   },
   en: {
     bounty: "Bounty", lvl: "lvl", extra: "extra reward", event: "event", dark: "Dark Sector",
     mode: { caches: "Caches", conclave: "Conclave", archwing: "Archwing", sharkwing: "Sharkwing" },
     circuit: (n) => `The Circuit, tier ${n}`,
-    words: { "duviri circuit": "The Circuit (Duviri)", "zariman ten zero": "Zariman", hard: "Steel Path", normal: "Normal" },
+    words: { "duviri circuit": "The Circuit (Duviri)", "zariman ten zero": "Zariman", hard: "Steel Path", normal: "Normal", relay: "Relay", camp: "Drifter's Camp", chipper: "Chipper", ascension: "Ascension mode", arbitration: "Arbitration Honors" },
+    quest: (q) => `${q} quest area`,
   },
 };
 let D = ru; // dictionary of the language being built (set in the loop below)
@@ -141,6 +148,23 @@ for (const id of ["resourceByAvatar", "relicByAvatar", "blueprintByAvatar"]) {
   }
 }
 
+// Mods and arcanes by enemy ("Mod Drops by Source"): kept apart, they only feed the mods' own sources.
+const modRows = [];
+{
+  let src = null;
+  let dropChance = 0;
+  for (const r of section("modByAvatar")) {
+    if (r.th.length >= 2) (src = r.th[0]), (dropChance = pct(r.th[1]));
+    else if (src && r.td.length >= 2) modRows.push({ item: itemName(r.td[0]), place: src, rot: "", chance: (dropChance * pct(r.td[1])) / 100, qty: 1, kind: "enemy" });
+  }
+}
+const modByItem = new Map();
+for (const d of modRows) {
+  if (!Number.isFinite(d.chance)) continue;
+  const k = d.item.toLowerCase();
+  modByItem.set(k, [...(modByItem.get(k) ?? []), d]);
+}
+
 const builtAt = new Date().toISOString();
 for (const [LANG, dict] of Object.entries(DICTS)) {
 D = dict;
@@ -204,7 +228,23 @@ function place(d) {
   const name = lvl ? lvl[1] : d.place;
   const n = ruOfX(name);
   if (!n) miss(name);
+  // Demolishers spawn only in Disruption missions of their faction: say where to meet them.
+  const at = d.kind === "enemy" ? disruptionNodes(name) : undefined;
+  if (at) return { kind: d.kind, name: n ?? name, sub: `${modeRu("Disruption")} · ${at.fac}`, at: at.nodes };
   return { kind: d.kind, name: n ?? name, sub: lvl ? (ruOf(lvl[2]) ?? lvl[2]) : undefined };
+}
+
+// "Demolisher Boiler" -> its faction (ExportEnemies) -> Disruption nodes of that faction, lowest level first.
+function disruptionNodes(enemyEn) {
+  if (!/^Demolisher /.test(enemyEn)) return undefined;
+  const fc = { Corpus: "FC_CORPUS", Grineer: "FC_GRINEER", Infestation: "FC_INFESTATION" }[enemyFaction.get(enemyEn)];
+  if (!fc) return undefined;
+  const nodes = Object.values(regions)
+    .filter((r) => r.missionType === "MT_ARTIFACT" && r.faction === fc && !r.hidden)
+    .sort((a, b) => (a.minEnemyLevel ?? 0) - (b.minEnemyLevel ?? 0))
+    .slice(0, 3)
+    .map((r) => `${tr(r.name)} (${tr(r.systemName)}) ${G.lvl} ${r.minEnemyLevel}–${r.maxEnemyLevel}`);
+  return nodes.length ? { fac: unshout(tr(factions[fc]?.name ?? "")), nodes } : undefined;
 }
 
 function placeOf(planet, node, mode, kind) {
@@ -454,25 +494,67 @@ for (const [k, r] of Object.entries(recipes)) if (!bpKey.has(r.resultType)) bpKe
 const named = (key) => (key ? unshout(clean(tr(key) ?? "")) || null : null);
 // Vendor manifest folder / file -> where the player finds them (DE's names, looked up by their English text).
 const VENDOR_PLACE = { Deimos: "Necralisk", Ostron: "Cetus", Solaris: "Fortuna", Zariman: "Chrysalith", EntratiLabs: "Sanctum Anatomica", TheHex: "Höllvania Central Mall", Duviri: "Duviri" };
-const VENDOR_NPC = { OtakLastWishManifest: "Otak", NightcapVendorManifest: "Nightcap", AcrithisKullervoShopManifest: "Acrithis", AcrithisVendorManifest: "Acrithis", HunhowVendorManifest: "Hunhow" };
+// Hubs = the relays (no single DE word for "Relay": our glue). Ergo Glast trades Corpus Dogmat weapons for
+// Corrupted Holokeys (Void Storms); Teshin sells Steel Path Honors for Steel Essence.
+const VENDOR_NPC = {
+  OtakLastWishManifest: "Otak", NightcapVendorManifest: "Nightcap", AcrithisKullervoShopManifest: "Acrithis", AcrithisVendorManifest: "Acrithis",
+  HunhowVendorManifest: "Hunhow", PerrinSequenceWeaponVendorManifest: "Ergo Glast", TeshinHardModeVendorManifest: "Teshin",
+  AspirantZorbaVendorManifest: "Aspirant Zorba", IronwakeFlawedModVendorManifest: "Palladino",
+};
+// Nora's offerings: only the running season's manifest sells now (older seasons stay in the export).
+const NORA_NOW = nightwave.affiliationTag?.replace(/Syndicate$/, "VendorManifest");
+const isMod = (id) => !!(upgrades[id] || arcanes[id]);
 const vendorOf = new Map(); // bp -> [{ place, npc, event, cost: [[name, n]], syn: [name, rank, standing] }]
 for (const [vk, v] of Object.entries(vendors)) {
   const [folder, file] = vk.split("/").slice(-2);
-  const event = folder === "Events" || /RadioLegion|Event/.test(file);
+  // Prospectors, fishmongers and conservation take the player's gems / fish / tags in trade (their
+  // "price" is what the player gets): not a place to buy.
+  if (/Prospector|Fishmonger|Conservation/.test(file)) continue;
+  const nora = /^RadioLegion/.test(file);
+  const noraNow = nora && file === NORA_NOW;
+  const event = !noraNow && (folder === "Events" || /RadioLegion|Event/.test(file));
   for (const it of v.items ?? []) {
-    // A blueprint, or the thing itself sold ready-made (refined gems at the prospector): "direct".
+    // A blueprint, or the thing itself sold ready-made (refined gems at the prospector, mods): "direct".
     const id = noStore(it.storeItem);
     const direct = !recipes[id];
-    if (direct && !resources[id] && !weapons[id] && !frames[id] && !sentinels[id]) continue;
+    if (direct && !resources[id] && !weapons[id] && !frames[id] && !sentinels[id] && !isMod(id)) continue;
+    // Mods of past Nightwave seasons are not sold any more.
+    if (nora && !noraNow && isMod(id)) continue;
     const cost = (it.itemPrices ?? []).map((p) => [named(resources[p.ItemType]?.name) ?? p.ItemType.split("/").pop(), p.ItemCount]);
-    if (it.credits) cost.push(["credits", it.credits]);
-    if (it.platinum) cost.push(["platinum", it.platinum]);
+    // Prices can be a range ({ minValue, maxValue }) when the stock rotates.
+    const amount = (x) => (typeof x === "object" ? (x.minValue === x.maxValue ? x.minValue : `${x.minValue}–${x.maxValue}`) : x);
+    if (it.credits) cost.push(["credits", amount(it.credits)]);
+    if (it.platinum) cost.push(["platinum", amount(it.platinum)]);
     const syn = it.syndicate ? [named(syndicates[it.syndicate.tag]?.name) ?? it.syndicate.tag, it.syndicate.minRank ?? 0, it.syndicate.standingCost ?? 0] : undefined;
-    const place = VENDOR_PLACE[folder] ? unshout(ruOf(VENDOR_PLACE[folder]) ?? VENDOR_PLACE[folder]) : undefined;
-    const npc = VENDOR_NPC[file] ? unshout(ruOf(VENDOR_NPC[file]) ?? VENDOR_NPC[file]) : undefined;
+    // Places DE has no single word for are our glue: the relays, Drifter's Camp (Chipper, Kahl's Stock),
+    // the Ascension mode's shop (Jade, Vesper, Cantare).
+    const place =
+      folder === "Hubs" ? G.words.relay : folder === "Kahl" ? G.words.camp : file === "AscensionVendorManifest" ? G.words.ascension
+      : folder === "Prequel" ? G.quest(unshout(ruOf("The Old Peace") ?? "The Old Peace"))
+      : file === "IronwakeFlawedModVendorManifest" ? unshout(ruOf("Iron Wake") ?? "Iron Wake")
+      : VENDOR_PLACE[folder] ? unshout(ruOf(VENDOR_PLACE[folder]) ?? VENDOR_PLACE[folder]) : undefined;
+    const npc = file === "ChipperVendorManifest" ? G.words.chipper : file === "EliteAlertVendorManifest" ? G.words.arbitration
+      : noraNow ? unshout(tr("/Lotus/Language/Syndicates/RadioLegionTitle"))
+      : VENDOR_NPC[file] ? unshout(ruOf(VENDOR_NPC[file]) ?? VENDOR_NPC[file]) : undefined;
     const list = vendorOf.get(id) ?? [];
     if (!list.some((x) => x.place === place && x.npc === npc && !!x.event === event)) list.push({ place, npc, event: event || undefined, direct: direct || undefined, cost, syn });
     vendorOf.set(id, list);
+  }
+}
+// Syndicate offerings (ExportSyndicates favours): blueprints or things sold for standing at a rank.
+// Vox Solaris (Baruuk), Cephalon Simaris (Inaros), Ostron / Solaris United / Entrati (gem refining)…
+const synOf = new Map(); // id -> [{ name, rank, title, standing, direct }]
+for (const sy of Object.values(syndicates)) {
+  const name = named(sy.name);
+  if (!name) continue;
+  for (const f of sy.favours ?? []) {
+    const id = noStore(f.storeItem);
+    const direct = !recipes[id];
+    if (direct && !resources[id] && !weapons[id] && !frames[id] && !sentinels[id] && !isMod(id)) continue;
+    const title = named((sy.titles ?? []).find((x) => x.level === f.requiredLevel)?.name);
+    const list = synOf.get(id) ?? [];
+    if (!list.some((x) => x.name === name)) list.push({ name, rank: f.requiredLevel ?? 0, title: title ?? undefined, standing: f.standingCost ?? 0, direct: direct || undefined });
+    synOf.set(id, list);
   }
 }
 // Quests: blueprints sent or given at a stage; a mission key's quest is the key chain in its folder.
@@ -494,7 +576,7 @@ const LAB = (bp) =>
   : "Dojo/ResearchLabTennoName";
 function sourcesOf(itemId) {
   const bp = bpKey.get(itemId);
-  const out = (vendorOf.get(itemId) ?? []).map((v) => ({ k: "vendor", ...v }));
+  const out = [...(vendorOf.get(itemId) ?? []).map((v) => ({ k: "vendor", ...v })), ...(synOf.get(itemId) ?? []).map((v) => ({ k: "syndicate", ...v }))];
   if (!bp) return out.length ? out : undefined;
   const r = recipes[bp];
   if ((r.creditsCost || r.platinumCost) && !r.excludeFromMarket) out.push({ k: "market", cr: r.creditsCost, pl: r.platinumCost });
@@ -504,6 +586,7 @@ function sourcesOf(itemId) {
   }
   if (questOf.has(bp)) out.push({ k: "quest", name: named(questOf.get(bp)) });
   for (const v of vendorOf.get(bp) ?? []) out.push({ k: "vendor", ...v });
+  for (const v of synOf.get(bp) ?? []) out.push({ k: "syndicate", ...v });
   return out.length ? out : undefined;
 }
 
@@ -565,13 +648,35 @@ for (const id of Object.keys(craft)) {
   // The blueprint's id: a prime item's main blueprint is a relic reward (db.json items).
   const bp = bpKey.get(id);
   if (bp && /Prime/.test(bp)) craft[id].bp = bp;
+  // Any other blueprint: the player's inventory lists blueprints by this id (Recipes).
+  else if (bp) craft[id].r = bp;
 }
 // Plain resources some vendor sells (Railjack salvage, fish parts…): on the resource itself.
 for (const id of Object.keys(res)) {
   if (craft[id]) continue;
-  const v = vendorOf.get(id);
-  if (v) res[id].src = v.map((x) => ({ k: "vendor", ...x }));
+  const v = [...(vendorOf.get(id) ?? []).map((x) => ({ k: "vendor", ...x })), ...(synOf.get(id) ?? []).map((x) => ({ k: "syndicate", ...x }))];
+  if (v.length) res[id].src = v;
 }
+// Mods and arcanes: drop tables (missions, bounties, enemies, vaults…) by English name, vendors and
+// syndicates by id. Per kind only the best few: a common mod drops from hundreds of enemies.
+const modSrc = {};
+const MOD_TOP = 5;
+for (const [id, e] of [...Object.entries(upgrades), ...Object.entries(arcanes)]) {
+  const name = en[e.name]?.toLowerCase();
+  if (!name || !ru[e.name]) continue;
+  const list = [...(byItem.get(name) ?? []), ...(modByItem.get(name) ?? [])];
+  const g = list.length ? group(list) : [];
+  const seen = new Map();
+  const top = g.filter(([i]) => {
+    const k = sources[i].kind;
+    seen.set(k, (seen.get(k) ?? 0) + 1);
+    return seen.get(k) <= MOD_TOP;
+  });
+  const src = [...(vendorOf.get(id) ?? []).map((x) => ({ k: "vendor", ...x })), ...(synOf.get(id) ?? []).map((x) => ({ k: "syndicate", ...x }))];
+  if (!top.length && !src.length) continue;
+  modSrc[id] = { drops: top.length ? top : undefined, src: src.length ? src : undefined };
+}
+out.mods = modSrc;
 // Prime parts as ingredients are relic rewards: their blueprints drop, they are built from them.
 writeFileSync(`static/data/${LANG}/craft.json`, JSON.stringify({ items: craft, names }));
 writeFileSync(`static/data/${LANG}/drops.json`, JSON.stringify(out));

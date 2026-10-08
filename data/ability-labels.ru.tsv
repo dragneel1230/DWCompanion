@@ -1,0 +1,1062 @@
+# Russian for the wiki's ability stat labels (scripts/fetch-wiki-abilities.mjs -> build-frames.mjs).
+# Format: English<TAB>Russian. Ability names left in English are swapped for DE's Russian names at build time.
+# Damage types as the Russian client says them: Impact Удар, Puncture Пробивание, Slash Разрез, Heat Огонь, Cold Холод,
+# Electricity Электричество, Toxin Токсин, Blast Взрыв, Corrosive Коррозия, Gas Газ, Magnetic Магнетизм,
+# Radiation Радиация, Viral Вирус, Void Бездна, Tau Тау, True — истинный урон.
+ability crit chance	шанс крита способности
+ability critical chance	шанс крита способности
+ability duration	длительность способности
+ability radius	радиус способности
+absorb multiplier	множитель поглощения
+absorbed damage	поглощённый урон
+absorbed damage cap	предел поглощённого урона
+absorbed damage distribution	распределение поглощённого урона
+absorbed damage per mirror	поглощённый урон на зеркало
+absorption multiplier	множитель поглощения
+activation knockback radius	радиус отбрасывания при активации
+active globules cap	предел активных сгустков
+active Shadow limit	предел активных Теней
+active spheres limit	предел активных сфер
+added gun damage	доп. урон огнестрельного оружия
+added melee damage	доп. урон ближнего боя
+additional bolts on kill	доп. разряды при убийстве
+affected enemies	затронутые враги
+affected targets	затронутые цели
+affinity range	радиус получения опыта
+affinity range/open-world affinity range	радиус опыта / в открытом мире
+air speed	скорость в воздухе
+ally armor buff	усиление брони союзников
+ally buff charge	заряд усиления союзников
+ally link	связь с союзником
+ally shield capacity bonus	бонус к щитам союзников
+ammo pack duration	длительность пакетов боеприпасов
+ammo packs	пакеты боеприпасов
+anchor duration	длительность якоря
+angle	угол
+angle cap	предел угла
+antennae duration	длительность антенн
+AoE percentage damage	процентный урон по области
+AoE percentage damage cap	предел процентного урона по области
+AoE range	радиус области
+area duration	длительность области
+area Impact damage	урон Ударом по области
+area of effect	область действия
+area radius	радиус области
+armor	броня
+armor and shield strip	снятие брони и щитов
+armor bonus	увеличение брони
+armor bonus cap	предел увеличения брони
+armor bonus duration	длительность увеличения брони
+armor buff	усиление брони
+armor buff cap	предел усиления брони
+armor buff duration	длительность усиления брони
+armor buff duration in field	длительность усиления брони в поле
+armor buff rate from armored enemies	скорость усиления брони от бронированных врагов
+armor cap	предел брони
+armor duration	длительность брони
+armor multiplier	множитель брони
+armor per Corrosive status	броня за статус Коррозии
+armor per enemy	броня за врага
+armor reduction	снижение брони
+Armor Reduction	снижение брони
+armor removal per second	снятие брони в секунду
+armor steal	кража брони
+armor steal cap	предел кражи брони
+armor steal duration	длительность кражи брони
+armor strip	снятие брони
+arrows	стрелы
+arrows per cast	стрел за применение
+Attack & Protect cooldowns	перезарядка «Атака» и «Защита»
+attack cooldown	перезарядка атаки
+attack interval	интервал атак
+attack radius	радиус атаки
+attack range	дальность атаки
+attack speed buff	усиление скорости атаки
+attract radius	радиус притяжения
+aura buff duration	длительность усиления ауры
+aura nullification	подавление аур
+aura range	радиус ауры
+auto collapse vortex duration	время до схлопывания вихря
+auto-target radius	радиус автонаведения
+Backbeat wave status bonus	бонус статуса волны Backbeat
+backward dodge	уклонение назад
+banish duration	длительность изгнания
+banish radius	радиус изгнания
+barrage radius	радиус залпа
+base beam damage per second	базовый урон луча в секунду
+base Blast damage	базовый урон Взрывом
+base critical chance	базовый шанс крита
+base damage	базовый урон
+base damage bonus	базовый бонус урона
+base health	базовое здоровье
+base move speed	базовая скорость движения
+base Overguard	базовый Сверхщит
+base time	базовое время
+baseRadiation damage	базовый урон Радиацией
+bastille armor buff rate	скорость усиления брони в Bastille
+bastille duration	длительность Bastille
+battery charge	заряд батареи
+battery charge on cast	заряд батареи при применении
+battery charge per hit	заряд батареи за попадание
+battery charge per melee attack	заряд батареи за удар в ближнем бою
+battery drain per hit	расход батареи за попадание
+battery drain per second	расход батареи в секунду
+battery limit release	сброс предела батареи
+beacon Blast status chance	шанс статуса Взрыва от маяка
+beam length	длина луча
+beam max damage ramp-up	макс. нарастание урона луча
+beam radius	радиус луча
+beta enthrall chance on hit	шанс порабощения при попадании (бета)
+blade radius	радиус клинков
+Blast damage	урон Взрывом
+Blast damage on beacon hit	урон Взрывом при попадании маяка
+Blast damage on capsule hit	урон Взрывом при попадании капсулы
+Blast damage on device hit	урон Взрывом при попадании устройства
+Blast damage on explosion	урон Взрывом при взрыве
+Blast damage on explosion per javelin	урон Взрывом при взрыве каждого копья
+Blast damage on orb hit	урон Взрывом при попадании сферы
+Blast enemy armor reduction for Thermal Sunder	снижение брони врагов Взрывом от Thermal Sunder
+Blast explosion base damage	базовый урон взрыва (Взрыв)
+blast procs per hit	статусов Взрыва за попадание
+blast radius	радиус взрыва
+Blast radius	радиус взрыва
+Blast status chance	шанс статуса Взрыва
+Blast status chance on orb hit	шанс статуса Взрыва при попадании сферы
+Blast total damage per song loop, per enemy in range	урон Взрывом за круг мелодии на врага в радиусе
+bleedout slow	замедление истекания кровью
+bleedout slow cap	предел замедления истекания кровью
+blind duration	длительность ослепления
+blind radius	радиус ослепления
+bodyshot critical chance cap	предел шанса крита по телу
+bonus armor cap	предел доп. брони
+bonus armor duration	длительность доп. брони
+bonus armor per enemy	доп. броня за врага
+bonus armor per Radiation status effect	доп. броня за статус Радиации
+bonus damage from launched enemy's max health	доп. урон от макс. здоровья подброшенного врага
+bonus duration per kill	доп. длительность за убийство
+bonus per 100 shields	бонус за каждые 100 щитов
+bonus Rubble health/armor	доп. здоровье/броня от Щебня
+bonus speed	доп. скорость
+boosted beam damage per second	усиленный урон луча в секунду
+boosted beam move speed penalty	штраф скорости при усиленном луче
+boosted beam radius	радиус усиленного луча
+boosted damage / s	усиленный урон в секунду
+boosted Heat damage	усиленный урон Огнём
+boosted status chance	усиленный шанс статуса
+Bounce Damage Multiplier	множитель урона рикошета
+Breach Surge spark chance on hit	шанс искры Breach Surge при попадании
+break damage	урон при разрушении
+buff duration	длительность усиления
+buff radius	радиус усиления
+burn radius	радиус горения
+cancel delay	задержка отмены
+capture radius	радиус захвата
+cast	применение
+cast radius	радиус применения
+cast range	дальность применения
+cast time	время применения
+casting cooldown and max duration cap	перезарядка и предел длительности
+casting speed buff	усиление скорости применения
+casting time	время применения
+chain link range	дальность цепи
+chain links	звеньев цепи
+chain range	дальность цепи
+charge damage per sec	урон заряда в секунду
+charge distance	дистанция рывка
+charge duration	длительность рывка
+charge range	дальность рывка
+charge speed	скорость рывка
+charged throw distance	дальность заряженного броска
+charging damage radius	радиус урона при рывке
+charm radius	радиус очарования
+clone jewels distance	дистанция камней-клонов
+cloud duration	длительность облака
+Cold area damage	урон Холодом по области
+Cold damage	урон Холодом
+Cold damage increase per second	рост урона Холодом в секунду
+Cold damage on burst	урон Холодом при разрыве
+Cold damage per second	урон Холодом в секунду
+Cold damage per tick	урон Холодом за тик
+Cold freeze chance and Heat ignite chance for Thermal Sunder	шанс заморозки и поджога от Thermal Sunder
+Cold initial damage	начальный урон Холодом
+Cold main damage	основной урон Холодом
+Cold shatter damage	урон Холодом при раскалывании
+Cold status effect stacks per proc	стаков Холода за срабатывание
+Cold status proc on cast	статус Холода при применении
+Cold status proc per second	статусов Холода в секунду
+Cold status procs	статусы Холода
+Cold status procs from Redline	статусы Холода от Redline
+Cold status procs on break	статусы Холода при разрушении
+Cold status procs on cast	статусы Холода при применении
+Cold status procs on Cold afflicted enemy	статусы Холода по замёрзшему врагу
+Cold status procs on pulse	статусы Холода за импульс
+collapse damage	урон при схлопывании
+collapse damage bonus	бонус урона при схлопывании
+collapse threshold	порог схлопывания
+collision radius	радиус столкновения
+combo damage multiplier cap	предел множителя урона комбо
+combo window	окно комбо
+Conculyst Fusion Strike damage multiplier	множитель урона Fusion Strike Конкулиста
+Conculyst Fusion Strike laser prism chance	шанс лазерной призмы Fusion Strike Конкулиста
+Conculyst tornado cooldown	перезарядка торнадо Конкулиста
+Conculyst tornado duration	длительность торнадо Конкулиста
+cone angle	угол конуса
+cone initial radius	начальный радиус конуса
+cone length	длина конуса
+contact and explosion damage	урон при касании и взрыве
+contact damage	урон при касании
+contact Electricity damage per second	урон Электричеством при касании в секунду
+contact radius	радиус касания
+convergence explosion Tau damage	урон Тау при схождении
+cooldown	перезарядка
+Corralizer Armament, Lohk Surge, Lost Spirit	Corralizer Armament, Lohk Surge, Lost Spirit
+Corrosive base damage	базовый урон Коррозией
+Corrosive bonus damage cap	предел доп. урона Коррозией
+Corrosive bonus damage per enemy	доп. урон Коррозией за врага
+Corrosive bonus damage per enemy per Corrosive status	доп. урон Коррозией за врага за статус Коррозии
+Corrosive capture damage per second	урон Коррозией при захвате в секунду
+Corrosive damage	урон Коррозией
+Corrosive status chance	шанс статуса Коррозии
+credit bonus	бонус кредитов
+credit bonus drop zone	зона бонуса кредитов
+credit chance	шанс кредитов
+crit chance	шанс крита
+crit multiplier	множитель крита
+critical chance / matched hit	шанс крита за попадание в такт
+critical chance per 100 damage	шанс крита за 100 урона
+critical chance time	время шанса крита
+critical damage multiplier	множитель крит. урона
+crystallization time	время кристаллизации
+current enemy health done as True / Blast	текущее здоровье врага как истинный урон / Взрыв
+current width	текущая ширина
+dagger cap per ally	предел кинжалов на союзника
+damage	урон
+damage / s	урон в секунду
+damage absorption	поглощение урона
+damage and mark instance per enemy	урон и метка на врага
+damage and status transfer	перенос урона и статусов
+damage bonus	бонус урона
+damage bonus per hit	бонус урона за попадание
+damage bonus per matched hit	бонус урона за попадание в такт
+damage bonus radius scaling	рост бонуса урона с радиусом
+damage capture multiplier	множитель захваченного урона
+damage conversion duration	длительность преобразования урона
+damage conversion rate	доля преобразования урона
+damage converted to weapon damage bonus	урон, преобразуемый в бонус урона оружия
+damage debuff	ослабление урона
+damage decay interval	интервал затухания урона
+damage decay rate	скорость затухания урона
+damage delay	задержка урона
+damage falloff	снижение урона с расстоянием
+damage growth enemy cap	предел врагов для роста урона
+damage growth per enemy	рост урона за врага
+damage growth per enemy hit	рост урона за поражённого врага
+damage health threshold	порог здоровья для урона
+damage immunity	неуязвимость к урону
+damage increase per status effect	рост урона за статус
+damage interval	интервал урона
+damage loss per ricochet	потеря урона за рикошет
+damage multiplier	множитель урона
+damage multiplier per 10 enemy levels	множитель урона за 10 уровней врага
+damage on digestion	урон при переваривании
+damage per 0.25s	урон за 0,25 с
+damage per Radiation status effect	урон за статус Радиации
+damage per sec	урон в секунду
+damage per second	урон в секунду
+damage per tick	урон за тик
+damage percentage	доля урона
+damage radius	радиус урона
+damage redirection	перенаправление урона
+damage reduction	снижение урона
+damage reduction cap	предел снижения урона
+damage reduction cap at empty battery	предел снижения урона при пустой батарее
+damage reduction cap at full battery	предел снижения урона при полной батарее
+damage reduction per dagger	снижение урона за кинжал
+damage reduction per particle	снижение урона за частицу
+damage tick interval	интервал тиков урона
+damage to health conversion	преобразование урона в здоровье
+damage to Overguard	урон по Сверхщиту
+damage vulnerability	уязвимость к урону
+Damage Vulnerability	уязвимость к урону
+damage vulnerability debuff	ослабление: уязвимость к урону
+damage vulnerability, non-Whipclaw sources	уязвимость к урону (кроме Whipclaw)
+damage/second	урон в секунду
+damage/tick	урон за тик
+dash distance	дистанция рывка
+dash duration	длительность рывка
+dash range	дальность рывка
+dash Slash damage	урон Разрезом при рывке
+dash speed	скорость рывка
+Death Well drain to health conversion	преобразование Колодца смерти в здоровье
+Death Well gain per enemy	наполнение Колодца смерти за врага
+Death Well gain per enemy for Reap, Sow and Death's Harvest	наполнение Колодца смерти за врага (Reap, Sow, Death's Harvest)
+Death Well gain per second per enemy	наполнение Колодца смерти в секунду за врага
+Death Well gain per second per enemy for Gloom	наполнение Колодца смерти в секунду за врага (Gloom)
+debuff duration	длительность ослабления
+decoy	приманка
+Decoy health	здоровье приманки
+Decoy health and shield absorb	поглощение здоровья и щитов приманкой
+decoy invuln. time	неуязвимость приманки
+decoy shields	щиты приманки
+Decoy shields	щиты приманки
+defense reduction	снижение защиты
+Defense Reduction	снижение защиты
+defense reduction cap	предел снижения защиты
+defense reduction duration	длительность снижения защиты
+deflect angle for non-hitscan	угол отражения снарядов
+detonation radius	радиус детонации
+disarm chance on hit	шанс обезоружить при попадании
+discharge chained targets	целей в цепи разряда
+discharge cooldown	перезарядка разряда
+discharge Electricity damage	урон Электричеством разряда
+discharge interval	интервал разрядов
+discharge range	дальность разряда
+dispel range	дальность рассеивания
+distance weapon damage	урон оружия на расстоянии
+dive bomb angle	угол пикирования
+dive bomb Impact damage	урон Ударом при пикировании
+dive initial speed	начальная скорость пикирования
+divert angle for hitscan	угол отклонения хитскана
+dodge chance	шанс уклонения
+Dodge chance and area damage reduction	шанс уклонения и снижение урона по области
+dome radius	радиус купола
+drone damage	урон дронов
+drone damage vulnerability	уязвимость от дронов
+drones duration	длительность дронов
+drop table chance	шанс таблицы добычи
+duration	длительность
+duration cap	предел длительности
+duration extend	продление длительности
+effect duration	длительность эффекта
+effect range	радиус эффекта
+electric arc radius	радиус электрической дуги
+electric field radius	радиус электрического поля
+electric pulse duration	длительность электроимпульса
+electric pulse range	дальность электроимпульса
+Electricity damage	урон Электричеством
+Electricity damage on deployment	урон Электричеством при установке
+Electricity damage on implosion	урон Электричеством при схлопывании
+Electricity damage per bolt	урон Электричеством за разряд
+Electricity damage per discharge	урон Электричеством за разряд
+Electricity damage per second	урон Электричеством в секунду
+Electricity damage/second	урон Электричеством в секунду
+Electricity status chance	шанс статуса Электричества
+empowered health orb restore	восстановление усиленной сферы здоровья
+enemies to max out charm radius	врагов до макс. радиуса очарования
+enemy armor reduction from Redline on Heat combination	снижение брони врагов от Redline с Огнём
+enemy detonation Tau damage	урон Тау при взрыве врага
+enemy explosion radius	радиус взрыва врага
+enemy explosions damage falloff	снижение урона взрывов врагов
+enemy health done as True / Blast	здоровье врага как истинный урон / Взрыв
+enemy hit chance	шанс попадания врагов
+enemy knockdown chance on implosion	шанс сбить врага при схлопывании
+enemy link	связь с врагом
+enemy pull speed	скорость притягивания врагов
+enemy stagger range on cast	радиус ошеломления врагов при применении
+energy convert	преобразование энергии
+energy cost refund per hit	возврат энергии за попадание
+energy discount for Mach Rush	скидка энергии на Mach Rush
+energy discount for Teleport on marked enemy	скидка энергии на Teleport к отмеченному врагу
+energy discount from Redline	скидка энергии от Redline
+energy discount on Blade Storm target	скидка энергии на цель Blade Storm
+energy drain enemy cap	предел врагов для расхода энергии
+energy field max radius	макс. радиус энергетического поля
+energy multiplier	множитель энергии
+energy orb chance	шанс сферы энергии
+energy orb drop chance on headshot kill	шанс сферы энергии при убийстве в голову
+energy orb drop interval	интервал выпадения сфер энергии
+energy refund on finisher kill	возврат энергии при добивании
+energy regen	восстановление энергии
+energy restore per enemy	восстановление энергии за врага
+energy restore per hit	восстановление энергии за попадание
+energy restored per pulse	энергия за импульс
+enhanced damage multiplier	множитель усиленного урона
+Ensnare damage multiplier	множитель урона Ensnare
+ensnare duration	длительность захвата
+Entangle move speed debuff	замедление от Entangle
+Enthrall energy discount	скидка энергии на Enthrall
+evasion angle	угол уклонения
+evasion bonus	бонус уклонения
+expansion distance per sec	расширение в секунду
+expansion duration	длительность расширения
+expansion time	время расширения
+explosion and fallout radius	радиус взрыва и осадков
+explosion Blast damage	урон Взрывом при взрыве
+explosion cooldown	перезарядка взрыва
+explosion damage multiplier as Magnetic damage	множитель урона взрыва (Магнетизм)
+explosion Impact damage	урон Ударом при взрыве
+explosion Puncture damage	урон Пробиванием при взрыве
+explosion radius	радиус взрыва
+explosion radius range cap	предел радиуса взрыва
+explosion range	радиус взрыва
+Explosive Barrel, Arc Trap, Amphors, Launch Pad	взрывная бочка, дуговая ловушка, амфоры, стартовая площадка
+extra damage per enemy	доп. урон за врага
+extra damage per second with Overshield	доп. урон в секунду со сверхщитом
+extra damage to targeted Magnetize	доп. урон по цели Magnetize
+extra hit per damage instance	доп. попадание за удар
+extra pickup drop chance	шанс доп. добычи
+extra time per conditional kill	доп. время за особое убийство
+extra time per kill	доп. время за убийство
+fallout duration	длительность осадков
+field Electricity damage per second	урон Электричеством поля в секунду
+field radius	радиус поля
+final radius	конечный радиус
+finisher damage	урон добивания
+Finisher damage	урон добивания
+finisher damage vulnerability	уязвимость к добиванию
+Fire Blast heat per cast	жар Fire Blast за применение
+Fire Blast heat rate per cast	скорость жара Fire Blast за применение
+fire rate and attack speed bonus	бонус скорострельности и скорости атаки
+fire rate buff	усиление скорострельности
+Fireball heat rate per cast	скорость жара Fireball за применение
+firing arc	сектор стрельбы
+flame duration	длительность пламени
+flame ring duration	длительность огненного кольца
+flame trail status cleanse	снятие статусов огненным следом
+flechette critical chance	шанс крита флешетт
+flechette critical multiplier	множитель крита флешетт
+flechette damage multiplier per 10 enemy levels	множитель урона флешетт за 10 уровней врага
+flechette target radius	радиус целей флешетт
+flight duration	длительность полёта
+flight speed	скорость полёта
+formation and collapse stagger chance	шанс ошеломления при появлении и схлопывании
+FOV	угол обзора
+freeze duration	длительность заморозки
+Full Moon damage bonus	бонус урона Полной луны
+Full Moon health and armor bonus	бонус здоровья и брони Полной луны
+fungal growth width	ширина грибного нароста
+Fury damage bonus per health point lost	бонус урона Ярости за потерянное здоровье
+Fury damage bonus per ranged weapon kill	бонус урона Ярости за убийство огнестрелом
+Fury max damage bonus	макс. бонус урона Ярости
+gel mist reach	дальность гелевого тумана
+gem duration	длительность камня
+globe limit	предел сфер
+globule lifetime	время жизни сгустка
+globule speed	скорость сгустка
+globule target radius	радиус целей сгустка
+globules per cast	сгустков за применение
+grab radius	радиус захвата
+ground slam radius	радиус удара о землю
+grounded cast time	время применения на земле
+gun damage	урон огнестрельного оружия
+gunfire objects limit	предел стреляющих объектов
+Hallowed Ground cap	предел Hallowed Ground
+halt delay	задержка остановки
+Haste Mote Corrosive status chance	шанс статуса Коррозии частицы спешки
+headshot bonus	бонус за попадание в голову
+Heal aura radius	радиус лечащей ауры
+heal over time	лечение со временем
+heal radius	радиус лечения
+heal rate	скорость лечения
+healing radius	радиус лечения
+health	здоровье
+health / meter	здоровье за метр
+health and shield absorb range	радиус поглощения здоровья и щитов
+health as Corrosive damage per half sec	здоровье как урон Коррозией за полсекунды
+health bonus	бонус здоровья
+Health bonus	бонус здоровья
+health cap	предел здоровья
+health decay per sec	потеря здоровья в секунду
+health deducted	отнимаемое здоровье
+health drain per percent charge	расход здоровья за процент заряда
+health multiplier	множитель здоровья
+health multiplier to Slash damage	множитель здоровья в урон Разрезом
+health orb chance	шанс сферы здоровья
+health orb drop chance	шанс выпадения сферы здоровья
+health orb drop chance on melee kill	шанс сферы здоровья при убийстве в ближнем бою
+health per sec	здоровье в секунду
+health per second	здоровье в секунду
+health regen	восстановление здоровья
+health regen per second	восстановление здоровья в секунду
+health restore	восстановление здоровья
+health restore on lethal hit	восстановление здоровья при смертельном ударе
+Health restore per enemy	восстановление здоровья за врага
+health restore per enemy hit	восстановление здоровья за поражённого врага
+health to Heart damage	здоровье в урон Сердцу
+health to Heart damage on instant kill	здоровье в урон Сердцу при мгновенном убийстве
+health/shield restore per enemy	восстановление здоровья/щитов за врага
+Heat area damage	урон Огнём по области
+Heat damage	урон Огнём
+Heat damage on explosion	урон Огнём при взрыве
+Heat damage on impact	урон Огнём при попадании
+Heat damage per sec	урон Огнём в секунду
+Heat damage per second	урон Огнём в секунду
+Heat damage per shot	урон Огнём за выстрел
+Heat explosion damage	урон Огнём при взрыве
+heat generation rate bonus for Immolation	бонус к нагреву для Immolation
+heat generation rate reduction for Immolation	снижение нагрева для Immolation
+Heat or Slash Damage	урон Огнём или Разрезом
+Heat ring damage per second	урон огненного кольца в секунду
+Heat status chance	шанс статуса Огня
+Heat Status Chance	шанс статуса Огня
+Heat status chance on meteorite impact	шанс статуса Огня при падении метеорита
+Heat status chance on Ring of Fire damage per second	шанс статуса Огня огненного кольца в секунду
+Heat status chance|	шанс статуса Огня
+height	высота
+hitpoint conversion	преобразование очков здоровья
+hitpoints drain/restore	отъём/восстановление здоровья
+hits per interval	попаданий за интервал
+hits per snare	попаданий за захват
+hitscan reflect range	дальность отражения хитскана
+hold-cast flight speeds	скорость полёта при удержании
+holograms	голограммы
+homing angle	угол самонаведения
+horizontal aim angle	горизонтальный угол прицела
+horizontal spread angle	горизонтальный угол разброса
+imbued elemental damage	добавленный стихийный урон
+imbued elemental damage per second	добавленный стихийный урон в секунду
+Impact and Heat meteorite damage	урон метеорита Ударом и Огнём
+Impact and Puncture area damage	урон Ударом и Пробиванием по области
+Impact damage	урон Ударом
+Impact damage on collision	урон Ударом при столкновении
+Impact damage on deactivation	урон Ударом при отключении
+Impact damage on ground slam	урон Ударом при ударе о землю
+Impact damage on swing	урон Ударом при взмахе
+impact radius	радиус удара
+Impact status chance on slam	шанс статуса Удара при ударе о землю
+Impact, Puncture, and Slash physical damage	физический урон Ударом, Пробиванием и Разрезом
+impale Puncture damage	урон Пробиванием при насаживании
+impaled enemy for implosion	насаженные враги для схлопывания
+implosion lifetime	время до схлопывания
+implosion range	радиус схлопывания
+in-air cast time	время применения в воздухе
+Inferno heat rate per cast	скорость жара Inferno за применение
+Infested speed penalty	замедление Заражённых
+initial damage	начальный урон
+initial damage bonus	начальный бонус урона
+initial dash velocity	начальная скорость рывка
+initial enemies hit for enhanced damage	первые враги с усиленным уроном
+initial heal	начальное лечение
+Initial Hit Damage	урон первого попадания
+initial Impact damage	начальный урон Ударом
+initial invulnerability phase	начальная неуязвимость
+initial projectile count	начальное число снарядов
+initial pulse radius	начальный радиус импульса
+initial radius	начальный радиус
+initial spores	начальные споры
+initial target Armor and Overguard removal	снятие брони и Сверхщита у первой цели
+Initial target pin duration	длительность пригвождения первой цели
+initial target range	дальность первой цели
+initial timer	начальный таймер
+initial True damage	начальный истинный урон
+initial width	начальная ширина
+instances in coop play	экземпляров в кооперативе
+instant kill threshold	порог мгновенного убийства
+interval time	интервал
+Invincibility duration on cast	неуязвимость при применении
+invisible duration	длительность невидимости
+invisible mark discount	скидка за метку в невидимости
+invulnerability absorb threshold	порог поглощения неуязвимости
+invulnerability duration	длительность неуязвимости
+invulnerability duration boost	продление неуязвимости
+invulnerability duration cap	предел неуязвимости
+invulnerability duration on break	неуязвимость при разрушении
+invulnerability duration on cast	неуязвимость при применении
+Invulnerability duration on cast	неуязвимость при применении
+invulnerability time	время неуязвимости
+javelin range	дальность копий
+javelins per throw	копий за бросок
+javelins thrown per second	копий в секунду
+jewel cast range	дальность броска камня
+jewel charm radius	радиус очарования камня
+jewel duration	длительность камня
+jewel explosion Blast damage	урон Взрывом от взрыва камня
+knockback damage	урон отбрасывания
+knockback radius	радиус отбрасывания
+knockdown radius	радиус сбивания с ног
+Large Universal Orb restore	восстановление большой универсальной сферы
+laser Blast status chance	шанс статуса Взрыва лазера
+laser target seeking range	дальность наведения лазера
+laser Tau damage per second	урон Тау лазера в секунду
+lasers	лазеры
+length	длина
+Lethal Progeny Conculyst laser prism chance on Fusion Strike	шанс лазерной призмы Конкулиста от Fusion Strike
+life steal	вампиризм
+lifesteal	вампиризм
+lifesteal on hit	вампиризм при попадании
+lifesteal range	радиус вампиризма
+limit of active altars	предел активных алтарей
+limit of active caches	предел активных тайников
+limit of active drones	предел активных дронов
+limit of active turrets	предел активных турелей
+limit of allies per satellite	предел союзников на спутник
+limit of Amp fields	предел полей усиления
+limit of areas per element	предел областей на стихию
+limit of carousels	предел каруселей
+limit of decoys	предел приманок
+limit of instances active	предел активных экземпляров
+limit of mallets	предел Молотов
+limit of molts	предел линек
+limit of Resonators	предел Резонаторов
+Lingering Field Damage	урон остаточного поля
+Lingering Field Duration	длительность остаточного поля
+link radius	радиус связи
+locked on dash speed	скорость рывка к цели
+loot chance	шанс добычи
+Maggot health	здоровье Личинки
+Maggot Toxin damage	урон Токсином Личинки
+Maggot's explosion radius	радиус взрыва Личинки
+Magnetic damage	урон Магнетизмом
+Magnetic damage per second in vortex	урон Магнетизмом в секунду в вихре
+magnetic pull	магнитное притяжение
+Mallet range bonus	бонус радиуса Mallet
+mark damage multiplier	множитель урона метки
+mark duration	длительность метки
+marked for harvest duration	длительность метки жатвы
+maw open duration	длительность раскрытой пасти
+maw open extra duration per enemy	доп. время пасти за врага
+max antennae	макс. антенн
+max bubbles	макс. пузырей
+max bulwarks active	макс. активных заслонов
+max charge size	макс. размер заряда
+max charm radius	макс. радиус очарования
+max Choralyst	макс. Хоралистов
+max Conculysts	макс. Конкулистов
+max damage buff	макс. усиление урона
+max damage per instance	макс. урон за удар
+max duration	макс. длительность
+Max enemy body count	макс. число тел врагов
+max extra razorflies from Tribute	макс. доп. бритвокрылов от Tribute
+max health	макс. здоровье
+max hits absorbed	макс. поглощённых попаданий
+max number of Lanterns	макс. число Фонарей
+max orbs active	макс. активных сфер
+max Ortholysts	макс. Ортолистов
+max portals active	макс. активных порталов
+MAX pulse interval	макс. интервал импульсов
+max reservoirs active	макс. активных резервуаров
+max spores per enemy via recast	макс. спор на врага при повторном применении
+max spores per enemy via spread	макс. спор на врага при распространении
+max stored damage	макс. накопленный урон
+max Summulyst	макс. Суммулистов
+max target limit	макс. число целей
+max targets	макс. целей
+max thralls active	макс. активных рабов
+maximum altitude	макс. высота
+maximum ammo packs	макс. пакетов боеприпасов
+maximum damage reduction	макс. снижение урона
+maximum damage reduction cap	предел макс. снижения урона
+maximum distance	макс. дистанция
+maximum duration	макс. длительность
+maximum multiplier	макс. множитель
+maximum radius	макс. радиус
+maximum shooting distance	макс. дальность стрельбы
+maximum spawn range	макс. дальность появления
+maximum threads active limit	предел активных нитей
+maximum travel distance	макс. дальность полёта
+melee damage	урон ближнего боя
+melee damage bonus	бонус урона ближнего боя
+melee damage bonus, follow through, and stagger chance for Kinetic Plating	бонус урона, пробивание и ошеломление ближнего боя (Kinetic Plating)
+melee damage bonus, follow through, and stagger chance from Redline	бонус урона, пробивание и ошеломление ближнего боя (Redline)
+Melee Finisher vulnerability	уязвимость к добиванию в ближнем бою
+melee Impact damage	урон Ударом в ближнем бою
+melee weapon damage	урон оружия ближнего боя
+Mesmer Skin ally buff charge	заряд усиления союзников Mesmer Skin
+miasma damage multiplier	множитель урона Miasma
+midair hop	прыжок в воздухе
+min charge size	мин. размер заряда
+min charm radius	мин. радиус очарования
+min damage buff	мин. усиление урона
+min suction range	мин. радиус всасывания
+min True damage	мин. истинный урон
+min-max speeds	мин./макс. скорость
+min. armor bonus	мин. увеличение брони
+min. health threshold	мин. порог здоровья
+minimum	минимум
+minimum damage	мин. урон
+minimum health threshold	мин. порог здоровья
+minimum heat generation	мин. нагрев
+minimum Magnetic damage	мин. урон Магнетизмом
+minimum radius	мин. радиус
+minimum shield gate extension	мин. продление щитовых врат
+mirror contact damage	урон зеркала при касании
+mirror damage	урон зеркала
+mirror duration	длительность зеркала
+missing health threshold	порог потерянного здоровья
+Mote lifespan	время жизни частицы
+mote recovery per second	восстановление частиц в секунду
+move speed	скорость движения
+move speed bonus	бонус скорости движения
+move speed multiplier	множитель скорости движения
+move speed penalty	штраф скорости движения
+move speeds	скорость движения
+movement speed bonus	бонус скорости движения
+movement speed buff	усиление скорости движения
+movement speed multiplier	множитель скорости движения
+movement speed penalty	штраф скорости движения
+multiplier growth	рост множителя
+multishot bonus	бонус мультивыстрела
+Mutation stack chance	шанс стака мутации
+non-locked on dash time	время рывка без цели
+not deactivatable	нельзя отключить
+number of beams	число лучей
+number of blades	число клинков
+number of bolts	число разрядов
+number of charges	число зарядов
+number of hits per mark	попаданий на метку
+number of javelins	число копий
+number of Maggots	число Личинок
+number of mirrors	число зеркал
+number of motes	число частиц
+number of probes	число зондов
+number of ricochets	число рикошетов
+number of Rumblers	число Громил
+number of Shadow Clones	число теневых клонов
+number of shields	число щитов
+number of shurikens	число сюрикенов
+number of statuses for extra time	статусов для доп. времени
+number of streams	число потоков
+number of targets per stun	целей за оглушение
+number of tornadoes	число торнадо
+number of uses	число применений
+number of vertices	число вершин
+offering duration	длительность подношения
+orb lifespan	время жизни сферы
+orb limit	предел сфер
+orb travel speed	скорость полёта сферы
+Overguard steal	кража Сверхщита
+Overguard steal cap	предел кражи Сверхщита
+overshield points per pickup	сверхщит за подбор
+overshields per pickup	сверхщит за подбор
+particle duration	длительность частиц
+particles	частицы
+passive cooldown	перезарядка пассивки
+passive heavy attack efficiency	эффективность тяжёлой атаки (пассивка)
+passive invulnerability	неуязвимость (пассивка)
+percentage damage	процентный урон
+percentage damage cap	предел процентного урона
+petrified damage bonus	бонус урона по окаменевшим
+petrified roll distance	дистанция катания окаменевших
+petrified rolling speed	скорость катания окаменевших
+physical status chances	шанс физических статусов
+pickup explosion elemental damage	стихийный урон взрыва при подборе
+pickup spawn interval	интервал появления подбираемых предметов
+pillar duration	длительность столба
+pillar Impact Puncture Slash damage/s	урон столба Ударом, Пробиванием, Разрезом в секунду
+pillar radius	радиус столба
+placement distance	дистанция установки
+portal duration	длительность портала
+post link brake effect grace period	отсрочка после разрыва связи
+pounce range	дальность прыжка
+pounce speed	скорость прыжка
+prime duration	длительность подготовки
+prism duration	длительность призмы
+prism travel speed	скорость полёта призмы
+probe duration	длительность зонда
+probe speed	скорость зонда
+projectile accuracy	точность снарядов
+projectile Impact damage	урон Ударом снаряда
+projectile seek range	дальность наведения снаряда
+projectile speed	скорость снаряда
+projectile splash radius	радиус разлёта снаряда
+projectile stagger on hit	ошеломление снарядом при попадании
+projectile travels	полёт снаряда
+propagation speed	скорость распространения
+pull force duration	длительность притяжения
+pull radius	радиус притяжения
+pull velocity	скорость притяжения
+pulse initial radius	начальный радиус импульса
+pulse interval	интервал импульсов
+pulse radius	радиус импульса
+pulse travel speed	скорость импульса
+pulse travel time	время полёта импульса
+Puncture and Slash damage	урон Пробиванием и Разрезом
+Puncture damage on direct hit	урон Пробиванием при прямом попадании
+Puncture damage per nail	урон Пробиванием за гвоздь
+Push Force	сила толчка
+pushback distance	дистанция отталкивания
+pushback radius	радиус отталкивания
+radial damage range	радиус урона по области
+radial pull	радиальное притяжение
+Radiation damage	урон Радиацией
+Radiation damage per second	урон Радиацией в секунду
+Radiation stacks	стаки Радиации
+Radiation status chance	шанс статуса Радиации
+Radiation Status Chance	шанс статуса Радиации
+Radiation status effects	статусы Радиации
+radius	радиус
+Radius	радиус
+ragdoll chance on hit with Overshield	шанс отбросить при попадании со сверхщитом
+ramp up damage bonus	нарастающий бонус урона
+range	дальность
+range increase	увеличение дальности
+range increase per combo level	рост дальности за уровень комбо
+razorfly drones	бритвокрылы
+reactive delay	задержка реакции
+recall range	дальность возврата
+recast cooldown	перезарядка повторного применения
+recorded damage conversion	преобразование записанного урона
+reduced duration	сокращённая длительность
+reflected damage and status	отражённый урон и статусы
+release delay for unaffected targets	задержка освобождения незатронутых целей
+reload speed bonus	бонус скорости перезарядки
+reload speed buff	усиление скорости перезарядки
+Reservoir lifespan	время жизни Резервуара
+Reservoir range	радиус Резервуара
+Reservoir surge range bonus	бонус радиуса всплеска Резервуара
+Reservoir teleport min. range	мин. дальность телепорта Резервуара
+reset decay	сброс затухания
+residue duration	длительность осадка
+residue radius	радиус осадка
+respawn time	время возрождения
+Rest wakeup health threshold	порог здоровья для пробуждения от Rest
+Restraint erosion per attack dodged	снижение Сдержанности за уклонение
+Restraint erosion per enemy disarmed	снижение Сдержанности за обезоруженного врага
+Restraint erosion per enemy lulled	снижение Сдержанности за усыплённого врага
+revive cooldown	перезарядка воскрешения
+revive cooldown per ally	перезарядка воскрешения на союзника
+rewind countdown	отсчёт до перемотки
+ricochet range	дальность рикошета
+Rift energy regen per second	восстановление энергии в Разломе в секунду
+Rift transitional Impact damage	урон Ударом при переходе в Разлом
+ring duration	длительность кольца
+ring expansion rate	скорость расширения кольца
+ring initial height	начальная высота кольца
+ring initial radius	начальный радиус кольца
+ring max height	макс. высота кольца
+ring max radius	макс. радиус кольца
+Ring of Fire max damage bonus from Immolation	макс. бонус урона огненного кольца от Immolation
+ring radius	радиус кольца
+ring segment base health	базовое здоровье сегмента кольца
+ring segments	сегменты кольца
+rock Impact damage	урон Ударом камня
+roll distance	дистанция кувырка
+roll Impact damage	урон Ударом при кувырке
+rotation speed	скорость вращения
+Rubble dropped on death per Rumbler	Щебень с каждого погибшего Громилы
+Rubble dropped per enemy	Щебень с врага
+Rubble health/armor given	здоровье/броня от Щебня
+Rumbler duration	длительность Громилы
+Rumbler heal	лечение Громилы
+salvos per sec	залпов в секунду
+sanctuary limit	предел убежищ
+scan duration	длительность сканирования
+Scorn armor bonus per melee weapon kill	броня Презрения за убийство в ближнем бою
+Scorn armor bonus per shield point lost	броня Презрения за потерянный щит
+Scorn max armor bonus	макс. броня Презрения
+Scuttler damage	урон Скаттлеров
+see tabs below	см. вкладки ниже
+seek range	дальность наведения
+segment explosion damage	урон взрыва сегмента
+self heal on cast	самолечение при применении
+self heal per second	самолечение в секунду
+self knockdown chance on lethal hit	шанс упасть при смертельном ударе
+Sentient rank	ранг Сентиента
+sentry armor	броня часового
+shadow copies	теневые копии
+Shadow summoned propulsion	ускорение призванных Теней
+Shard damage radius	радиус урона осколков
+Shard pickup radius	радиус подбора осколков
+Shard Puncture and Slash damage	урон осколков Пробиванием и Разрезом
+shatter radius	радиус раскалывания
+shield bonus	бонус щитов
+shield grenade spread	разброс щитовых гранат
+shield grenades per throw	щитовых гранат за бросок
+shield points per second	щитов в секунду
+shield recharge rate	скорость восстановления щитов
+shield regen range	радиус восстановления щитов
+shield restore on attach	восстановление щитов при прикреплении
+shield restore per second	восстановление щитов в секунду
+shield steal	кража щитов
+shield/armor drain per enemy	отъём щитов/брони за врага
+shield/health restoration	восстановление щитов/здоровья
+shields per enemy	щиты за врага
+shields per hit	щиты за попадание
+shields per hit cap	предел щитов за попадание
+shields per kill	щиты за убийство
+Shock Mote damage bonus	бонус урона частицы шока
+shock radius	радиус шока
+shockwave radius	радиус ударной волны
+shots per second	выстрелов в секунду
+shrapnel damage radius	радиус урона осколков
+shrapnel grenade spread	разброс осколочных гранат
+shrapnel grenades per throw	осколочных гранат за бросок
+simultaneous discharges limit	предел одновременных разрядов
+Sirius Heat status chance	шанс статуса Огня Сириуса
+slam Impact damage	урон Ударом при ударе о землю
+Slash damage	урон Разрезом
+Slash damage on direct hit per javelin	урон Разрезом за прямое попадание копья
+Slash damage on hit	урон Разрезом при попадании
+Slash damage on target	урон Разрезом по цели
+Slash damage on tether	урон Разрезом по привязи
+Slash damage per second	урон Разрезом в секунду
+Slash damage per second duration	длительность урона Разрезом в секунду
+Slash damage/0.25s	урон Разрезом за 0,25 с
+Slash status chance	шанс статуса Разреза
+Slash status chance for Mach Rush	шанс статуса Разреза для Mach Rush
+Slash status chance from Kinetic Plating	шанс статуса Разреза от Kinetic Plating
+sleep duration	длительность сна
+slow	замедление
+slow cap	предел замедления
+Slow cap	предел замедления
+slow duration	длительность замедления
+slow/speed cap	предел замедления/ускорения
+slow/speed-up	замедление/ускорение
+Small Universal Orb restore	восстановление малой универсальной сферы
+snare damage	урон ловушки
+snare duration	длительность ловушки
+snared enemy count	число пойманных врагов
+sniper damage bonus	бонус урона снайперского оружия
+Sol Gate damage buff	усиление урона Sol Gate
+Sol Gate spark chance on hit	шанс искры Sol Gate при попадании
+spark chance on hit	шанс искры при попадании
+spark chance on kill	шанс искры при убийстве
+spark crit multiplier	множитель крита искры
+spark critical chance	шанс крита искры
+spark damage cap	предел урона искры
+spark seek range	дальность наведения искры
+spawn radius	радиус появления
+speed bonus	бонус скорости
+speed buff	усиление скорости
+speed multiplier	множитель скорости
+sphere lifetime	время жизни сферы
+splash radius	радиус разлёта
+Splash radius	радиус разлёта
+Spores burst chance	шанс разрыва спор
+Spores damage multiplier	множитель урона спор
+spread angle	угол разброса
+spread delay	задержка распространения
+spread radius	радиус распространения
+spread range	дальность распространения
+spread remaining duration	оставшаяся длительность при распространении
+stack of all elemental statuses on star bounce and thread contact with triple sixes	стак всех стихийных статусов при отскоке звезды и касании нити (три шестёрки)
+stacks of random elemental status effect on star bounce	стаков случайного стихийного статуса при отскоке звезды
+staff swing radius	радиус взмаха посоха
+stagger chance	шанс ошеломления
+stagger on expiry	ошеломление по окончании
+stagger radius	радиус ошеломления
+star bounce and thread contact damage	урон отскока звезды и касания нити
+star bounce AoE damage radius	радиус урона отскока звезды
+star bounce damage with triple sixes	урон отскока звезды (три шестёрки)
+star travel speed	скорость полёта звезды
+starting damage reduction	начальное снижение урона
+starting wave radius	начальный радиус волны
+status chance	шанс статуса
+Status Chance	шанс статуса
+status chance|	шанс статуса
+status chances	шанс статусов
+status cleanse	снятие статусов
+status cleanse and immunity	снятие статусов и иммунитет
+status cleanse on cast	снятие статусов при применении
+status cleanse on rewind	снятие статусов при перемотке
+status cleanse on spin	снятие статусов при вращении
+status duration	длительность статуса
+status effects transfer	перенос статусов
+status negation damage on normal or boss targets	урон отмены статуса по обычным целям и боссам
+status protection cost	стоимость защиты от статусов
+steal range	радиус кражи
+steal time	время кражи
+stone duration	длительность камня
+stone radius	радиус камня
+stored damage	накопленный урон
+Strangledome damage distribution	распределение урона Strangledome
+stream range	дальность потока
+strength bonus	бонус силы
+strike delay	задержка удара
+strip cap	предел снятия
+stun duration	длительность оглушения
+stun interval	интервал оглушения
+stun on hit	оглушение при попадании
+stun radius	радиус оглушения
+suction shrink threshold	порог сжатия при всасывании
+surge & transfer range	дальность всплеска и переноса
+surge duration	длительность всплеска
+swallow range	дальность поглощения
+swarm duration	длительность роя
+Swarm Kavat lifespan	время жизни роевого Кавата
+Swarm Kavat limit	предел роевых Каватов
+sweep arc	дуга взмаха
+sweep area	область взмаха
+talon knockback radius	радиус отбрасывания когтем
+tap-cast flight speeds	скорость полёта при нажатии
+target cap for determining energy cost	предел целей для расчёта энергии
+target radius	радиус цели
+target range	дальность цели
+targeting angle	угол наведения
+targeting radius	радиус наведения
+targeting range	дальность наведения
+Tau damage	урон Тау
+Tau damage interval	интервал урона Тау
+Tau Status Chance per damage interval	шанс статуса Тау за интервал
+Tau total damage per second	общий урон Тау в секунду
+Tau total damage per second to Sentient Wrath raised enemies	общий урон Тау в секунду по поднятым Sentient Wrath врагам
+teleport invulnerability time	неуязвимость при телепорте
+teleport radius	радиус телепорта
+teleport range	дальность телепорта
+tentacles	щупальца
+terrain pull speed	скорость притягивания к поверхности
+tether max targets	макс. целей привязи
+tether range	дальность привязи
+Thorns damage reflection and reduction	отражение и снижение урона Шипами
+thrall duration	длительность раба
+thrall hitpoints drain/restore	отъём/восстановление здоровья раба
+threads formed	образованные нити
+threads length	длина нитей
+threads spacing	расстояние между нитями
+tick interval	интервал тиков
+ticks/second	тиков в секунду
+time between damage ticks	время между тиками урона
+time to full armor bonus	время до полной брони
+tornado height	высота торнадо
+total health cost	общая цена здоровьем
+total heat removal for Immolation	общее снижение жара для Immolation
+Toxin damage	урон Токсином
+Toxin damage on impact	урон Токсином при попадании
+Toxin damage on vomit	урон Токсином при извержении
+Toxin damage per second	урон Токсином в секунду
+Toxin explosion damage	урон Токсином при взрыве
+Toxin status chance	шанс статуса Токсина
+transmitted spore	передаваемая спора
+trap duration	длительность ловушки
+trap radius	радиус ловушки
+travel distance	дальность полёта
+travel speed	скорость полёта
+travel time	время полёта
+True contact damage against Overguarded targets	истинный урон при касании по целям со Сверхщитом
+True damage and shield restoration	истинный урон и восстановление щитов
+True damage per second	истинный урон в секунду
+True damage/sec	истинный урон в секунду
+twin lifespan	время жизни двойника
+twin recall range	дальность возврата двойника
+uncharged throw distance	дальность незаряженного броска
+universal ammo pack restore	восстановление универсального пакета боеприпасов
+Universal Ammo restore	восстановление универсальных боеприпасов
+upon status proc	при срабатывании статуса
+vacuum radius	радиус притягивания добычи
+Venari self-heal mark duration	длительность метки самолечения Венари
+vertical aim angle	вертикальный угол прицела
+vertical spread angle	вертикальный угол разброса
+vial charges	заряды флаконов
+Viral damage	урон Вирусом
+Viral damage buff	усиление урона Вирусом
+Viral damage on hit	урон Вирусом при попадании
+Viral status chance	шанс статуса Вируса
+Viral status stacks	стаки Вируса
+Vitality Mote damage bonus	бонус урона частицы живучести
+Void damage	урон Бездной
+Void damage bonus	бонус урона Бездной
+Void damage vulnerability	уязвимость к урону Бездной
+vomit cone range	дальность конуса извержения
+vortex and pickup radii	радиус вихря и подбора
+vortex duration	длительность вихря
+vortex lifetime	время жизни вихря
+vortex status chance	шанс статуса вихря
+wave distance	дальность волны
+wave duration	длительность волны
+wave radius	радиус волны
+wave range	дальность волны
+wave speed	скорость волны
+weak point critical chance cap	предел шанса крита по уязвимым точкам
+weak point damage	урон по уязвимым точкам
+Weak Point multiplier	множитель по уязвимым точкам
+weak point multiplier to bonus critical chance	множитель уязвимой точки в бонус шанса крита
+weapon crit chance	шанс крита оружия
+weapon damage bonus	бонус урона оружия
+weapon damage bonus cap	предел бонуса урона оружия
+Weapon Damage bonus duration	длительность бонуса урона оружия
+weapon punch through against enemy bodies	пробивание тел врагов
+weapon punch through against terrain	пробивание поверхностей
+Whipclaw damage distribution	распределение урона Whipclaw
+width	ширина
+wind wave projectile deflection	отражение снарядов волной ветра
+Wormhole damage absorb	поглощение урона Wormhole

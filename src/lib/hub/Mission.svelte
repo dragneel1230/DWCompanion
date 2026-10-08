@@ -1,15 +1,17 @@
 <script lang="ts">
   // "Сейчас": where the player is (EE.log) and, in a fissure, the squad's relics with every possible
-  // reward sorted by the overlay's priority (platinum / ducats), the best one on top.
+  // reward sorted by the overlay's priority (platinum / ducats / collection), the best one on top.
+  import { needs } from "$lib/goals/watch.svelte";
   import { t } from "$lib/i18n/index.svelte";
-  import { invoke } from "@tauri-apps/api/core";
   import { getDb, iconUrl, itemName, nodeOfMission, RARITY_RU, type Rarity } from "$lib/db";
   import { relicKey } from "$lib/rewards";
   import { prices } from "$lib/prices.svelte";
   import { journal, startOfDay } from "$lib/journal.svelte";
   import { parseRelicText, refineOfProjection } from "$lib/relicValue";
   import Lobby from "./Lobby.svelte";
-  import type { Priority } from "$lib/overlaySettings.svelte";
+  import LastRun from "./LastRun.svelte";
+  import { readOverlaySettings, type Priority } from "$lib/overlaySettings.svelte";
+  import { collNeed, loadCollCtx, type CollCtx, type CollMode } from "$lib/collection/need";
   import Cur from "$lib/components/Cur.svelte";
   import { refinement, type Mission, type View } from "./hub";
 
@@ -68,13 +70,35 @@
 
   const plat = (r: (typeof rewards)[number]) => (r.it.slug ? prices.sell[r.it.slug] : null);
 
+  // "Collection" priority: parts missing from a set first (collection/need.ts). Inventory / profile are re-read
+  // when the squad's relics change (the main window refreshes them after missions).
+  let coll = $state<{ ctx: CollCtx; mode: CollMode } | null>(null);
+  $effect(() => {
+    void relics;
+    if (priority !== "collection") return void (coll = null);
+    const mode = readOverlaySettings().collMode;
+    loadCollCtx()
+      .then((ctx) => (coll = { ctx, mode }))
+      .catch(() => {});
+  });
+  const collOf = $derived(
+    new Map(coll ? rewards.map((r) => [r.id, collNeed(r.id, coll!.mode, coll!.ctx)] as const).filter(([, n]) => n) : []),
+  );
+
   // Today's relics from the journal, for the footer.
   const today = $derived(journal.list.filter((e) => e.t >= startOfDay(Date.now())));
   $effect(() => prices.want(today.map((e) => e.item?.slug)));
   const todayPlat = $derived(today.reduce((s, e) => s + ((e.item?.slug && prices.sell[e.item.slug]) || 0), 0));
 
+  // Parts a goal waits for go first (the guide tab): that is what the player came for.
   const sorted = $derived(
     [...rewards].sort((a, b) => {
+      const na = needs.need[a.id] ? 1 : 0;
+      const nb = needs.need[b.id] ? 1 : 0;
+      if (na !== nb) return nb - na;
+      const ca = collOf.get(a.id)?.score ?? -1;
+      const cb = collOf.get(b.id)?.score ?? -1;
+      if (ca !== cb) return cb - ca;
       const pa = plat(a) ?? -1;
       const pb = plat(b) ?? -1;
       const da = a.it.ducats ?? 0;
@@ -83,7 +107,7 @@
     }),
   );
   const bestValue = (r: (typeof rewards)[number] | undefined) =>
-    !r ? 0 : priority === "ducats" ? (r.it.ducats ?? 0) : (plat(r) ?? 0);
+    !r ? 0 : collOf.has(r.id) ? 1 : priority === "ducats" ? (r.it.ducats ?? 0) : (plat(r) ?? 0);
 </script>
 
 <section class="panel mission">
@@ -93,17 +117,19 @@
   </header>
   <div class="body">
     {#if !game}
-      <div class="empty">
+      <div class="empty short">
         <b>{t("mission.noGame")}</b>
         <span>{t("mission.noGameHint")}</span>
       </div>
+      <LastRun />
     {:else if !mission?.active && mission?.lobby?.tier}
       <Lobby lobby={mission.lobby} myRelic={mission.my_relic} {onopen} />
     {:else if !mission?.active}
-      <div class="empty">
+      <div class="empty short">
         <b>{t("mission.onShip")}</b>
         <span>{t("mission.onShipHint")}</span>
       </div>
+      <LastRun />
     {:else}
       <div class="where">
         <b>{where.place}</b>
@@ -123,11 +149,13 @@
         <div class="section-title">{t("mission.possible")} · {rewards.length}</div>
         <div class="rows">
           {#each sorted as r, i (r.id)}
-            <button class="row" class:best={i === 0 && bestValue(r) > 0} onclick={() => onopen({ kind: "item", id: r.id })}>
+            <button class="row" class:best={i === 0 && (bestValue(r) > 0 || !!needs.need[r.id])} onclick={() => onopen({ kind: "item", id: r.id })}>
               <img src={iconUrl(r.it.icon)} alt="" loading="lazy" />
               <span class="name">
                 {itemName(r.it)}
-                {#if i === 0 && bestValue(r) > 0}<em class="pick">{t("mission.bestPick")}</em>{/if}
+                {#if needs.need[r.id]}<em class="pick goal">⚑ {t("overlay.forGoal")}</em>
+                {:else if collOf.has(r.id)}<em class="pick coll" title={collOf.get(r.id)?.name}>◈ {t(coll?.mode === "mr" ? "overlay.forMr" : "overlay.forSet")}</em>
+                {:else if i === 0 && bestValue(r) > 0}<em class="pick">{t("mission.bestPick")}</em>{/if}
                 <small>
                   <span class="rarity-{r.rarity}">{RARITY_RU[r.rarity]}</span>
                   {#if relics.length > 1} · {r.from.join(", ")}{/if}
@@ -153,18 +181,19 @@
       {/if}
     {/if}
     {#if today.length}
-      <button class="today" onclick={() => invoke("hub_open_in_app", { path: "/journal" })} title={t("mission.journalHint")}>
+      <a class="today" href="/relics?tab=journal" title={t("mission.journalHint")}>
         <span>{t("mission.todayOpened")}</span>
         <b>{today.length}</b>
         <span>· {t("mission.worth")}</span>
         <b><Cur kind="plat" value={Math.round(todayPlat)} /></b>
         <span class="go">{t("mission.journal")} ↗</span>
-      </button>
+      </a>
     {/if}
   </div>
 </section>
 
 <style>
+
   .today {
     display: flex;
     align-items: baseline;
@@ -290,6 +319,13 @@
     background: var(--accent);
     vertical-align: 2px;
   }
+  /* A goal's part: the guide's green instead of gold. */
+  .pick.goal {
+    background: var(--good);
+  }
+  .pick.coll {
+    background: #8fb3f0;
+  }
   .dash {
     color: var(--text-faint);
   }
@@ -300,5 +336,9 @@
     50% {
       opacity: 0.3;
     }
+  }
+  .empty.short {
+    flex: none;
+    padding-bottom: 0;
   }
 </style>

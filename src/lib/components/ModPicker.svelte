@@ -12,6 +12,7 @@
     db,
     frame,
     kind,
+    items,
     title,
     current,
     rank,
@@ -21,8 +22,10 @@
     onclose,
   }: {
     db: FramesDb;
-    frame: Frame;
-    kind: "aura" | "exilus" | "slot" | "arcane";
+    frame?: Frame;
+    kind: "aura" | "exilus" | "slot" | "arcane" | "stance";
+    items?: [string, Mod | Arcane][]; // gear (gear.ts): the fitting mods / arcanes, instead of the warframe's
+
     title: string;
     current: string | null;
     rank: number | null;
@@ -37,11 +40,14 @@
 
   const list = $derived.by<[string, Mod | Arcane][]>(() => {
     const all: [string, Mod | Arcane][] =
-      kind === "arcane"
+      items ??
+      (kind === "arcane"
         ? Object.entries(db.arcanes)
             .filter(([, a]) => a.wf)
             .sort(([, a], [, b]) => a.name.localeCompare(b.name, locale()))
-        : modsForSlot(db, frame, kind);
+        : frame && kind !== "stance"
+          ? modsForSlot(db, frame, kind)
+          : []);
     // Every word must match, in any order ("умбра сил" finds "Усиление Умбра").
     const words = normalize(query).split(/\s+/).filter(Boolean);
     if (!words.length) return all;
@@ -51,7 +57,7 @@
     });
   });
 
-  const cur = $derived(current ? (kind === "arcane" ? db.arcanes[current] : db.mods[current]) : null);
+  const cur = $derived(current ? (items?.find(([id]) => id === current)?.[1] ?? (kind === "arcane" ? db.arcanes[current] : db.mods[current])) : null);
   const curRank = $derived(cur && kind !== "arcane" ? rankOf(cur as Mod, rank) : 0);
 
   function keydown(e: KeyboardEvent) {
@@ -129,8 +135,10 @@
     gap: 12px;
     padding: 16px 18px;
     border-radius: 14px;
-    background: var(--surface);
+    /* Opaque: the app's glass surface would let the board show through. */
+    background: var(--pop-bg, var(--surface));
     border: 1px solid var(--line);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
   }
   .head {
     display: flex;

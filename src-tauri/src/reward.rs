@@ -436,13 +436,14 @@ fn read_cards(ocr: &Ocr, img: &RgbaImage, names: &[String]) -> windows::core::Re
     }
     let Some(n) = card_count(&words, cx, step) else { return Ok(None) };
 
-    // 2. Each card separately, two variants: sharper results than the whole strip.
+    // 2. Each card separately, three variants: sharper results than the whole strip. Each loses words
+    // the others keep (Edge reads names over white / gold item art), the matcher uses them all.
     let mut cards = Vec::new();
     for i in 0..n {
         let ccx = cx + (i as f32 - (n as f32 - 1.0) / 2.0) * step;
         let (x, y, cw, ch) = (ccx - TEXT_W * s / 2.0, TEXT_Y * s, TEXT_W * s, TEXT_H * s);
         let mut texts = Vec::new();
-        for prep in [Prep::Color, Prep::Text] {
+        for prep in [Prep::Color, Prep::Text, Prep::Edge] {
             let (t, _) = ocr.region(img, x as u32, y as u32, cw as u32, ch as u32, 2.0, prep)?;
             texts.push(t);
         }

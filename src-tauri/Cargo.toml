@@ -18,7 +18,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -26,9 +26,14 @@ tauri-plugin-http = "~2.7"
 tauri-plugin-clipboard-manager = "2"
 windows-capture = "2.0.1"
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png"] }
-windows = { version = "0.62.2", features = ["Media_Ocr", "Globalization", "Graphics_Imaging", "Storage_Streams", "Foundation", "Foundation_Collections", "Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi", "Win32_System_WinRT", "Win32_Security_Credentials"] }
+windows = { version = "0.62.2", features = ["Media_Ocr", "Globalization", "Graphics_Imaging", "Storage_Streams", "Foundation", "Foundation_Collections", "Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi", "Win32_System_WinRT", "Win32_Security_Credentials", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Diagnostics_Debug", "Win32_System_Memory", "Win32_System_Threading"] }
 tauri-plugin-global-shortcut = "2"
 base64 = "0.22"
+tokio-tungstenite = { version = "0.30.0", default-features = false, features = ["connect", "rustls-tls-webpki-roots"] }
+tokio = { version = "1.53.2", features = ["time", "macros", "sync"] }
+futures-util = { version = "0.3.34", default-features = false, features = ["sink", "std"] }
+tauri-plugin-notification = "2"
+sha2 = "0.10"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

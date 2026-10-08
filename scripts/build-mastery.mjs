@@ -66,9 +66,12 @@ for (const file of FILES) {
 }
 
 // Star chart: nodes that give mastery (normal and again on the Steel Path) and junctions.
+// DE's ExportRegions gives every junction masteryExp 0, but each junction grants 1000 mastery
+// (wiki "Mastery Rank": "Each Junction completed grants 1,000 Mastery"), so junctions use that.
+const JUNCTION_XP = 1000;
 const nodes = {};
 for (const [tag, r] of Object.entries(regions)) {
-  if (r.missionType === "MT_JUNCTION") nodes[tag] = { xp: r.masteryExp ?? 0, j: 1 };
+  if (r.missionType === "MT_JUNCTION") nodes[tag] = { xp: r.masteryExp || JUNCTION_XP, j: 1 };
   else if (r.masteryExp) nodes[tag] = { xp: r.masteryExp };
 }
 

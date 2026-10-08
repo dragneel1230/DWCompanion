@@ -176,6 +176,7 @@ fn on_line(app: &AppHandle, bench: &BenchState, line: &str) {
     crate::reward::on_line(app, line);
     crate::journal::on_line(app, line);
     crate::kiosk::on_line(app, line);
+    crate::inv_helper::on_line(app, line);
     let trigger = TRIGGER.iter().any(|k| line.contains(k));
     if !trigger && !KEEP.iter().any(|k| line.contains(k)) {
         return;

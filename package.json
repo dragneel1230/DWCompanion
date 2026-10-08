@@ -11,13 +11,14 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "tauri": "tauri",
-    "data": "node scripts/fetch-wiki-farming.mjs && node scripts/build-drops.mjs && node scripts/build-data.mjs && node scripts/build-frames.mjs && node scripts/build-mastery.mjs"
+    "data": "node scripts/fetch-wiki-farming.mjs && node scripts/fetch-wiki-abilities.mjs && node scripts/build-drops.mjs && node scripts/build-data.mjs && node scripts/build-frames.mjs && node scripts/build-gear.mjs && node scripts/build-mastery.mjs"
   },
   "license": "UNLICENSED",
   "dependencies": {
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-clipboard-manager": "~2.4.0",
     "@tauri-apps/plugin-http": "~2.7.0",
+    "@tauri-apps/plugin-notification": "^2.5.1",
     "@tauri-apps/plugin-opener": "^2"
   },
   "devDependencies": {

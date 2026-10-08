@@ -289,8 +289,11 @@ export function search(query: string, limit = 30): Entry[] {
     const sw = words(swapped);
     if (sw.length) add(scoreQuery(sw), 5);
   }
+  // The index may hold one thing twice (e.g. a set found by its own name and by the warframe's): once each.
+  const seen = new Set<string>();
   return [...best]
     .sort((a, b) => b[1] - a[1])
+    .filter(([e]) => !seen.has(e.kind + e.id) && !!seen.add(e.kind + e.id))
     .slice(0, limit)
     .map(([e]) => e);
 }

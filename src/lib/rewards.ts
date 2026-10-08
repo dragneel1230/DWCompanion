@@ -16,6 +16,7 @@ export interface Candidate {
 export interface Match {
   cand: Candidate;
   score: number; // 0..1
+  alt?: Candidate; // another item about as likely: the read didn't tell them apart (shown as unsure)
 }
 
 
@@ -57,9 +58,10 @@ export function squadRewards(projections: string[], lang: string): Candidate[] {
 }
 
 
-// Words of a name for comparison (short OCR junk like "им" is dropped). Any alphabet.
+// Words of a name for comparison, any alphabet. Two-letter words stay: they are whole frame names
+// ("Эш", "Ки"), and without them "Чертёж: Эш Прайм: Каркас" equals any chassis whose name OCR lost.
 const words = (s: string) =>
-  s.toLowerCase().replace(/ё/g, "е").split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 3);
+  s.toLowerCase().replace(/ё/g, "е").split(/[^\p{L}\p{N}]+/u).filter((w) => w.length >= 2);
 
 const wordSim = (a: string, b: string) => 1 - lev(a, b) / Math.max(a.length, b.length);
 
@@ -79,15 +81,21 @@ function charScore(ocr: string, key: string): number {
   return 1 - lev(ocr, key) / Math.max(ocr.length, key.length);
 }
 
+// Closer than this to the best, another item makes the read ambiguous.
+const TIE = 0.04;
+
 export function bestMatch(texts: string[], pool: Candidate[]): Match | null {
   const ocrWords = [...new Set(texts.flatMap(words))];
-  const keys = texts.map(compact);
+  const keys = texts.filter(Boolean).map(compact);
   let best: Match | null = null;
+  let second: Match | null = null;
   for (const c of pool) {
     const cw = words(c.name);
-    const score = Math.max(wordScore(ocrWords, cw), 0.95 * Math.max(...keys.map((k) => charScore(k, c.key))));
-    if (!best || score > best.score) best = { cand: c, score };
+    const score = Math.max(wordScore(ocrWords, cw), keys.length ? 0.95 * Math.max(...keys.map((k) => charScore(k, c.key))) : 0);
+    if (!best || score > best.score) (second = best), (best = { cand: c, score });
+    else if (!second || score > second.score) second = { cand: c, score };
   }
+  if (best && second && second.cand.id !== best.cand.id && best.score - second.score < TIE) best.alt = second.cand;
   return best;
 }
 

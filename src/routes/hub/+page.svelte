@@ -1,7 +1,8 @@
 <script lang="ts">
   // Hub: the overlay opened by a hotkey over the game (hub.rs). Blurred frame of the game behind,
-  // search on top, below it "Сейчас" (mission from EE.log), fissures and the world; a search pick
-  // opens the detail panel in place of the widgets. Esc steps back, then returns to the game.
+  // search on top, below it the same sections as the app (src/lib/views: «Сейчас», «Реликвии», «Торговля»…);
+  // a search pick or a link inside a section opens the detail panel in place. Esc steps back, then
+  // returns to the game.
   import { locale, t, type Key } from "$lib/i18n/index.svelte";
   import { onDestroy, tick } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
@@ -9,19 +10,22 @@
   import type { Entry } from "$lib/db";
   import { readOverlaySettings, type Priority } from "$lib/overlaySettings.svelte";
   import { readHubSettings, shortcutKeys } from "$lib/hubSettings.svelte";
-  import { appPath, type Mission, type View } from "$lib/hub/hub";
+  import { appPath, viewOf, type Mission, type View } from "$lib/hub/hub";
   import { watchWorld } from "$lib/hub/worldData.svelte";
   import "$lib/hub/hub.css";
   import Search from "$lib/hub/Search.svelte";
-  import MissionPanel from "$lib/hub/Mission.svelte";
-  import Fissures from "$lib/hub/Fissures.svelte";
-  import World from "$lib/hub/World.svelte";
+  import NowView from "$lib/views/NowView.svelte";
+  import TradeView from "$lib/views/TradeView.svelte";
+  import RelicsView from "$lib/views/RelicsView.svelte";
+  import BuildsView from "$lib/views/BuildsView.svelte";
+  import { followSection } from "$lib/views/sub.svelte";
   import Detail from "$lib/hub/Detail.svelte";
   import Baro from "$lib/hub/Baro.svelte";
   import Collection from "$lib/collection/Collection.svelte";
-  import Resources from "$lib/hub/Resources.svelte";
-  import Market from "$lib/hub/Market.svelte";
+  import FarmView from "$lib/views/FarmView.svelte";
+  import { farmState } from "$lib/views/farmState.svelte";
   import Time from "$lib/hub/Time.svelte";
+  import GoalsView from "$lib/goals/GoalsView.svelte";
   import { tabs, saveTabs, type HubTab } from "$lib/hub/tabState.svelte";
 
   document.documentElement.style.background = "transparent";
@@ -40,15 +44,18 @@
   let now = $state(Date.now());
   let search = $state<Search>();
   let collection = $state<Collection>();
-  let resources = $state<Resources>();
-  let market = $state<Market>();
+  let farm = $state<FarmView>();
+  let trade = $state<TradeView>();
+  let goalsView = $state<GoalsView>();
   const tab = $derived(tabs.tab);
   const TABS: { id: HubTab; label: Key }[] = [
-    { id: "overview", label: "hub.tab.overview" },
-    { id: "resources", label: "hub.tab.resources" },
-    { id: "market", label: "hub.tab.market" },
-    { id: "time", label: "hub.tab.time" },
-    { id: "collection", label: "hub.tab.collection" },
+    { id: "now", label: "nav.now" },
+    { id: "goals", label: "nav.goals" },
+    { id: "builds", label: "nav.builds" },
+    { id: "relics", label: "nav.relics" },
+    { id: "trade", label: "nav.trade" },
+    { id: "resources", label: "nav.resources" },
+    { id: "collection", label: "nav.collection" },
   ];
   const stack = $derived(stacks[tabs.tab] ?? []);
   const setStack = (v: View[]) => (stacks[tabs.tab] = v);
@@ -80,7 +87,7 @@
     const r = resets;
     if (!r.length) return;
     stacks = {};
-    tabs.tab = "overview";
+    tabs.tab = "now";
     resets = [];
     r.forEach((f) => f());
   }
@@ -115,14 +122,34 @@
     kind === "frame" ? invoke("hub_open_in_app", { path: `/frame?id=${encodeURIComponent(id)}` }) : openView({ kind, id });
   const openInApp = () => view && invoke("hub_open_in_app", { path: appPath(view) });
 
+  // Sections are shared with the app and link to its pages: inside the hub a link opens the detail panel,
+  // switches to the hub's own section, or (no such panel here) opens the page in the app.
+  function onclick(ev: MouseEvent) {
+    const a = (ev.target as Element | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+    const href = a?.getAttribute("href");
+    if (!a || !href || !href.startsWith("/") || ev.defaultPrevented) return;
+    ev.preventDefault();
+    const section = followSection(href);
+    if (section) {
+      setStack([]);
+      tabs.tab = section;
+      saveTabs();
+      return;
+    }
+    const v = viewOf(href);
+    if (v) openView(v);
+    else invoke("hub_open_in_app", { path: href });
+  }
+
   function onkeydown(ev: KeyboardEvent) {
     if (!open) return;
     if (ev.key === "Escape") {
       ev.preventDefault();
       if (search?.dismiss()) return;
       if (!stack.length && tab === "collection" && collection?.dismiss()) return;
-      if (!stack.length && tab === "resources" && resources?.dismiss()) return;
-      if (!stack.length && tab === "market" && market?.dismiss()) return;
+      if (!stack.length && tab === "resources" && farm?.dismiss()) return;
+      if (!stack.length && tab === "trade" && trade?.dismiss()) return;
+      if (!stack.length && tab === "goals" && goalsView?.dismiss()) return;
       if (stack.length) back();
       else close();
     } else if ((ev.ctrlKey && ev.code === "KeyK") || ev.key === "/") {
@@ -147,7 +174,8 @@
   const time = $derived(new Date(now).toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" }));
 </script>
 
-<svelte:window {onkeydown} />
+<!-- Capture phase: ahead of the SvelteKit router, which would load the app page inside the hub window. -->
+<svelte:window {onkeydown} onclickcapture={onclick} />
 
 <!-- Nothing is drawn while hidden, so the next open starts from a clean frame and animates in. -->
 {#if open}
@@ -176,24 +204,40 @@
           {#key view.kind + view.id}
             {#if view.kind === "baro"}
               <div class="swap"><Baro {now} onopen={openView} onback={back} /></div>
+            {:else if view.kind === "time"}
+              <div class="swap panel coll time-view">
+                <header><button class="back" onclick={back}>← {t("common.back")}</button><h2>{t("time.title")}</h2></header>
+                <div class="body"><Time {now} onopen={openView} /></div>
+              </div>
             {:else}
               <div class="swap"><Detail {view} onopen={openView} onback={back} onapp={openInApp} /></div>
             {/if}
           {/key}
-        {:else if tab === "resources"}
-          <div class="swap"><Resources bind:this={resources} {mission} onopen={openView} /></div>
-        {:else if tab === "market"}
-          <div class="swap"><Market bind:this={market} onopen={openView} /></div>
-        {:else if tab === "time"}
-          <div class="swap"><Time {now} onopen={openView} /></div>
-        {:else if tab === "collection"}
-          <div class="swap panel coll"><div class="body"><Collection bind:this={collection} onopen={fromCollection} compact /></div></div>
-        {:else}
-          <div class="grid">
-            <div class="cell" style:--d="0ms"><MissionPanel {mission} {game} {priority} onopen={openView} /></div>
-            <div class="cell" style:--d="30ms"><Fissures {now} /></div>
-            <div class="cell" style:--d="60ms"><World {now} onopen={openView} /></div>
+        {:else if tab === "goals"}
+          <div class="swap panel coll goals-tab">
+            <div class="body"><GoalsView bind:this={goalsView} compact scroller=".goals-tab .body" onnav={(path) => invoke("hub_open_in_app", { path })} /></div>
           </div>
+        {:else if tab === "resources"}
+          <div class="swap">
+            <FarmView
+              bind:this={farm}
+              compact
+              {mission}
+              sel={farmState.stack.at(-1) ?? null}
+              onselect={(s) => (farmState.stack = [...farmState.stack, s])}
+              onback={() => (farmState.stack = farmState.stack.slice(0, -1))}
+            />
+          </div>
+        {:else if tab === "builds"}
+          <div class="swap panel coll"><div class="body"><BuildsView compact /></div></div>
+        {:else if tab === "relics"}
+          <div class="swap panel coll"><div class="body"><RelicsView compact /></div></div>
+        {:else if tab === "trade"}
+          <div class="swap panel coll"><div class="body"><TradeView bind:this={trade} compact onopen={openView} /></div></div>
+        {:else if tab === "collection"}
+          <div class="swap panel coll"><div class="body"><Collection bind:this={collection} onopen={fromCollection} compact ongoal={() => ((tabs.tab = "goals"), saveTabs(), setStack([]))} /></div></div>
+        {:else}
+          <NowView {mission} {game} {priority} {now} onopen={openView} />
         {/if}
           {#snippet failed(error)}
             <div class="panel crashed">
@@ -323,20 +367,15 @@
     min-height: 0;
     margin-top: 8px;
   }
-  .grid {
-    height: 100%;
-    display: grid;
-    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 0.8fr);
-    gap: 16px;
+  .time-view header {
+    gap: 14px;
   }
-  .cell {
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    animation: rise 0.18s var(--d) cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  .back {
+    font-size: 13px;
+    color: var(--text-dim);
   }
-  .cell > :global(.panel) {
-    flex: 1;
+  .back:hover {
+    color: var(--accent);
   }
   .swap {
     height: 100%;

@@ -16,6 +16,7 @@ export interface Opening {
   reward: string;
   offer?: string[];
   picked?: string;
+  pick_by?: "inv" | "hand"; // who marked the pick: the inventory after the mission, or the player
 }
 
 export interface Entry extends Opening {
@@ -63,8 +64,9 @@ class Journal {
     listen<string>("journal-deleted", (e) => (this.list = this.list.filter((x) => x.id !== e.payload)));
   }
 
-  pick(id: string, item: string | null) {
-    invoke("journal_pick", { id, item }).catch(() => {});
+  // offer: the cards corrected by what actually arrived (the inventory caught an OCR misread).
+  pick(id: string, item: string | null, by: "inv" | "hand" = "hand", offer?: string[]) {
+    invoke("journal_pick", { id, item, by, offer: offer ?? null }).catch(() => {});
   }
   remove(id: string) {
     invoke("journal_delete", { id }).catch(() => {});

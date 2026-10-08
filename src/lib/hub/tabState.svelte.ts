@@ -1,35 +1,30 @@
 // UI state of the hub tabs that should survive closing the hub (its content unmounts when hidden).
-export type HubTab = "overview" | "resources" | "market" | "time" | "collection";
-export type ResMode = "here" | "all" | "craft";
-export type ResPick = { kind: "res" | "craft"; id: string };
+// «Добыча» keeps its own (src/lib/views/farmState.svelte.ts), shared with the app's page.
+export type HubTab = "now" | "goals" | "builds" | "relics" | "trade" | "resources" | "collection";
+const TABS: HubTab[] = ["now", "goals", "builds", "relics", "trade", "resources", "collection"];
+// Tabs of earlier versions -> where their content lives now.
+const OLD: Record<string, HubTab> = { overview: "now", time: "now", market: "trade", orders: "trade" };
 
 const KEY = "dwc.hub.tabs";
 
-function load(): { tab: HubTab; resMode: ResMode } {
+function load(): HubTab {
   try {
     const s = JSON.parse(localStorage.getItem(KEY) ?? "null");
-    if (s) return { tab: s.tab ?? "overview", resMode: s.resMode ?? "here" };
+    if (s) return TABS.includes(s.tab) ? s.tab : (OLD[s.tab] ?? "now");
   } catch {
     // storage unavailable
   }
-  return { tab: "overview", resMode: "here" };
+  return "now";
 }
 
-const saved = load();
-
 export const tabs = $state({
-  tab: saved.tab,
-  resMode: saved.resMode,
-  resQuery: "",
-  resPlanet: null as string | null, // planet picked by hand in "Здесь" (no mission)
-  resStack: [] as ResPick[],
-  craftKind: "all" as string,
+  tab: load(),
   marketQuery: "",
 });
 
 export function saveTabs() {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ tab: tabs.tab, resMode: tabs.resMode }));
+    localStorage.setItem(KEY, JSON.stringify({ tab: tabs.tab }));
   } catch {
     // storage unavailable
   }

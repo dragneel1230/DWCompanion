@@ -58,6 +58,43 @@ const GLUE = {
   ru: { bounty: "заказ", rotation: "ротация", simaris: "Цефалон Симарис: после «$1»", blueprint: "Чертёж" },
   en: { bounty: "bounty", rotation: "rotation", simaris: "Cephalon Simaris: after “$1”", blueprint: "Blueprint" },
 };
+// Ability numbers at max rank (wiki infoboxes, scripts/fetch-wiki-abilities.mjs) and Russian for their labels
+// (data/ability-labels.ru.tsv). Missing file: abilities simply have no numbers.
+const wikiAbilities = existsSync("data/wiki-abilities.json") ? read("data/wiki-abilities.json").abilities : {};
+const labelRu = new Map(
+  existsSync("data/ability-labels.ru.tsv")
+    ? readFileSync("data/ability-labels.ru.tsv", "utf8").split(/\r?\n/).filter((l) => l && !l.startsWith("#")).map((l) => l.split("\t"))
+    : [],
+);
+// Ability names the Russian labels keep in English ("снижение брони от Redline"): DE's Russian name instead.
+const abilityRu = new Map();
+for (const f of wfFrames)
+  for (const a of f.abilities ?? []) {
+    const r = (ruI18nAll[f.uniqueName]?.abilities ?? []).find((x) => x.abilityUniqueName === a.uniqueName);
+    if (r?.abilityName && a.name) abilityRu.set(a.name, r.abilityName);
+  }
+const abilityNames = [...abilityRu.keys()].sort((a, b) => b.length - a.length);
+// Energy cost: DE's own number (ExportWarframes abilities), the wiki's only when DE has none.
+function abilityStats(uniqueName, LANG, deCost) {
+  const w = wikiAbilities[uniqueName];
+  if (!w) return undefined;
+  const label = (l) => {
+    if (!l || LANG !== "ru") return l || undefined;
+    let r = labelRu.get(l) ?? l;
+    for (const n of abilityNames) if (r.includes(n)) r = r.split(n).join(`«${abilityRu.get(n)}»`);
+    return r;
+  };
+  const list = (xs) => xs.map((x) => ({ v: x.v, n: x.n, u: x.unit || undefined, l: label(x.label) }));
+  return {
+    cost: deCost || w.energy?.n, // DE has 0 for a few (Spores): the wiki then
+    str: list(w.strength),
+    dur: list(w.duration),
+    rng: list(w.range),
+    misc: list(w.misc),
+    wiki: w.title,
+  };
+}
+
 for (const LANG of ["ru", "en"]) {
 const G = GLUE[LANG];
 // Texts of the file's language: WFCD's Russian i18n for ru, its English base otherwise.
@@ -140,10 +177,12 @@ for (const f of wfFrames) {
     abilities: (f.abilities ?? []).map((a) => {
       const r = ruAbilities.get(a.uniqueName);
       return {
+        id: a.uniqueName, // Helminth: a config's AbilityOverride names the ability by it
         name: r?.abilityName ?? a.name,
         en: a.name,
         desc: clean(r?.description ?? a.description),
         icon: img(pe.abilities?.find((x) => x.uniqueName === a.uniqueName)?.icon),
+        stats: abilityStats(a.uniqueName, LANG, pe.abilities?.find((x) => x.uniqueName === a.uniqueName)?.energyRequiredToActivate),
       };
     }),
   };
@@ -164,15 +203,49 @@ const FX = [
   [/^([+-]?[\d.]+)% Energy Max$/, "en"],
   [/^([+-]?[\d.]+)% Sprint Speed$/, "spd"],
 ];
-function parseFx(levels) {
+// Weapon mods (gear.ts): damage types by DE's damage array index (0 Impact … 12 Corrosive) as "e<index>".
+const DT_INDEX = { IMPACT: 0, PUNCTURE: 1, SLASH: 2, FIRE: 3, FREEZE: 4, ELECTRICITY: 5, POISON: 6, EXPLOSION: 7, RADIATION: 8, GAS: 9, MAGNETIC: 10, VIRAL: 11, CORROSIVE: 12 };
+const WFX = [
+  [/^([+-]?[\d.]+)% (?:Melee )?Damage$/, "dmg"],
+  [/^([+-]?[\d.]+)% Multishot$/, "ms"],
+  [/^([+-]?[\d.]+)% Critical Chance(?: \(x[\d.]+ for Heavy Attacks\))?$/, "cc"],
+  [/^([+-]?[\d.]+)% Critical Damage$/, "cd"],
+  [/^([+-]?[\d.]+)% Status Chance$/, "sc"],
+  [/^([+-]?[\d.]+)% (?:Fire Rate|Attack Speed)$/, "fr"],
+  [/^([+-]?[\d.]+)% Magazine Capacity$/, "mag"],
+  [/^([+-]?[\d.]+)% Reload Speed$/, "rel"],
+  [/^([+-]?[\d.]+)% Status Duration$/, "sd"],
+  [/^\+([\d.]+) (?:Melee )?Range$/, "range"],
+  [/^\+([\d.]+) Punch Through$/, "pt"],
+];
+// One rank's numbers. Lines after a condition header ("On Kill:") are conditional: not counted.
+function lineFx(text, table, out) {
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (line.endsWith(":")) break;
+    const bow = /^([+-]?[\d.]+)% Fire Rate \(x([\d.]+) for Bows\)$/.exec(line);
+    if (bow) {
+      out.fr = Number(bow[1]);
+      out.frb = Number(bow[1]) * Number(bow[2]);
+      continue;
+    }
+    const el = /^([+-]?[\d.]+)% <DT_([A-Z]+)_COLOR>\s*[A-Za-z]+$/.exec(line);
+    if (el && DT_INDEX[el[2]] != null) {
+      out[`e${DT_INDEX[el[2]]}`] = Number(el[1]);
+      continue;
+    }
+    for (const [re, key] of table) {
+      const m = re.exec(line);
+      if (m) out[key] = Number(m[1]);
+    }
+  }
+}
+function parseFx(levels, table = FX) {
   const fx = {};
   levels.forEach((lv, rank) => {
-    for (const line of lv.stats ?? []) {
-      for (const [re, key] of FX) {
-        const m = re.exec(line.trim());
-        if (m) (fx[key] ??= Array(levels.length).fill(0))[rank] = Number(m[1]);
-      }
-    }
+    const one = {};
+    for (const text of lv.stats ?? []) lineFx(text, table, one);
+    for (const [key, v] of Object.entries(one)) (fx[key] ??= Array(levels.length).fill(0))[rank] = v;
   });
   return Object.keys(fx).length ? fx : undefined;
 }
@@ -191,7 +264,16 @@ for (const m of wfMods) {
   const forFrames = m.type === "Warframe Mod" || isAura || frameCompat.has(m.compatName);
   if (!forFrames) {
     if (m.type === "Focus Way" || m.type.includes("Riven")) continue;
-    otherMods[m.uniqueName] = { ...modRow(m, pe), fx: undefined, cat: pe.type };
+    otherMods[m.uniqueName] = {
+      ...modRow(m, pe),
+      fx: parseFx(m.levelStats ?? [], [...WFX, ...FX]),
+      cat: pe.type,
+      // Which gear it fits (gear.ts fits()): DE's class + family tags, exilus / stance slot.
+      compat: pe.compat,
+      tags: pe.compatibilityTags?.length ? pe.compatibilityTags : undefined,
+      exilus: pe.isUtility || undefined,
+      stance: pe.type === "STANCE" || undefined,
+    };
     continue;
   }
   mods[m.uniqueName] = {
@@ -216,6 +298,8 @@ function modRow(m, pe) {
     icon: img(pe.icon),
     pol: POLARITY[pe.polarity] ?? m.polarity ?? "any",
     rarity: m.rarity, // Common | Uncommon | Rare | Legendary | Peculiar
+    // Own in-game frame: Galvanized (Steel Path, Arbitrations) and Amalgam mods (DE's icon / id folders).
+    fr: /\/Galvanized\//.test(pe.icon ?? "") ? "Galvanized" : /\/DualSource\//.test(m.uniqueName) ? "Amalgam" : undefined,
     drain: m.baseDrain ?? 0,
     max: m.fusionLimit ?? 0,
     stats: clean((stats[stats.length - 1]?.stats ?? []).join("\n")),
@@ -225,16 +309,6 @@ function modRow(m, pe) {
     slug: wfm.get(m.uniqueName)?.slug,
     mname: wfm.get(m.uniqueName)?.i18n?.en?.name,
   };
-}
-
-// ---------- Every mod's Russian name -> ids, for recognizing the in-game Mods screen (inventory scan).
-// All mod types, not only warframe ones: a weapon mod on screen must not be mistaken for a similar name.
-const modNames = {};
-for (const m of wfMods) {
-  // Rivens: names on screen are generated ("Болтор Ampiata"), veiled ones are not in the Mods list.
-  if (m.isFrivolous || m.type === "Focus Way" || m.type.includes("Riven")) continue;
-  const ru = ruI18nAll[m.uniqueName]?.name ?? m.name;
-  (modNames[ru] ??= []).push(m.uniqueName);
 }
 
 const arcanes = {};
@@ -253,6 +327,9 @@ for (const a of wfArcanes) {
     stats: clean((stats[stats.length - 1]?.stats ?? []).join("\n")),
     levels: stats.map((l) => clean((l.stats ?? []).join("\n"))),
     wf: a.type === "Warframe Arcane" || a.type === "Arcane" || undefined,
+    // Weapon arcanes: the weapon slot (gear.ts), and the only primary kind for the Bow / Shotgun ones.
+    use: { "Primary Arcane": "primary", "Bow Arcane": "primary", "Shotgun Arcane": "primary", "Secondary Arcane": "secondary", "Melee Arcane": "melee" }[a.type],
+    only: { "Bow Arcane": "Bow", "Shotgun Arcane": "Shotgun" }[a.type],
     slug: wfm.get(a.uniqueName)?.slug,
     mname: wfm.get(a.uniqueName)?.i18n?.en?.name,
   };
@@ -296,8 +373,30 @@ if (existsSync(seedFile)) {
   }
 }
 
+// ---------- Archon shards: DE's names and icons per colour (inventory colour code -> loose shard item).
+// Bonuses and their numbers are not in the export: src/lib/shards.ts (from the wiki).
+const resources = pe("ExportResources.json");
+const SHARD_ITEMS = { ACC_RED: "Amar", ACC_YELLOW: "Nira", ACC_BLUE: "Boreal", ACC_PURPLE: "Violet", ACC_ORANGE: "Orange", ACC_GREEN: "Green" };
+const shards = {};
+for (const [code, key] of Object.entries(SHARD_ITEMS)) {
+  for (const t of [false, true]) {
+    const item = `/Lotus/Types/Gameplay/NarmerSorties/ArchonCrystal${key}${t ? "Mythic" : ""}`;
+    const r = resources[item];
+    if (!r) throw new Error(`archon shard ${item} missing`);
+    shards[t ? `${code}_MYTHIC` : code] = { item, name: (dictRu[r.name] ?? dictEn[r.name]).replace(/<[^>]+>\s*/g, "").trim(), icon: img(r.icon) };
+  }
+}
+
+// ---------- Helminth's own abilities (a frame's ability subsumed elsewhere is found in `frames`).
+const helminth = {};
+for (const [id, a] of Object.entries(pe("ExportAbilities.json"))) {
+  if (!/Helminth[^/]*Ability$/.test(id)) continue;
+  const name = dictRu[a.name] ?? dictEn[a.name];
+  if (name) helminth[id] = { name: unshout(name), icon: img(a.icon) };
+}
+
 mkdirSync(`static/data/${LANG}`, { recursive: true });
-writeFileSync(`static/data/${LANG}/frames.json`, JSON.stringify({ frames, mods, arcanes, builds, sets, modNames }));
+writeFileSync(`static/data/${LANG}/frames.json`, JSON.stringify({ frames, mods, arcanes, builds, sets, shards, helminth }));
 writeFileSync(`static/data/${LANG}/mods.json`, JSON.stringify({ mods: otherMods }));
 console.log(`${LANG}: other mods ${Object.keys(otherMods).length}, size ${(JSON.stringify(otherMods).length / 1024).toFixed(0)} KB`);
 console.log(

@@ -22,7 +22,7 @@
   }: {
     mod?: Mod | null;
     slotPol?: Polarity | null;
-    label?: "aura" | "exilus" | ""; // special slot: its frame and caption
+    label?: "aura" | "exilus" | "stance" | ""; // special slot: its frame and caption
     owned?: boolean;
     scale?: number;
     bare?: boolean; // thumbnail: no slot polarity row, not clickable
@@ -39,11 +39,11 @@
     Legendary: "Legendary",
     Peculiar: "Legendary",
   };
-  const frame = $derived(mod ? (mod.pol === "umbra" ? "Legendary" : (FRAME[mod.rarity] ?? "Bronze")) : "Bronze");
+  const frame = $derived(mod ? (mod.fr ?? (mod.pol === "umbra" ? "Legendary" : (FRAME[mod.rarity] ?? "Bronze"))) : "Bronze");
   const r = $derived(mod ? Math.min(rank ?? mod.max, mod.max) : 0);
   const cost = $derived(mod ? modCost(mod, slotPol, r) : 0);
   const match = $derived(!!mod && !!slotPol && (slotPol === mod.pol || slotPol === "any"));
-  const mismatch = $derived(!!mod && !!slotPol && !match && !mod.aura);
+  const mismatch = $derived(!!mod && !!slotPol && !match && !mod.aura && !mod.stance);
   const ranks = $derived(Math.min(mod?.max ?? 0, 10));
   const active = $derived(Math.min(r, 10));
   const kindIcon = $derived(label === "aura" ? "/modframe/SilverAura.png" : label === "exilus" ? "/modframe/GoldExilus.png" : null);
@@ -73,7 +73,7 @@
         <img class="bottom" src="/modframe/{frame}FrameBottom.png" alt="" />
         {#if kindIcon}<img class="kind" src={kindIcon} alt={label} title={label} />{/if}
         <div class="tab" class:match class:mismatch style:background-image="url(/modframe/{frame}TopRightBacker.png)">
-          <span>{mod.aura ? `+${-cost}` : cost}</span>
+          <span>{mod.aura || mod.stance ? `+${-cost}` : cost}</span>
           <PolIcon pol={mod.pol} size={17} />
         </div>
         <div class="name">{mod.name}</div>
@@ -86,7 +86,7 @@
     </svelte:element>
   {:else}
     <svelte:element this={onclick && !bare ? "button" : "div"} class="card empty" class:add={!!onclick} {onclick} role={onclick ? "button" : undefined}>
-      <span>{#if onclick}<b>+</b>{/if}{label === "aura" ? t("bb.aura") : label === "exilus" ? t("bb.exilus") : onclick ? t("kind.mod") : t("card.empty")}</span>
+      <span>{#if onclick}<b>+</b>{/if}{label === "aura" ? t("bb.aura") : label === "exilus" ? t("bb.exilus") : label === "stance" ? t("gb.stance") : onclick ? t("kind.mod") : t("card.empty")}</span>
     </svelte:element>
   {/if}
 </div>

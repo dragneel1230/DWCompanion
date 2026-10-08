@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Facts from "$lib/components/Facts.svelte";
   import { labels, t } from "$lib/i18n/index.svelte";
   import { goto } from "$app/navigation";
   import { search, iconUrl, type Entry } from "$lib/db";
@@ -83,6 +84,7 @@
               {e.name}
               {#if e.name !== e.en}<small>{e.en}</small>{/if}
             </span>
+            <Facts kind={e.kind} id={e.id} slug={e.kind === "mod" ? modOf(e.id)?.slug : e.kind === "arcane" ? frames?.arcanes[e.id]?.slug : undefined} />
             {#if e.vaulted}<span class="tag vaulted">{t("tag.inVault")}</span>{/if}
             <span class="kind">{KIND_LABEL[e.kind]}</span>
           </button>

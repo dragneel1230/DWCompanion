@@ -16,8 +16,43 @@
   --uncommon: #c0c7d4;
   --common: #b98b62;
   --radius: 10px;
+  /* Popovers and dropdowns: always opaque (the hub redefines the surfaces as glass). */
+  --pop-bg: #1c2029;
   --font: "Inter", "Segoe UI", system-ui, sans-serif;
+  /* Ability stats: which build stat a number follows (strength / duration / range / efficiency). */
+  --ab-str: #e0b85c;
+  --ab-dur: #7fb3ff;
+  --ab-rng: #6fcf97;
+  --ab-eff: #c48cff;
   color-scheme: dark;
+}
+
+/* App window: the hub's glass look (panels, rows, segments in hub.css) over a calm void backdrop instead of
+   the game frame. Surfaces are translucent, so cards pick up the backdrop's tint like hub panels do. */
+.app {
+  --bg: #0a0c11;
+  --surface: rgba(255, 255, 255, 0.035);
+  --surface-2: rgba(255, 255, 255, 0.07);
+  --line: rgba(255, 255, 255, 0.08);
+  --glass: rgba(17, 20, 28, 0.62);
+  --glass-line: rgba(255, 255, 255, 0.07);
+  background:
+    radial-gradient(1100px 650px at 88% -12%, rgba(86, 116, 196, 0.16), transparent 62%),
+    radial-gradient(900px 620px at 4% 112%, rgba(201, 166, 107, 0.1), transparent 60%),
+    radial-gradient(760px 520px at 46% 46%, rgba(124, 96, 206, 0.045), transparent 70%),
+    var(--bg);
+}
+
+/* Lists in the app: one glass panel with plain rows inside (as in the hub), not a stack of filled tiles. */
+.app .rows {
+  gap: 0;
+  padding: 4px;
+  background: var(--glass);
+  border: 1px solid var(--glass-line);
+  border-radius: 16px;
+}
+.app .row {
+  border-radius: 11px;
 }
 
 * {
@@ -51,6 +86,16 @@ button {
 input {
   font: inherit;
   color: inherit;
+}
+
+/* Native dropdown lists: options inherit a glass background in the hub and render white. */
+select {
+  color-scheme: dark;
+}
+select option,
+select optgroup {
+  background: var(--pop-bg);
+  color: var(--text);
 }
 
 ::-webkit-scrollbar {
@@ -96,9 +141,9 @@ input {
 }
 
 .page {
-  max-width: 900px;
+  max-width: 1080px;
   margin: 0 auto;
-  padding: 28px 32px 60px;
+  padding: 32px 36px 60px;
 }
 
 .hero {
@@ -128,10 +173,11 @@ input {
 
 .section-title {
   font-size: 12px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-faint);
-  margin: 26px 0 10px;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+  margin: 28px 0 12px 4px;
 }
 
 .rows {

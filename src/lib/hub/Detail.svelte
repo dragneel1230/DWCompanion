@@ -1,10 +1,11 @@
 <script lang="ts">
   // Hub detail panel for a search pick: what it is, where it drops, prices, and the market with
   // "Купить / Продать" whispers. Links inside open the next view in the hub (stack, "Назад").
+  import Facts from "$lib/components/Facts.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { getDb, iconUrl, itemName, RARITY_RU, setParts as uniqueParts } from "$lib/db";
   import type { Price } from "$lib/api";
-  import { loadFrames, loadOtherMods, RARITY_RU as MOD_RARITY_RU, type FramesDb, type Mod } from "$lib/frames";
+  import { buildsFor, loadFrames, loadOtherMods, RARITY_RU as MOD_RARITY_RU, type FramesDb, type Mod } from "$lib/frames";
   import Plat from "$lib/components/Plat.svelte";
   import Cur from "$lib/components/Cur.svelte";
   import MarketPanel from "$lib/components/MarketPanel.svelte";
@@ -12,6 +13,7 @@
   import ArcaneCard from "$lib/components/ArcaneCard.svelte";
   import DropSources from "$lib/components/DropSources.svelte";
   import WikiFarm from "$lib/components/WikiFarm.svelte";
+  import ModWhere from "$lib/goals/ModWhere.svelte";
   import CraftTree from "$lib/components/CraftTree.svelte";
   import { loadCraft, CRAFT_KIND_RU, type CraftDb } from "$lib/craft";
   import { loadDrops, PLANET_RARITY_RU, type DropsDb } from "$lib/drops";
@@ -148,6 +150,7 @@
             {#if mod || arcane}
               <span class="tag">{mod ? t("tag.mod") : t("tag.arcane")} · {MOD_RARITY_RU[(mod ?? arcane)!.rarity]}</span>
             {/if}
+            {#if view.kind !== "baro" && view.kind !== "time"}<Facts kind={view.kind} id={view.id} price={false} />{/if}
           </div>
         </div>
         <div class="price">
@@ -212,6 +215,8 @@
           {:else if mod || arcane}
             <div class="section-title">{t("detail.maxRank")}</div>
             <p class="stats">{(mod ?? arcane)!.stats}</p>
+            <div class="section-title">{t("goal.mod.where")}</div>
+            <ModWhere id={view.id} en={(mod ?? arcane)!.en} {drops} limit={6} />
           {:else if resource && drops}
             {#if resource.desc}<p class="stats">{resource.desc}</p>{/if}
             {#if resource.planets}
@@ -232,7 +237,29 @@
               <span><small>{t("stat.armor")}</small>{frame.r30.armor}</span>
               <span><small>{t("stat.energy")}</small>{frame.r30.energy}</span>
             </div>
-            <p class="muted">{t("detail.frameInApp")}</p>
+            {#if frame.passive}<p class="stats"><b>{t("frame.passive")}</b> {frame.passive}</p>{/if}
+            <div class="section-title">{t("detail.abilities")}</div>
+            <div class="abilities">
+              {#each frame.abilities as a, i (i)}
+                <div class="ability">
+                  {#if a.icon}<img src={iconUrl(a.icon)} alt="" />{/if}
+                  <div><b>{a.name}</b><span>{a.desc}</span></div>
+                </div>
+              {/each}
+            </div>
+            {@const builds = frames ? buildsFor(frames, view.id).slice(0, 6) : []}
+            {#if builds.length}
+              <div class="section-title">{t("frame.builds")}</div>
+              <div class="rows">
+                {#each builds as [bid, b] (bid)}
+                  <a class="row build" href="/frames?id={encodeURIComponent(view.id)}&build={encodeURIComponent(bid)}">
+                    <span class="name">{b.title}<small>{b.author}</small></span>
+                    {#if b.votes}<span class="num">♥ {b.votes}</span>{/if}
+                    <span class="go">→</span>
+                  </a>
+                {/each}
+              </div>
+            {/if}
           {/if}
           {#if craftItem && craft && drops && (view.kind === "craft" || view.kind === "frame" || view.kind === "set")}
             {#if view.kind !== "craft"}<div class="section-title craft-title">{t("kind.craft")}</div>{/if}
@@ -382,5 +409,47 @@
     color: var(--text-faint);
     text-transform: uppercase;
     letter-spacing: 0.08em;
+  }
+  .abilities {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 8px 18px;
+  }
+  .ability {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .ability img {
+    width: 34px;
+    height: 34px;
+    flex: none;
+    object-fit: contain;
+    filter: brightness(1.2);
+  }
+  .ability b {
+    display: block;
+    font-size: 13.5px;
+    font-weight: 500;
+  }
+  .ability span {
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--text-dim);
+  }
+  .build {
+    color: inherit;
+  }
+  .build .name {
+    flex: 1;
+    min-width: 0;
+  }
+  .build small {
+    display: block;
+    font-size: 11.5px;
+    color: var(--text-faint);
+  }
+  .build .go {
+    color: var(--text-faint);
   }
 </style>

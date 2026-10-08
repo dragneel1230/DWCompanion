@@ -59,8 +59,8 @@
     untrack(() => {
       shown = 15;
       subtype = "all";
-      // Mods trade mostly maxed or unranked; start from maxed unless asked otherwise (Baro sells them unranked).
-      rank = maxRank > 0 ? (unranked ? "zero" : "max") : "any";
+      // Every rank at first: the player narrows it down. Baro sells mods unranked: those start at rank 0.
+      rank = maxRank > 0 && unranked ? "zero" : "any";
       load();
     });
   });
@@ -133,12 +133,16 @@
   }
 
   const STATUS_RU = labels<UserStatus>({ ingame: "mp.status.ingame", online: "mp.status.online", offline: "mp.status.offline" });
+  // "Post mine": the new-order form of the desk («Торговля» → «Ордера») with this item. A plain link:
+  // the hub catches it and switches to its own «Торговля» tab.
+
   const SUB_RU: Record<string, string> = labels({ intact: "mp.sub.intact", exceptional: "mp.sub.exceptional", flawless: "mp.sub.flawless", radiant: "mp.sub.radiant" });
 </script>
 
 <section class="market">
   <div class="head">
     <div class="section-title">{t("mp.title")}</div>
+    <a class="post" href="/trade?new={encodeURIComponent(slug)}&type=sell" title={t("mp.postHint")}>＋ {t("mp.post")}</a>
     <button class="refresh" onclick={() => load(true)} disabled={loading} title={t("mp.refresh")}>
       {loading ? t("common.loading") : `↻ ${loadedAt ? t("mp.secondsAgo", { v: Math.max(0, Math.round((now - loadedAt) / 1000)) }) : ""}`}
     </button>
@@ -258,6 +262,18 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
+  }
+  .post {
+    margin: 16px 0 0 auto;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--accent);
+  }
+  .post:hover {
+    border-color: var(--accent);
   }
   .refresh {
     margin-top: 16px;

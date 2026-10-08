@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Facts from "$lib/components/Facts.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { page } from "$app/state";
   import { getDb, iconUrl, itemName, RARITY_RU } from "$lib/db";
@@ -43,6 +44,7 @@
         <div class="sub">
           <span>{relic.en}</span>
           <span class="tag {relic.vaulted ? 'vaulted' : 'active'}">{relic.vaulted ? t("tag.inVault") : t("tag.dropsNow")}</span>
+          <Facts kind="relic" {id} price={false} />
         </div>
       </div>
       <div class="price">

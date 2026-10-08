@@ -235,9 +235,10 @@ for (const w of wfmItems) {
   if (!mainBp || !items[mainBp]) continue;
   const parts = [mainBp];
   for (const ing of recipes[mainBp].ingredients ?? []) {
-    // Warframe components drop as blueprints, weapon parts drop as themselves.
+    // Warframe components drop as blueprints, weapon parts drop as themselves. Repeated as many times as the
+    // recipe takes (Kronen Prime: 2 blades, 2 handles); setParts() in db.ts counts them.
     const partId = items[ing.ItemType] ? ing.ItemType : recipeByResult.get(ing.ItemType);
-    if (partId && items[partId]) parts.push(partId);
+    if (partId && items[partId]) for (let i = 0; i < (ing.ItemCount ?? 1); i++) parts.push(partId);
   }
   const main = named[w.gameRef];
   if (!main?.name) continue;

@@ -30,6 +30,9 @@ pub struct Opening {
     pub offer: Vec<String>, // every card on the screen (from the overlay), when known
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub picked: Option<String>,
+    // Who marked the pick: "inv" — the inventory snapshot after the mission (what arrived), "hand" — the player.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pick_by: Option<String>,
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -151,6 +154,7 @@ impl Journal {
                 reward,
                 offer,
                 picked: None,
+                pick_by: None,
             };
             self.ids.insert(id);
             self.entries.push(e.clone());
@@ -261,9 +265,13 @@ pub fn journal_offer(app: AppHandle, j: tauri::State<JournalState>, items: Vec<S
 }
 
 #[tauri::command]
-pub fn journal_pick(app: AppHandle, j: tauri::State<JournalState>, id: String, item: Option<String>) {
+pub fn journal_pick(app: AppHandle, j: tauri::State<JournalState>, id: String, item: Option<String>, by: Option<String>, offer: Option<Vec<String>>) {
     let mut j = j.lock().unwrap();
     let Some(e) = j.entries.iter_mut().find(|e| e.id == id) else { return };
+    if let Some(o) = offer {
+        e.offer = o; // corrected by the inventory (OCR misread a card)
+    }
+    e.pick_by = by.filter(|_| item.is_some());
     e.picked = item;
     let e = e.clone();
     j.save();

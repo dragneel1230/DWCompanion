@@ -362,6 +362,26 @@ pub fn hub_hide(app: AppHandle) {
     hide(&app, true);
 }
 
+// The hub turned on / off in the settings: off drops the hotkey and hides the hub.
+pub fn clear_shortcut(app: &AppHandle) {
+    let hub = app.state::<Hub>();
+    let mut cur = hub.shortcut.lock().unwrap();
+    if let Some(old) = cur.take() {
+        let _ = app.global_shortcut().unregister(old);
+    }
+}
+
+#[tauri::command]
+pub fn hub_set_enabled(app: AppHandle, enabled: bool, accel: String) -> Result<(), String> {
+    if enabled {
+        set_shortcut(&app, &accel)
+    } else {
+        clear_shortcut(&app);
+        hide(&app, false);
+        Ok(())
+    }
+}
+
 #[tauri::command]
 pub fn hub_set_shortcut(app: AppHandle, accel: String) -> Result<(), String> {
     set_shortcut(&app, &accel)

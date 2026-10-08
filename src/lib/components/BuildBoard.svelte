@@ -2,9 +2,11 @@
   // Build editor / viewer in the style of the in-game arsenal: abilities, rank, capacity and stats
   // on the left; aura, exilus, 8 slots with their polarities and arcanes in the middle.
   // Editable: click a slot to pick a mod, click a polarity chip to forma the slot.
+  import AbilityStats from "./AbilityStats.svelte";
   import { num, t } from "$lib/i18n/index.svelte";
   import { iconUrl } from "$lib/db";
   import {
+    abilityById,
     buildCapacity,
     buildStats,
     formaInfo,
@@ -24,6 +26,7 @@
   import ModPicker from "./ModPicker.svelte";
   import FloatTip from "./FloatTip.svelte";
   import PolIcon from "./PolIcon.svelte";
+  import ShardRow from "./ShardRow.svelte";
 
   let { db, frame, build = $bindable(), editable = false }: { db: FramesDb; frame: Frame; build: Build; editable?: boolean } = $props();
 
@@ -39,6 +42,8 @@
   const cap = $derived(buildCapacity(db, build));
   const stats = $derived(buildStats(db, frame, build));
   const counts = $derived(setCounts(db, build));
+  // Helminth (game configs): the subsumed ability in place of the replaced one.
+  const helm = $derived(build.helminth ? { i: build.helminth[1], a: abilityById(db, build.helminth[0]) } : null);
   const used = $derived(new Set([build.aura, build.exilus, ...build.slots, ...build.arcanes].filter((x): x is string => !!x)));
 
   const modAt = (s: SlotKey) => (s === "aura" ? build.aura : s === "exilus" ? build.exilus : build.slots[s]);
@@ -133,16 +138,23 @@
   <aside class="side">
     <div class="abilities">
       {#each frame.abilities as a, i}
-        <div
-          class="ability"
-          role="img"
-          aria-label={a.name}
-          onmouseenter={(e) => (hoverAbility = { el: e.currentTarget as HTMLElement, i })}
-          onmouseleave={() => (hoverAbility = null)}
-        >
-          <img src={iconUrl(a.icon)} alt="" />
-          <span>{i + 1}</span>
-        </div>
+        {#if helm?.i === i && helm.a}
+          <div class="ability helm" role="img" aria-label={helm.a.name} title={t("bb.helminth", { a: helm.a.name, was: a.name })}>
+            <img src={iconUrl(helm.a.icon)} alt="" />
+            <span>{i + 1}</span>
+          </div>
+        {:else}
+          <div
+            class="ability"
+            role="img"
+            aria-label={a.name}
+            onmouseenter={(e) => (hoverAbility = { el: e.currentTarget as HTMLElement, i })}
+            onmouseleave={() => (hoverAbility = null)}
+          >
+            <img src={iconUrl(a.icon)} alt="" />
+            <span>{i + 1}</span>
+          </div>
+        {/if}
       {/each}
     </div>
 
@@ -206,6 +218,44 @@
   </section>
 </div>
 
+{#if editable || build.shards?.some(Boolean)}
+  <section class="shard-panel">
+    <h3>{t("shard.title")}</h3>
+    <ShardRow {db} bind:shards={build.shards} {editable} />
+  </section>
+{/if}
+{#if helm?.a}
+  <p class="helm-note">{t("bb.helminth", { a: helm.a.name, was: frame.abilities[helm.i]?.name ?? "" })}</p>
+{/if}
+
+<!-- Abilities with the build applied: what the mods actually change. -->
+<section class="abil-panel">
+  <div class="abil-head">
+    <h3>{t("ab.title")}</h3>
+    <div class="legend">
+      <span class="lg str">{t("ab.str")} {pct(stats.str)}</span>
+      <span class="lg dur">{t("ab.dur")} {pct(stats.dur)}</span>
+      <span class="lg rng">{t("ab.rng")} {pct(stats.rng)}</span>
+      <span class="lg eff">{t("ab.eff")} {pct(stats.eff)}</span>
+    </div>
+  </div>
+  <div class="abil-grid">
+    {#each frame.abilities as a, i (a.en)}
+      <div class="abil">
+        <div class="abil-top">
+          {#if a.icon}<img src={iconUrl(a.icon)} alt="" />{/if}
+          <div>
+            <b>{a.name}</b>
+            <small>{i + 1}</small>
+          </div>
+        </div>
+        <AbilityStats ability={a} mods={stats} compact />
+      </div>
+    {/each}
+  </div>
+  <p class="abil-note">{t("ab.source")}</p>
+</section>
+
 <FloatTip anchor={hoverMod?.el ?? null}>
   {#if hoverMod}<ModTooltip {db} mod={hoverMod.mod} rank={hoverMod.rank} setCount={hoverMod.mod.set ? counts[hoverMod.mod.set] : 0} scale={0.8} />{/if}
 </FloatTip>
@@ -214,7 +264,9 @@
     {@const a = frame.abilities[hoverAbility.i]}
     <div class="ability-tip">
       <b>{a.name}</b>
+      <small>{t("ab.maxRank")}</small>
       <p>{a.desc}</p>
+      <AbilityStats ability={a} mods={stats} compact />
     </div>
   {/if}
 </FloatTip>
@@ -242,7 +294,7 @@
 <style>
   .wrap {
     display: grid;
-    grid-template-columns: 230px 1fr;
+    grid-template-columns: 230px minmax(0, 1fr);
     gap: 24px;
     align-items: start;
   }
@@ -267,6 +319,26 @@
   }
   .ability:hover {
     border-color: var(--accent);
+  }
+  .ability.helm {
+    border-color: rgba(120, 200, 120, 0.6);
+    background: rgba(120, 200, 120, 0.1);
+  }
+  .shard-panel {
+    margin-top: 16px;
+  }
+  .shard-panel h3 {
+    margin: 0 4px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .helm-note {
+    margin: 10px 4px 0;
+    font-size: 12.5px;
+    color: var(--text-dim);
   }
   .ability img {
     width: 100%;
@@ -364,6 +436,29 @@
     padding: 18px 12px;
     border-radius: 14px;
     background: radial-gradient(ellipse at 50% 0%, rgba(201, 166, 107, 0.07), transparent 60%), var(--surface);
+    container-type: inline-size;
+  }
+  /* The slots are drawn at the game frames' own pixel size (~870px for 4 in a row): in a narrower column
+     the whole board scales down in steps instead of spilling past the window edge. */
+  @container (max-width: 894px) {
+    .board > :global(*) {
+      zoom: 0.88;
+    }
+  }
+  @container (max-width: 787px) {
+    .board > :global(*) {
+      zoom: 0.78;
+    }
+  }
+  @container (max-width: 698px) {
+    .board > :global(*) {
+      zoom: 0.68;
+    }
+  }
+  @container (max-width: 609px) {
+    .board > :global(*) {
+      zoom: 0.58;
+    }
   }
   .line2 {
     display: flex;
@@ -454,18 +549,116 @@
     background: var(--bg);
     color: var(--text);
   }
+  /* Opaque like the game's tooltip: the glass surfaces of the app would let the board show through. */
   .ability-tip {
-    width: 320px;
-    padding: 12px 14px;
-    border-radius: 10px;
-    background: var(--surface-2);
-    border: 1px solid var(--line);
+    width: 360px;
+    padding: 14px 16px 12px;
+    border-radius: 12px;
+    background: var(--pop-bg);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  }
+  .ability-tip > b {
+    display: block;
+    font-size: 15px;
+  }
+  .ability-tip > small {
+    display: block;
+    margin-top: 1px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
   }
   .ability-tip p {
-    margin: 6px 0 0;
-    font-size: 12px;
+    margin: 8px 0 10px;
+    font-size: 12.5px;
     line-height: 1.5;
-    color: var(--text-dim);
+    color: var(--text);
     white-space: pre-line;
+  }
+  .abil-panel {
+    margin-top: 18px;
+  }
+  .abil-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 0 4px 10px;
+  }
+  .abil-head h3 {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .lg::before {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 6px;
+    border-radius: 2px;
+    vertical-align: 0;
+  }
+  .lg.str::before {
+    background: var(--ab-str);
+  }
+  .lg.dur::before {
+    background: var(--ab-dur);
+  }
+  .lg.rng::before {
+    background: var(--ab-rng);
+  }
+  .lg.eff::before {
+    background: var(--ab-eff);
+  }
+  .abil-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 10px;
+    align-items: start;
+  }
+  .abil {
+    padding: 12px 12px 10px;
+    border-radius: 14px;
+    background: var(--glass, var(--surface));
+    border: 1px solid var(--glass-line, var(--line));
+  }
+  .abil-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .abil-top img {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+  }
+  .abil-top b {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .abil-top small {
+    font-size: 11px;
+    color: var(--accent);
+  }
+  .abil-note {
+    margin: 8px 4px 0;
+    font-size: 11.5px;
+    color: var(--text-faint);
   }
 </style>

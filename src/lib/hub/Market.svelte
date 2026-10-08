@@ -7,6 +7,7 @@
   import { loadBulk, bulkSell } from "$lib/api";
   import type { View } from "./hub";
   import { tabs } from "./tabState.svelte";
+  import Facts from "$lib/components/Facts.svelte";
 
   let { onopen }: { onopen: (v: View) => void } = $props();
 
@@ -88,7 +89,7 @@
     {#each shown as r (r.kind + r.id)}
       <button class="line" onclick={() => onopen({ kind: r.kind, id: r.id })}>
         <img src={iconUrl(r.icon)} alt="" loading="lazy" />
-        <span class="name">{r.name}{#if r.vaulted}<i class="vault">{t("tag.vault")}</i>{/if}</span>
+        <span class="name">{r.name}{#if r.vaulted}<i class="vault">{t("tag.vault")}</i>{/if}<Facts kind={r.kind} id={r.id} price={false} /></span>
         <span class="r plat">{r.plat ?? "—"}</span>
         <span class="r duc">{r.ducats || "—"}</span>
         <span class="r ratio" class:good={ratio(r) >= 10}>{fmtRatio(ratio(r))}</span>
@@ -155,6 +156,9 @@
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+  }
+  .name :global(.facts) {
+    margin-left: 10px;
   }
   .vault {
     margin-left: 8px;

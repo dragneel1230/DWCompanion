@@ -19,6 +19,7 @@ export interface CraftItem {
   drops?: Drop[]; // where its blueprint drops (DE drop tables); prime parts come from relics instead
   src?: Src[];
   bp?: string; // prime items: the blueprint id (a relic reward in db.json) // market, clan research, quest, vendors (scripts/build-drops.mjs → sourcesOf)
+  r?: string; // other items: the blueprint id (the inventory lists blueprints by it)
 }
 
 export interface CraftDb {

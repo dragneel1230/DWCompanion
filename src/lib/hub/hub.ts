@@ -4,7 +4,7 @@ import { labels } from "$lib/i18n/index.svelte";
 
 // What the detail panel shows; the hub keeps a stack of them (item -> its relic -> ...).
 export interface View {
-  kind: EntryKind | "baro"; // baro: Baro Ki'Teer's stock (Baro.svelte)
+  kind: EntryKind | "baro" | "time"; // baro: Baro Ki'Teer's stock (Baro.svelte); time: every timer (Time.svelte)
   id: string;
 }
 
@@ -26,10 +26,31 @@ export interface Lobby {
 
 // Page of the main window for "Открыть в приложении".
 export function appPath(v: View): string {
-  if (v.kind === "baro") return "/time";
+  if (v.kind === "baro") return "/now?baro";
+  if (v.kind === "time") return "/now?time";
   if (v.kind === "craft") return `/resources?craft=${encodeURIComponent(v.id)}`;
   const route = v.kind === "mod" || v.kind === "arcane" ? "market" : v.kind === "resource" ? "resources" : v.kind;
   return `/${route}?id=${encodeURIComponent(v.id)}`;
+}
+
+// The other way round: an app link (an <a href> inside a shared view) -> the hub's detail panel, or null
+// when the hub has no panel for it (the hub then opens the page in the app).
+const KINDS: Record<string, EntryKind> = { set: "set", item: "item", relic: "relic", frame: "frame" };
+export function viewOf(href: string): View | null {
+  const u = new URL(href, "http://x");
+  const id = u.searchParams.get("id");
+  const route = u.pathname.slice(1);
+  if (route === "now" && u.searchParams.has("baro")) return { kind: "baro", id: "" };
+  if (route === "now" && u.searchParams.has("time")) return { kind: "time", id: "" };
+  const craft = u.searchParams.get("craft");
+  if (route === "resources" && craft) return { kind: "craft", id: craft };
+  if (!id) return null;
+  // The builder (an existing build or a new one) lives in the app.
+  if (route === "frame" && (u.searchParams.has("build") || u.searchParams.has("new"))) return null;
+  if (KINDS[route]) return { kind: KINDS[route], id };
+  if (route === "resources") return { kind: "resource", id };
+  if (route === "market") return { kind: u.searchParams.get("k") === "arcane" ? "arcane" : "mod", id };
+  return null;
 }
 
 // Relic refinement from the projection's suffix (no suffix = intact).

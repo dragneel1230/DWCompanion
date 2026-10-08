@@ -1,18 +1,35 @@
 // Warframes, mods and builds (static/data/frames.json, built by scripts/build-frames.mjs).
 import { normalize } from "$lib/db";
-import { dataUrl, labels, locale } from "$lib/i18n/index.svelte";
+import { dataUrl, labels, locale, t } from "$lib/i18n/index.svelte";
 import { userBuilds } from "$lib/userBuilds.svelte";
+import { inventory } from "$lib/inventory.svelte";
+import { rankOf as xpRank } from "$lib/mastery";
 import { overframeIds, type DecodedBuild } from "$lib/overframe.svelte";
+import { shardFx } from "$lib/shards";
 
 export type Polarity = "madurai" | "vazarin" | "naramon" | "zenurik" | "penjaga" | "unairu" | "umbra" | "any";
 export type ModRarity = "Common" | "Uncommon" | "Rare" | "Legendary" | "Peculiar";
 
+// One number of an ability at max rank (wiki infobox, scripts/fetch-wiki-abilities.mjs): "2.5x", n 2.5, u "x".
+export interface AbilityStat {
+  v: string;
+  n?: number;
+  u?: "x" | "%" | "s" | "m" | "ps" | "mps"; // ps: per second, mps: meters per second
+  l?: string; // label in the file's language
+}
+
 export interface Ability {
+  id?: string; // game path; a config's Helminth override names the ability by it
   name: string;
   en: string;
   desc: string;
   icon: string | null;
+  // Absent for the few abilities the wiki has no numbers for.
+  stats?: { cost?: number; str: AbilityStat[]; dur: AbilityStat[]; rng: AbilityStat[]; misc: AbilityStat[]; wiki: string };
 }
+
+// Energy cost with Ability Efficiency: base × (2 − efficiency), efficiency capped at 175% (DE's rule).
+export const abilityCost = (base: number, eff: number) => base * (2 - Math.min(175, eff) / 100);
 
 export interface Frame {
   ru: string; // Russian name: recognition of the Russian client, search, whispers to RU players
@@ -51,11 +68,12 @@ export interface Mod {
   icon: string | null;
   pol: Polarity;
   rarity: ModRarity;
+  fr?: "Galvanized" | "Amalgam"; // own frame (static/modframe), else by rarity
   drain: number;
   max: number;
   stats: string;
   levels: string[]; // stat text per rank
-  fx?: Partial<Record<FxKey, number[]>>; // numeric effects per rank
+  fx?: Partial<Record<string, number[]>>; // numeric effects per rank (FxKey for warframes, gear.ts keys for weapons)
   set?: string;
   aura?: boolean;
   exilus?: boolean;
@@ -63,6 +81,9 @@ export interface Mod {
   slug?: string;
   mname?: string;
   cat?: string; // mods.json only: PRIMARY, SECONDARY, MELEE, STANCE, ARCH-GUN...
+  compat?: string; // mods.json only: DE's class of gear it fits (gear.ts fits())
+  tags?: string[]; // mods.json only: and the gear must carry one of these
+  stance?: boolean; // mods.json only: a stance (melee), gives capacity like an aura
 }
 
 export interface Arcane {
@@ -75,6 +96,8 @@ export interface Arcane {
   stats: string;
   levels: string[];
   wf?: boolean; // usable on warframes
+  use?: "primary" | "secondary" | "melee"; // weapon arcane: its weapon slot
+  only?: string; // and only this primary kind (Bow / Shotgun)
   slug?: string;
   mname?: string;
 }
@@ -97,7 +120,7 @@ export interface Build {
   exilus: string | null;
   slots: (string | null)[];
   arcanes: string[];
-  source?: "overframe";
+  source?: "overframe" | "game"; // game: a config on the player's warframe (inventory snapshot)
   url?: string;
   // Forma'd slot polarities, when known (Overframe import carries them).
   pols?: BuildPols;
@@ -106,6 +129,10 @@ export interface Build {
   // Frame rank and reactor, for capacity.
   rank?: number;
   reactor?: boolean;
+  // Archon shards, 5 sockets (ids as in shards.ts).
+  shards?: (string | null)[];
+  // Helminth: subsumed ability path and the replaced ability index (0-3).
+  helminth?: [string, number];
 }
 
 export interface BuildPols {
@@ -120,7 +147,18 @@ export interface FramesDb {
   arcanes: Record<string, Arcane>;
   builds: Record<string, Build>;
   sets: Record<string, ModSet>;
-  modNames: Record<string, string[]>; // Russian name -> ids, every mod type
+  shards: Record<string, { item: string; name: string; icon: string | null }>; // "ACC_RED", "ACC_RED_MYTHIC"
+  helminth: Record<string, { name: string; icon: string | null }>; // Helminth's own abilities
+}
+
+// Name and icon of an ability by its game path: a frame's (subsumed through Helminth) or Helminth's own.
+let abilityIndex: Map<string, { name: string; icon: string | null }> | null = null;
+export function abilityById(db: FramesDb, id: string) {
+  if (!abilityIndex) {
+    abilityIndex = new Map(Object.entries(db.helminth ?? {}));
+    for (const f of Object.values(db.frames)) for (const a of f.abilities) if (a.id && !abilityIndex.has(a.id)) abilityIndex.set(a.id, a);
+  }
+  return abilityIndex.get(id) ?? null;
 }
 
 let cache: Promise<FramesDb> | null = null;
@@ -152,19 +190,108 @@ export function searchFrames(db: FramesDb, query: string): [string, Frame][] {
 
 // Bundled builds plus the ones the user imported (saved locally).
 export function getBuild(db: FramesDb, id: string): Build | undefined {
+  if (id.startsWith(GAME_PREFIX)) {
+    const sep = id.lastIndexOf(":");
+    return gameBuilds(db, id.slice(GAME_PREFIX.length, sep)).find(([bid]) => bid === id)?.[1];
+  }
   return userBuilds.all[id] ?? db.builds[id];
 }
 
+// The player's own configs first (as in the game: A, B, C), then saved and bundled builds by votes.
 export function buildsFor(db: FramesDb, frameId: string): [string, Build][] {
-  return Object.entries({ ...db.builds, ...userBuilds.all })
+  const rest = Object.entries({ ...db.builds, ...userBuilds.all })
     .filter(([, b]) => b.frame === frameId)
     .sort(([, a], [, b]) => b.votes - a.votes);
+  return [...gameBuilds(db, frameId), ...rest];
+}
+
+const GAME_PREFIX = "game:";
+const AP_POLARITY: Record<string, Polarity> = {
+  AP_ATTACK: "madurai",
+  AP_DEFENSE: "vazarin",
+  AP_TACTIC: "naramon",
+  AP_POWER: "zenurik",
+  AP_PRECEPT: "penjaga",
+  AP_WARD: "unairu",
+  AP_UMBRA: "umbra",
+  AP_UNIVERSAL: "any",
+};
+
+// Configs A/B/C on the warframe from the inventory snapshot (empty configs skipped); mods this
+// database doesn't know are left out. Forma'd slots come from the snapshot by index; where innate
+// polarities sit the snapshot doesn't say, so each goes under a mod of its polarity (a config that
+// fits in the game has them there), the rest to empty slots.
+function gameBuilds(db: FramesDb, frameId: string): [string, Build][] {
+  const lo = inventory.data?.loadouts?.[frameId];
+  const frame = db.frames[frameId];
+  if (!lo || !frame) return [];
+  const forma: BuildPols = { aura: frame.aura, exilus: null, slots: Array(8).fill(null) };
+  for (const [slot, ap] of lo.pol) {
+    const p = AP_POLARITY[ap];
+    if (!p) continue;
+    if (slot < 8) forma.slots[slot] = p;
+    else if (slot === 8) forma.aura = p;
+    else if (slot === 9) forma.exilus = p;
+  }
+  const layout = (mods: ([string, number] | null)[]): BuildPols => {
+    const slots = [...forma.slots];
+    const free = (k: number) => !slots[k] && !forma.slots[k];
+    const cost = (k: number) => (mods[k] ? modCost(db.mods[mods[k]![0]], null, mods[k]![1]) : 0);
+    const rest: Polarity[] = [];
+    for (const p of frame.polarities) {
+      // The dearest mod of this polarity: there the halved drain saves the most.
+      const k = [...mods.keys()]
+        .filter((i) => free(i) && !!mods[i] && db.mods[mods[i]![0]].pol === p)
+        .sort((x, y) => cost(y) - cost(x))[0];
+      if (k != null) slots[k] = p;
+      else rest.push(p);
+    }
+    for (const p of rest) {
+      const k = [...mods.keys()].sort((a, b) => Number(!!mods[a]) - Number(!!mods[b])).find(free);
+      if (k != null) slots[k] = p;
+    }
+    return { ...forma, slots };
+  };
+  const out: [string, Build][] = [];
+  lo.cfg.forEach((c, i) => {
+    const mod = (k: number) => (c.m[k] && db.mods[c.m[k]![0]] ? c.m[k]! : null);
+    const slots = Array.from({ length: 8 }, (_, k) => mod(k));
+    const aura = mod(8);
+    const exilus = mod(9);
+    const arcanes = [c.m[10], c.m[11]].filter((a): a is [string, number] => !!a && !!db.arcanes[a[0]]).map((a) => a[0]);
+    if (!aura && !exilus && !arcanes.length && slots.every((s) => !s)) return;
+    const letter = String.fromCharCode(65 + i);
+    out.push([
+      `${GAME_PREFIX}${frameId}:${i}`,
+      {
+        frame: frameId,
+        title: c.n || t("frame.gameConfig", { c: letter }),
+        author: t("frame.gameAuthor"),
+        votes: 0,
+        note: "",
+        tags: [],
+        aura: aura?.[0] ?? null,
+        exilus: exilus?.[0] ?? null,
+        slots: slots.map((s) => s?.[0] ?? null),
+        arcanes,
+        source: "game",
+        pols: layout(slots),
+        ranks: { aura: aura?.[1] ?? null, exilus: exilus?.[1] ?? null, slots: slots.map((s) => s?.[1] ?? null) },
+        // A copy without XP (seen on a modded frame) takes the mastery list's affinity.
+        rank: xpRank(lo.xp || (inventory.xpOf(frameId) ?? 0), true, 30),
+        reactor: lo.potato,
+        shards: lo.shards,
+        helminth: c.h,
+      },
+    ]);
+  });
+  return out;
 }
 
 // Mod drain at a rank (default max); a matching slot polarity halves it (rounded up), a mismatch adds 25%.
 // Auras give capacity instead: returned as a negative number, doubled in a matching aura slot.
 export function modCost(mod: Mod, slotPol?: Polarity | null, rank = mod.max): number {
-  if (mod.aura) {
+  if (mod.aura || mod.stance) {
     const bonus = Math.abs(mod.drain) + rank;
     return -(slotPol === mod.pol || slotPol === "any" ? bonus * 2 : bonus);
   }
@@ -276,15 +403,19 @@ export function buildStats(db: FramesDb, frame: Frame, b: Build) {
       else sum[k] += v;
     }
   }
+  // Shards: strength / duration add to the mods' percent; health, shield, armor, energy are flat after everything.
+  const sh = shardFx(b.shards);
+  sum.str += sh.str;
+  sum.dur += sh.dur;
   const r = frame.r30;
-  const health = r.health * (1 + sum.hp / 100) + sum.hpFlat;
-  const shield = (r.shield * (1 + sum.sh / 100) + sum.shFlat) * shMul;
-  const armor = r.armor * (1 + sum.arm / 100);
+  const health = r.health * (1 + sum.hp / 100) + sum.hpFlat + sh.hp;
+  const shield = (r.shield * (1 + sum.sh / 100) + sum.shFlat) * shMul + (r.shield > 0 ? sh.sh : 0);
+  const armor = r.armor * (1 + sum.arm / 100) + sh.arm;
   const dr = armor / (armor + 300);
   return {
     health,
     shield,
-    energy: r.energy * (1 + sum.en / 100),
+    energy: r.energy * (1 + sum.en / 100) + sh.en,
     sprint: frame.sprint * (1 + sum.spd / 100),
     armor,
     dr,

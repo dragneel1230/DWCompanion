@@ -11,3 +11,5 @@ vite.config.ts.timestamp-*
 
 # Build caches (pnpm data refetches them)
 data/droptables.html
+
+data/private/

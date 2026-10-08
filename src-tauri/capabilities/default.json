@@ -21,9 +21,13 @@
         },
         {
           "url": "https://api.warframestat.us/*"
+        },
+        {
+          "url": "https://relics.run/history/*"
         }
       ]
     },
-    "clipboard-manager:allow-write-text"
+    "clipboard-manager:allow-write-text",
+    "notification:default"
   ]
 }

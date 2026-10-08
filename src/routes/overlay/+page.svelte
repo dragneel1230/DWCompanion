@@ -7,15 +7,26 @@
   import { invoke } from "@tauri-apps/api/core";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { getPrice, cachedPrice, loadBulk, bulkSell, type Price } from "$lib/api";
-  import { getDb, type Item, type Rarity } from "$lib/db";
+  import { getDb, itemName, type Item, type Rarity } from "$lib/db";
   import { matchCard, relicKey, squadRewards, type Candidate, type Match } from "$lib/rewards";
   import { client } from "$lib/clientLang.svelte";
   import { readOverlaySettings, type Priority } from "$lib/overlaySettings.svelte";
+  import { collNeed, loadCollCtx, type CollMode, type CollNeed } from "$lib/collection/need";
   import KioskLayer from "$lib/components/KioskLayer.svelte";
+  import { needs, neededBy } from "$lib/goals/watch.svelte";
 
   type Card = { x: number; y: number; w: number; h: number; texts: string[] };
   type Scan = { cards: Card[]; screen_w: number; screen_h: number; scale: number; ms: number; relics: string[]; lang?: string };
-  type Shown = { card: Card; match: Match | null; price: Price | null; vaulted: boolean; rarity: Rarity | null };
+  // need: goals (guide tab) that still wait for this reward; coll: a set it's missing from ("collection" priority).
+  type Shown = {
+    card: Card;
+    match: Match | null;
+    price: Price | null;
+    vaulted: boolean;
+    rarity: Rarity | null;
+    need: string[];
+    coll: CollNeed | null;
+  };
 
   document.documentElement.style.background = "transparent";
   document.body.style.background = "transparent";
@@ -24,6 +35,7 @@
   let scan = $state<Scan | null>(null);
   let shown = $state<Shown[]>([]);
   let priority = $state<Priority>("platinum");
+  let collMode = $state<CollMode>("sell");
   let hideTimer: ReturnType<typeof setTimeout> | undefined;
   const dpr = window.devicePixelRatio || 1;
 
@@ -58,7 +70,10 @@
 
   async function show(s: Scan) {
     await loadBulk();
-    priority = readOverlaySettings().priority; // may have changed in the main window
+    readSettings(); // may have changed in the main window
+    needs.refresh();
+    // Inventory / profile as of now (the main window refreshes them after missions).
+    const coll = priority === "collection" ? await loadCollCtx().catch(() => null) : null;
     const squad = s.relics.length ? s.relics : relics;
     const lang = s.lang ?? client.lang; // the client's language the cards were read in
     const pool = squadRewards(squad, lang);
@@ -73,6 +88,8 @@
         price: slug ? quickPrice(slug) : null,
         vaulted: id ? vaultedItem(id) : false,
         rarity: id ? rarityOf(id, squad) : null,
+        need: neededBy(id),
+        coll: id && coll ? collNeed(id, collMode, coll) : null,
       };
     });
     // The relic journal keeps what was on offer (the log only has the player's own relic reward).
@@ -98,15 +115,18 @@
     invoke("overlay_hide");
   }
 
-  // Best pick by the chosen priority, the other value breaks ties.
-  // ("collection" needs the inventory; until then it behaves like platinum.)
+  // Best pick by the chosen priority, the other value breaks ties. A part one of the player's goals waits for
+  // beats any price: that is what they came for.
+  // "collection": a part missing from a set goes next (collection/need.ts score), platinum breaks ties; with
+  // nothing known (no inventory / profile) it is plain platinum.
   const best = $derived.by(() => {
     let bi = -1;
     let bv = -1;
     shown.forEach((s, i) => {
       const plat = s.price?.sell ?? 0;
       const ducats = s.match?.cand.item.ducats ?? 0;
-      const v = priority === "ducats" ? ducats * 10_000 + plat : plat * 10_000 + ducats;
+      const coll = s.coll ? 1e9 + s.coll.score * 1000 : 0;
+      const v = (s.need.length ? 1e12 : 0) + coll + (priority === "ducats" ? ducats * 10_000 + plat : plat * 10_000 + ducats);
       if (s.match && v > bv) (bv = v), (bi = i);
     });
     return bi;
@@ -123,9 +143,15 @@
 
   const RARITY_RU = labels<Rarity>({ COMMON: "overlay.rar.common", UNCOMMON: "overlay.rar.uncommon", RARE: "overlay.rar.rare" });
 
-  priority = readOverlaySettings().priority;
+  function readSettings() {
+    const o = readOverlaySettings();
+    priority = o.priority;
+    collMode = o.collMode;
+    if (priority === "collection") loadCollCtx().catch(() => {}); // warm up mastery.json before a reward screen
+  }
+  readSettings();
   const onStorage = (e: StorageEvent) => {
-    if (e.key === "dwc.overlay") priority = readOverlaySettings().priority;
+    if (e.key === "dwc.overlay") readSettings();
   };
   window.addEventListener("storage", onStorage);
   onDestroy(() => window.removeEventListener("storage", onStorage));
@@ -155,7 +181,11 @@
         style:width="{s.card.w / dpr}px"
         style:animation-delay="{i * 70}ms"
       >
-        {#if i === best}<div class="ribbon">{t("overlay.best")}</div>{/if}
+        {#if i === best}
+          <div class="ribbon" class:goal={s.need.length > 0} class:coll={!s.need.length && !!s.coll}>
+            {s.need.length ? t("overlay.forGoal") : s.coll ? t(collMode === "mr" ? "overlay.forMr" : "overlay.forSet") : t("overlay.best")}
+          </div>
+        {/if}
         <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
 
         {#if s.match && n}
@@ -192,6 +222,16 @@
             <span>{n.title}</span>
           </div>
 
+          {#if s.need.length}<div class="goal-line">⚑ {s.need.join(", ")}</div>{/if}
+          {#if s.coll}
+            <!-- Parts toward the next set counting this one; without the inventory only "not mastered" is known. -->
+            <div class="coll-line">
+              ◈ {s.coll.have < 0
+                ? t("overlay.setNotMastered", { set: s.coll.name })
+                : t("overlay.setHave", { set: s.coll.name, a: s.coll.have + 1, b: s.coll.total })}
+            </div>
+          {/if}
+
           <div class="meta">
             {#if priority === "ducats"}
               {#if s.price?.sell != null}<span class="plat"><img src="/icons/platinum.png" alt="" />{s.price.sell}</span>{/if}
@@ -200,7 +240,8 @@
             {/if}
             {#if s.rarity}<span class="rar">{RARITY_RU[s.rarity]}</span>{/if}
             {#if s.vaulted}<span class="vault">{t("tag.vault")}</span>{/if}
-            {#if s.match.score < 0.7}<span class="doubt">{t("overlay.unsure")}</span>{/if}
+            {#if s.match.alt}<span class="doubt">{t("overlay.unsureOr", { name: itemName(s.match.alt.item) })}</span>
+            {:else if s.match.score < 0.7}<span class="doubt">{t("overlay.unsure")}</span>{/if}
           </div>
         {:else}
           <div class="none big">{t("overlay.unread")}</div>
@@ -339,6 +380,34 @@
     text-transform: uppercase;
     white-space: nowrap;
     clip-path: polygon(0 0, 100% 0, 92% 100%, 8% 100%);
+  }
+  /* A goal's part: green, the guide's "done" color. */
+  .ribbon.goal {
+    background: linear-gradient(180deg, #9fe6bd, #4fae7c);
+  }
+  /* A part missing from a set ("collection" priority): blue, apart from goals' green. */
+  .ribbon.coll {
+    background: linear-gradient(180deg, #b9d4ff, #6d93d6);
+  }
+  .coll-line {
+    max-width: 100%;
+    margin-top: calc(4px * var(--k));
+    font-size: calc(11px * var(--k));
+    color: #a9c6ff;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .goal-line {
+    max-width: 100%;
+    margin-top: calc(4px * var(--k));
+    font-size: calc(11px * var(--k));
+    color: #8fe0b2;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .price {

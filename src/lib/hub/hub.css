@@ -1,5 +1,6 @@
 /* Hub look: glass panels over the blurred game. The app tokens are redefined inside .hub, so shared
-   components (MarketPanel, .rows/.row) turn glassy without their own variants. */
+   components (MarketPanel, .rows/.row) turn glassy without their own variants. The panel / row / segment rules
+   below are shared with the app window (.app in +layout.svelte, its tokens in app.css). */
 .hub {
   --bg: rgba(10, 12, 17, 0.94);
   --surface: rgba(255, 255, 255, 0.035);
@@ -7,9 +8,10 @@
   --line: rgba(255, 255, 255, 0.085);
   --glass: rgba(11, 13, 18, 0.72);
   --glass-line: rgba(255, 255, 255, 0.07);
+  --pop-bg: rgb(22, 25, 32);
 }
 
-.hub .panel {
+:is(.hub, .app) .panel {
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -18,13 +20,13 @@
   border-radius: 18px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
 }
-.hub .panel > header {
+:is(.hub, .app) .panel > header {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 16px 18px 10px;
 }
-.hub .panel > header h2 {
+:is(.hub, .app) .panel > header h2 {
   margin: 0;
   font-size: 12px;
   font-weight: 600;
@@ -32,62 +34,65 @@
   text-transform: uppercase;
   color: var(--text-dim);
 }
-.hub .panel .body {
+:is(.hub, .app) .panel .body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   padding: 0 12px 14px;
 }
 
-.hub button.row {
+:is(.hub, .app) button.row {
   width: 100%;
   text-align: left;
 }
-.hub .row {
+:is(.hub, .app) .row {
   background: transparent;
 }
-.hub a.row:hover,
-.hub button.row:hover {
+:is(.hub, .app) a.row:hover,
+:is(.hub, .app) button.row:hover {
   background: var(--surface-2);
 }
 
-.hub .empty {
+.hub .empty,
+.app .panel .empty {
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 18px 8px;
   color: var(--text-dim);
 }
-.hub .empty b {
+.hub .empty b,
+.app .panel .empty b {
   color: var(--text);
   font-weight: 500;
   font-size: 15px;
 }
-.hub .empty span {
+.hub .empty span,
+.app .panel .empty span {
   font-size: 13px;
   line-height: 1.45;
   color: var(--text-faint);
 }
 
-.hub .seg {
+:is(.hub, .app) .seg {
   display: flex;
   gap: 2px;
   padding: 3px;
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.04);
 }
-.hub .seg button {
+:is(.hub, .app) .seg button {
   padding: 4px 10px;
   border-radius: 7px;
   font-size: 12px;
   color: var(--text-faint);
 }
-.hub .seg button.on {
+:is(.hub, .app) .seg button.on {
   background: rgba(255, 255, 255, 0.09);
   color: var(--text);
 }
 
-.hub kbd {
+:is(.hub, .app) kbd {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -102,11 +107,11 @@
   background: rgba(255, 255, 255, 0.04);
 }
 
-.hub ::-webkit-scrollbar-thumb {
+:is(.hub, .app) ::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.1);
   border-color: transparent;
   background-clip: padding-box;
 }
-.hub ::-webkit-scrollbar-track {
+:is(.hub, .app) ::-webkit-scrollbar-track {
   background: transparent;
 }

@@ -7,6 +7,7 @@
   import { userBuilds } from "$lib/userBuilds.svelte";
   import BuildBoard from "$lib/components/BuildBoard.svelte";
   import ImportBuild from "$lib/components/ImportBuild.svelte";
+  import GoalButton from "$lib/goals/GoalButton.svelte";
 
   let db = $state<FramesDb | null>(null);
   loadFrames().then((d) => (db = d));
@@ -88,6 +89,7 @@
             <input class="title" bind:value={title} placeholder={editId ? t("frame.buildName") : t("frame.newBuildName")} spellcheck="false" />
           </div>
           <div class="actions">
+            <GoalButton {id} />
             {#if editId}<button class="act" onclick={reset}>{t("frame.new")}</button>{/if}
             <button class="act primary" onclick={save} disabled={empty}>{own ? t("common.save") : t("frame.saveToMine")}</button>
           </div>
@@ -164,7 +166,7 @@
                 </span>
                 <span class="bf" title={t("frame.forma")}><img src="/icons/forma.png" alt="" /> {formaInfo(frame, b.pols).count}</span>
                 {#if b.demo}<span class="tag vaulted">{t("frame.demo")}</span>{/if}
-                {#if b.source !== "overframe" && !userBuilds.all[bid]}<span class="votes" title={t("frame.votes")}>▲ {b.votes}</span>{/if}
+                {#if !b.source && !userBuilds.all[bid]}<span class="votes" title={t("frame.votes")}>▲ {b.votes}</span>{/if}
               </a>
             {/each}
           </div>
@@ -180,7 +182,7 @@
 
 <style>
   .wide {
-    max-width: 1180px;
+    max-width: 1320px;
   }
   .top {
     display: flex;

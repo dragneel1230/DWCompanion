@@ -35,3 +35,9 @@ class UserBuilds {
 }
 
 export const userBuilds = new UserBuilds();
+
+// The hub window follows builds saved in the app (localStorage is shared).
+if (typeof window !== "undefined")
+  window.addEventListener("storage", (e) => {
+    if (e.key === KEY) userBuilds.all = readSaved();
+  });

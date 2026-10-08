@@ -16,7 +16,10 @@
 </script>
 
 <section class="panel">
-  <header><h2>{t("world.title")}</h2></header>
+  <header>
+    <h2>{t("world.title")}</h2>
+    <button class="all" onclick={() => onopen({ kind: "time", id: "" })}>{t("world.allTimers")}</button>
+  </header>
   <div class="body">
     {#each list as c (c.id)}
       <div class="cycle {c.kind}">
@@ -54,6 +57,16 @@
 </section>
 
 <style>
+  header {
+    justify-content: space-between;
+  }
+  .all {
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+  .all:hover {
+    color: var(--accent);
+  }
   .cycle {
     display: flex;
     align-items: center;

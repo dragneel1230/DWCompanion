@@ -1,10 +1,12 @@
 <script lang="ts">
+  import Facts from "$lib/components/Facts.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { page } from "$app/state";
   import { getDb, iconUrl, itemName, setParts } from "$lib/db";
   import Plat from "$lib/components/Plat.svelte";
   import Cur from "$lib/components/Cur.svelte";
   import MarketPanel from "$lib/components/MarketPanel.svelte";
+  import GoalButton from "$lib/goals/GoalButton.svelte";
 
   const db = getDb();
   const id = $derived(page.url.searchParams.get("id") ?? "");
@@ -30,11 +32,13 @@
         <div class="sub">
           <span>{set.en}</span>
           <span class="tag {vaulted ? 'vaulted' : 'active'}">{vaulted ? t("tag.inVault") : t("tag.dropsNow")}</span>
+          <Facts kind="set" {id} price={false} />
         </div>
       </div>
       <div class="price">
         <div class="big"><Plat slug={set.slug} size={22} /></div>
         <div class="muted">{t("detail.wholeSet")}</div>
+        {#if !id.includes("/Skins/")}<div class="goal"><GoalButton {id} /></div>{/if}
       </div>
     </header>
 
@@ -64,6 +68,9 @@
   .price {
     margin-left: auto;
     text-align: right;
+  }
+  .goal {
+    margin-top: 10px;
   }
   .big {
     font-size: 22px;

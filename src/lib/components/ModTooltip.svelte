@@ -9,11 +9,11 @@
   let { db, mod, rank, setCount = 0, scale = 0.8 }: { db: FramesDb; mod: Mod; rank: number; setCount?: number; scale?: number } = $props();
 
   const FRAME: Record<string, string> = { Common: "Bronze", Uncommon: "Silver", Rare: "Gold", Legendary: "Legendary", Peculiar: "Legendary" };
-  const frame = $derived(mod.pol === "umbra" ? "Legendary" : (FRAME[mod.rarity] ?? "Bronze"));
+  const frame = $derived(mod.fr ?? (mod.pol === "umbra" ? "Legendary" : (FRAME[mod.rarity] ?? "Bronze")));
   const set = $derived(mod.set ? db.sets[mod.set] : null);
   const text = $derived(mod.levels[rank] ?? mod.stats);
   const bonus = $derived(set ? (set.values[setCount - 2] ?? 0) : 0);
-  const kind = $derived(`${set ? t("tip.setPrefix") : ""}${mod.aura ? t("bb.aura") : mod.augment ? t("tip.augment") : t("kind.frame")}`);
+  const kind = $derived(`${set ? t("tip.setPrefix") : ""}${mod.aura ? t("bb.aura") : mod.stance ? t("gb.stance") : mod.augment ? t("tip.augment") : mod.cat ? t("kind.mod") : t("kind.frame")}`);
 </script>
 
 <div class="tip" style:zoom={scale}>
@@ -23,7 +23,7 @@
   <img class="side l" src="/modframe/{frame}SideLight.png" alt="" />
   <img class="side r" src="/modframe/{frame}SideLight.png" alt="" />
   <div class="tab" style:background-image="url(/modframe/{frame}TopRightBacker.png)">
-    <span>{mod.aura ? `+${-modCost(mod, null, rank)}` : modCost(mod, null, rank)}</span>
+    <span>{mod.aura || mod.stance ? `+${-modCost(mod, null, rank)}` : modCost(mod, null, rank)}</span>
     <PolIcon pol={mod.pol} size={17} />
   </div>
 

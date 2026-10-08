@@ -6,7 +6,7 @@
   import { getDb, iconUrl, RARITY_RU } from "$lib/db";
   import { pct, type DropsDb } from "$lib/drops";
   import { totals, whereShort, buildTime, type CraftDb, type CraftItem } from "$lib/craft";
-  import { srcText, relicPart, parentsOf } from "$lib/farm";
+  import { srcText, relicPart, parentsOf, orderSrc } from "$lib/farm";
   import CraftTree from "$lib/components/CraftTree.svelte";
 
   let {
@@ -47,9 +47,19 @@
     }
     const cp = p.cp;
     if (!cp) return "";
-    const bits = [...(cp.src ?? []).map(srcText), ...(cp.drops ?? []).slice(0, 2).map(([si, rots]) => `${db.sources[si].name} ${pct(Math.max(...rots.map((x) => x[1])))}`)];
+    const metIn = (cp.drops ?? []).map(([si]) => db.sources[si]).find((x) => x.at);
+    const bits = [
+      ...(cp.src ?? []).map(srcText),
+      ...(metIn?.at ? [`${metIn.sub?.split(" · ")[0]}: ${metIn.at[0]}`] : []),
+      ...(cp.drops ?? []).slice(0, 2).map(([si, rots]) => `${db.sources[si].name} ${pct(Math.max(...rots.map((x) => x[1])))}`),
+    ];
     return bits.length ? bits.join(" · ") : t("farm.unknownSrc");
   }
+  // Enemies met only in some missions (demolishers): where to go, once for the whole list.
+  const metAt = $derived.by(() => {
+    const s = (c.drops ?? []).map(([si]) => db.sources[si]).find((x) => x.at);
+    return s?.at ? { mode: s.sub ?? "", at: s.at } : null;
+  });
   const hasBp = $derived(!!(c.src?.length || c.drops?.length || mainRelics.length));
 </script>
 
@@ -68,14 +78,23 @@
           {/each}
         </div>
       {/if}
-      {#each c.src ?? [] as s, i (i)}
+      {#each orderSrc(c.src) as s, i (i)}
         <div class="main"><b>{srcText(s)}</b></div>
       {/each}
-      {#if c.drops?.length}
+      {#if c.drops?.length && metAt}
+        <div class="main"><b>{t("farm.goTo", { list: metAt.at.join(", ") })}</b><span>{metAt.mode}</span></div>
+        <p class="why">{t("farm.metAt")}</p>
+        <div class="alts">
+          <span>{t("farm.dropsFromShort")}</span>
+          {#each c.drops.slice(0, 4) as [si, rots] (si)}
+            <span class="alt">{db.sources[si].name} · {pct(Math.max(...rots.map((x) => x[1])))}</span>
+          {/each}
+        </div>
+      {:else if c.drops?.length}
         <div class="main"><b>{t("farm.dropsFrom")}</b></div>
         <div class="alts">
           {#each c.drops.slice(0, 4) as [si, rots] (si)}
-            <span class="alt">{db.sources[si].name}{#if db.sources[si].sub} · {db.sources[si].sub}{/if} · {pct(Math.max(...rots.map((x) => x[1])))}</span>
+            <span class="alt">{[db.sources[si].name, db.sources[si].sub, pct(Math.max(...rots.map((x) => x[1])))].filter(Boolean).join(" · ")}</span>
           {/each}
         </div>
       {/if}
