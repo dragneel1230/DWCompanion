@@ -592,7 +592,8 @@ function sourcesOf(itemId) {
 
 const KIND_OF = (id) =>
   frames[id] ? (frames[id].productCategory === "MechSuits" ? "mech" : frames[id].productCategory === "SpaceSuits" ? "archwing" : "frame")
-  : weapons[id] ? "weapon" : sentinels[id] ? "companion" : gear[id] ? "gear" : "part";
+  // DE files pet parts (antigens, mutagens, MOA / hound parts) as weapons: they are parts, nothing to master.
+  : weapons[id] ? (/PetParts\//.test(id) ? "part" : "weapon") : sentinels[id] ? "companion" : gear[id] ? "gear" : "part";
 const entryOf = (id) => frames[id] ?? weapons[id] ?? sentinels[id] ?? gear[id] ?? resources[id];
 
 const craft = {};

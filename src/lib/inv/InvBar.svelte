@@ -101,24 +101,25 @@
 <InvAsk bind:open={asking} ondone={() => (note = t("inv.installed"))} />
 
 <style>
-  .bar {
+  /* .panel.bar: the shared .panel (hub.css, flex column) must not win over the grid. */
+  .panel.bar {
     display: grid;
     grid-template-columns: 210px minmax(0, 1fr) auto;
     align-items: center;
     gap: 20px;
     padding: 18px 22px;
   }
-  .bar.compact {
+  .panel.bar.compact {
     grid-template-columns: 170px minmax(0, 1fr) auto;
     gap: 14px;
     padding: 12px 16px;
   }
   @media (max-width: 1000px) {
-    .bar {
+    .panel.bar {
       grid-template-columns: 1fr;
     }
   }
-  .onboard {
+  .panel.onboard {
     grid-template-columns: minmax(0, 1fr) auto;
     background: linear-gradient(140deg, rgba(201, 166, 107, 0.1), var(--glass) 50%);
   }

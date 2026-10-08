@@ -1,16 +1,16 @@
 // «Билды»: the open tab (warframes or a kind of gear) and the picked item and build in each,
 // one choice for the app and the hub (localStorage is shared).
-import type { GearKind } from "$lib/gear";
+import type { GearTab } from "$lib/gear";
 
 const KEY = "dwc.buildsSel";
 
-export type BuildsTab = "frame" | GearKind;
+export type BuildsTab = "frame" | GearTab;
 
 interface Sel {
   tab: BuildsTab;
   frame: string;
   build: string;
-  item: Partial<Record<GearKind, string>>;
+  item: Partial<Record<GearTab, string>>;
   gbuild: string;
 }
 
@@ -51,7 +51,7 @@ export function pickBuild(frame: string, build = "") {
   save();
 }
 
-export function pickGear(kind: GearKind, item: string, build = "") {
+export function pickGear(kind: GearTab, item: string, build = "") {
   buildsSel.tab = kind;
   buildsSel.item = { ...buildsSel.item, [kind]: item };
   buildsSel.gbuild = build;

@@ -10,6 +10,8 @@ import { t } from "$lib/i18n/index.svelte";
 
 export type GearKind = "primary" | "secondary" | "melee" | "companion" | "cweapon" | "archwing" | "archgun" | "archmelee" | "mech";
 export const GEAR_KINDS: GearKind[] = ["primary", "secondary", "melee", "companion", "cweapon", "archwing", "archgun", "archmelee", "mech"];
+// «Билды» tabs: a kind, or the warframes' own weapons (exalted, whatever kind of mods they take).
+export type GearTab = GearKind | "exalted";
 export const isWeapon = (k: GearKind) => !["companion", "archwing", "mech"].includes(k);
 // Companions, archwings and necramechs level like warframes (XP curve, rank 30 = 60 capacity with a reactor).
 const powersuit = (k: GearKind) => !isWeapon(k);
@@ -36,6 +38,7 @@ export interface Gear {
   pols: Polarity[];
   kind: GearKind;
   type?: string; // primary: Rifle / Shotgun / Sniper / Launcher / Bow; companion: Sentinels / KubrowPets / MoaPets
+  of?: string[]; // exalted weapons, Venari: the warframes (necramechs) that summon them
   prime?: boolean;
   maxRank: number;
   slots: number;
@@ -110,6 +113,9 @@ export function emptyGearBuild(id: string, g: Gear): GearBuild {
 export function innateGearPols(g: Gear): GearPols {
   return { slots: Array.from({ length: g.slots }, (_, i) => g.pols[i] ?? null), exilus: g.exPol ?? null, stance: g.stPol ?? null };
 }
+
+// Shown under the tab: exalted weapons only under their own one (Venari stays with the companions).
+export const inTab = (g: Gear, tab: GearTab) => (tab === "exalted" ? !!g.of && g.kind !== "companion" : g.kind === tab && (!g.of || g.kind === "companion"));
 
 // ---------- Which mods fit
 

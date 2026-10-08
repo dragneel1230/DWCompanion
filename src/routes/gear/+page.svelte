@@ -50,7 +50,7 @@
     gearBuilds.remove(editId!);
     goto(`/gear?id=${encodeURIComponent(id)}`, { replaceState: true });
   }
-  const back = $derived(gear ? `/frames?gear=${encodeURIComponent(id)}&kind=${gear.kind}${own ? `&build=${encodeURIComponent(editId!)}` : ""}` : "/frames");
+  const back = $derived(gear ? `/frames?gear=${encodeURIComponent(id)}&kind=${gear.of && gear.kind !== "companion" ? "exalted" : gear.kind}${own ? `&build=${encodeURIComponent(editId!)}` : ""}` : "/frames");
 </script>
 
 {#if ctx && fdb && gear && build}

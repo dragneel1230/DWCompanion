@@ -79,8 +79,8 @@ const ARSENAL = [
   "Suits", "LongGuns", "Pistols", "Melee", "SpaceSuits", "SpaceGuns", "SpaceMelee", "Sentinels", "SentinelWeapons",
   "KubrowPets", "MoaPets", "MechSuits", "OperatorAmps", "Hoverboards", "CrewShipWeapons", "Horses", "DrifterMelee",
 ];
-// Arsenal items with mod configs (builds).
-const MODDED = ["Suits", "LongGuns", "Pistols", "Melee", "SpaceSuits", "SpaceGuns", "SpaceMelee", "Sentinels", "SentinelWeapons", "KubrowPets", "MoaPets", "MechSuits"];
+// Arsenal items with mod configs (builds); SpecialItems: exalted weapons, Venari (they come with their warframe).
+const MODDED = ["Suits", "LongGuns", "Pistols", "Melee", "SpaceSuits", "SpaceGuns", "SpaceMelee", "Sentinels", "SentinelWeapons", "KubrowPets", "MoaPets", "MechSuits", "SpecialItems"];
 // Loadout presets and their place in CurrentLoadOutIds; the slots of each preset that hold modded gear.
 const PRESETS: [string, number, string[]][] = [
   ["NORMAL", 0, ["s", "p", "l", "m", "h"]],

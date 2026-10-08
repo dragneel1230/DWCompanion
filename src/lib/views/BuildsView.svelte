@@ -12,15 +12,15 @@
   import { userBuilds } from "$lib/userBuilds.svelte";
   import BuildBoard from "$lib/components/BuildBoard.svelte";
   import ShardRow from "$lib/components/ShardRow.svelte";
-  import { buildsSel, pickBuild, setBuildsTab, type BuildsTab } from "./buildsSel.svelte";
+  import { buildsSel, pickBuild, pickGear, setBuildsTab, type BuildsTab } from "./buildsSel.svelte";
   import GearView from "./GearView.svelte";
-  import type { GearKind } from "$lib/gear";
+  import { loadGear, type Gear, type GearTab } from "$lib/gear";
   import type { Key } from "$lib/i18n/index.svelte";
 
   // Tabs: warframes, then gear by group; a group with several kinds shows them as a second row.
   const GROUPS: { key: string; label: Key; kinds: BuildsTab[] }[] = [
     { key: "frame", label: "gb.g.frames", kinds: ["frame"] },
-    { key: "weapons", label: "gb.g.weapons", kinds: ["primary", "secondary", "melee"] },
+    { key: "weapons", label: "gb.g.weapons", kinds: ["primary", "secondary", "melee", "exalted"] },
     { key: "companions", label: "gb.g.companions", kinds: ["companion", "cweapon"] },
     { key: "archwing", label: "gb.g.archwing", kinds: ["archwing", "archgun", "archmelee"] },
     { key: "mech", label: "gb.g.mech", kinds: ["mech"] },
@@ -31,6 +31,8 @@
 
   let db = $state<FramesDb | null>(null);
   loadFrames().then((d) => (db = d));
+  let gearItems = $state<Record<string, Gear>>({});
+  loadGear().then((c) => (gearItems = c.items)).catch(() => {});
   profile.start();
 
   let query = $state("");
@@ -87,6 +89,8 @@
   });
 
   const gear = $derived(frameId && inv ? inventory.gearOf(frameId) : null);
+  // The warframe's own gear (exalted weapons, Venari): links to their builds.
+  const ownGear = $derived(Object.entries(gearItems).filter(([, g]) => g.of?.includes(frameId)));
   const frameShards = (id: string) => loadouts?.[id]?.shards;
   const isMine = $derived(!!userBuilds.all[buildId]);
   const enc = encodeURIComponent;
@@ -122,7 +126,7 @@
   </div>
 
   {#if buildsSel.tab !== "frame"}
-    {#key buildsSel.tab}<GearView kind={buildsSel.tab as GearKind} />{/key}
+    {#key buildsSel.tab}<GearView kind={buildsSel.tab as GearTab} />{/key}
   {:else}
   <div class="cols">
     <aside class="frames">
@@ -174,6 +178,20 @@
             <a class="act" href="/frame?id={enc(frameId)}&new=1">+ {t("builds.new")}</a>
           </div>
         </header>
+
+        {#if ownGear.length}
+          <div class="group">
+            <span class="glabel">{t("gb.own")}</span>
+            <div class="chips">
+              {#each ownGear as [gid, g] (gid)}
+                <button class="chip own" onclick={() => pickGear(g.kind === "companion" ? "companion" : "exalted", gid)}>
+                  <img src={iconUrl(g.icon)} alt="" />
+                  <span>{g.name}</span>
+                </button>
+              {/each}
+            </div>
+          </div>
+        {/if}
 
         {#if groups.length}
           {#each groups as g (g.key)}
@@ -489,6 +507,14 @@
     gap: 2px;
     font-size: 11px;
     color: var(--text-faint);
+  }
+  .chip.own {
+    padding-left: 5px;
+  }
+  .chip.own img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
   }
   .chip small img {
     width: 12px;

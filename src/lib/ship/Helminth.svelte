@@ -1,6 +1,7 @@
 <script lang="ts">
-  // «Гельминт»: rank ring and secretions, this week's Invigorations, then the warframes — what subsuming
-  // each gives and costs, which are subsumed (their ability's injection cost), which are missing.
+  // «Гельминт»: a big rank ring and the six secretions as tiles, this week's Invigorations as portrait cards, then
+  // the warframes as a card grid — what subsuming each gives and costs, which are subsumed (their ability's
+  // injection cost), which are missing.
   import { num, t, type Key } from "$lib/i18n/index.svelte";
   import { iconUrl } from "$lib/db";
   import { inventory } from "$lib/inventory.svelte";
@@ -46,7 +47,7 @@
     return sub === "can" ? [...out].sort((a, b) => Number(enough(b.cost)) - Number(enough(a.cost)) || Number(b.prime) - Number(a.prime)) : out;
   });
 
-  const R = 34;
+  const R = 52;
   const C = 2 * Math.PI * R;
   const sec = (id: string) => db?.infest?.secretions[id];
   const upgrade = (p: string) => p.split("/").pop()!.replace(/([a-z])([A-Z])/g, "$1 $2");
@@ -63,159 +64,217 @@
   </span>
 {/snippet}
 
-{#snippet frameRow(f: HelminthFrame)}
-  <a class="row" href="/frame?id={encodeURIComponent(f.frame)}">
-    <img src={f.icon} alt="" loading="lazy" />
-    <span class="name">
-      <b>{f.name}</b>
-      <small class="ab">{#if f.ability.icon}<img src={f.ability.icon} alt="" />{/if}{f.ability.name}</small>
-    </span>
+{#snippet card(f: HelminthFrame)}
+  {@const list = sub === "fed" ? f.inject : f.cost}
+  <a class="card" class:ok={sub !== "missing" && enough(list)} class:dim={sub === "missing"} href="/frame?id={encodeURIComponent(f.frame)}">
+    <div class="art"><img src={f.icon} alt="" loading="lazy" /></div>
+    <b title={f.name}>{f.name}</b>
+    <span class="ab" title={f.ability.name}>{#if f.ability.icon}<img src={f.ability.icon} alt="" />{/if}<span>{f.ability.name}</span></span>
+    {@render costs(list)}
     {#if sub === "can"}
       <span class="tag" class:good={f.prime} class:warn={!f.prime}>{f.prime ? t("helm.primeKept") : t("helm.onlyCopy")}</span>
-      {@render costs(f.cost)}
     {:else if sub === "fed"}
       <span class="tag" class:good={enough(f.inject)}>{enough(f.inject) ? t("helm.injectOk") : t("helm.injectShort")}</span>
-      {@render costs(f.inject)}
-    {:else}
-      {@render costs(f.cost)}
     {/if}
   </a>
 {/snippet}
 
 {#if !inv}
-  <div class="panel"><div class="empty"><b>{t("ship.noData")}</b><span>{t("ship.noDataHint")}</span></div></div>
+  <div class="note"><b>{t("ship.noData")}</b><span>{t("ship.noDataHint")}</span></div>
 {:else if !h}
-  <div class="panel">
-    <div class="empty">
-      <b>{inv.foundry === undefined ? t("ship.noData") : t("helm.none")}</b>
-      <span>{inv.foundry === undefined ? t("ship.noDataHint") : t("helm.noneHint")}</span>
-    </div>
+  <div class="note">
+    <b>{inv.foundry === undefined ? t("ship.noData") : t("helm.none")}</b>
+    <span>{inv.foundry === undefined ? t("ship.noDataHint") : t("helm.noneHint")}</span>
   </div>
 {:else}
-  <div class="top" class:compact>
-    <section class="panel state">
+  <div class="helm" class:compact>
+    <section class="overview">
       {#if rank}
         {@const p = rank.to ? (rank.xp - rank.from) / (rank.to - rank.from) : 1}
         <div class="rank">
-          <svg viewBox="0 0 80 80">
-            <circle class="track" cx="40" cy="40" r={R} />
-            <circle class="arc" cx="40" cy="40" r={R} stroke-dasharray={C} stroke-dashoffset={C * (1 - p)} />
-          </svg>
-          <div class="in"><b>{rank.rank}</b><small>{t("helm.rank")}</small></div>
-        </div>
-        <div class="rank-text">
-          <b>{t("helm.rankOf", { r: rank.rank, max: MAX_RANK })}</b>
-          <small>{rank.to ? t("helm.toNext", { v: num(rank.to - rank.xp) }) : t("helm.maxRank")}</small>
-          <small>{t("helm.fedCount", { n: groups.fed.length, all: frames.length })}</small>
+          <div class="ring">
+            <svg viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r={R} class="track" />
+              <circle cx="60" cy="60" r={R} class="arc" stroke-dasharray="{C * p} {C}" transform="rotate(-90 60 60)" />
+            </svg>
+            <div class="in"><b>{rank.rank}</b><small>{t("helm.rank")}</small></div>
+          </div>
+          <div class="rtext">
+            <b>{t("helm.rankOf", { r: rank.rank, max: MAX_RANK })}</b>
+            <small>{rank.to ? t("helm.toNext", { v: num(rank.to - rank.xp) }) : t("helm.maxRank")}</small>
+            <div class="fed">
+              <span>{t("helm.fedCount", { n: groups.fed.length, all: frames.length })}</span>
+              <span class="bar"><i style:width="{frames.length ? (groups.fed.length / frames.length) * 100 : 0}%"></i></span>
+            </div>
+          </div>
         </div>
       {/if}
       <div class="secs">
         {#each SECRETIONS as id (id)}
           {@const s = sec(id)}
           {@const v = pct(h.res[id] ?? 0)}
-          <div class="sec" title={s?.name}>
+          <div class="sec" class:low={v < 10} title={s?.name}>
             {#if s?.icon}<img src={iconUrl(s.icon)} alt="" />{/if}
-            <span class="sname">{s?.name ?? id.split("/").pop()}</span>
+            <span class="sv">
+              <small>{s?.name ?? id.split("/").pop()}</small>
+              <b>{num(v)}%</b>
+            </span>
             <span class="bar"><i style:width="{Math.min(100, v)}%"></i></span>
-            <span class="v">{num(v)}%</span>
           </div>
         {/each}
       </div>
     </section>
 
-    <section class="panel">
-      <header><h2>{t("helm.invig")}</h2><span class="count">{t("helm.reset", { v: left(nextMonday(now) - now) })}</span></header>
-      <div class="body">
-        {#if !week.length}
-          <div class="empty"><span>{t("helm.invigNone")}</span></div>
-        {:else}
-          <div class="offers">
-            {#each week as o (o.base)}
-              {@const inv0 = o.mine.find((m) => m.invig)}
-              <div class="offer" class:have={o.mine.length}>
-                {#if o.icon}<img src={o.icon} alt="" loading="lazy" />{/if}
+    <section class="block">
+      <div class="head">
+        <h2>{t("helm.invig")}</h2>
+        <span class="n">{t("helm.reset", { v: left(nextMonday(now) - now) })}</span>
+      </div>
+      {#if !week.length}
+        <div class="note"><span>{t("helm.invigNone")}</span></div>
+      {:else}
+        <div class="offers">
+          {#each week as o (o.base)}
+            {@const on = o.mine.find((m) => m.invig)}
+            <div class="offer" class:have={o.mine.length} class:on={!!on}>
+              <div class="art">{#if o.icon}<img src={o.icon} alt="" loading="lazy" />{/if}</div>
+              <div class="otext">
                 <b>{o.name}</b>
-                {#if inv0?.invig}
-                  <small class="good">{t("helm.invigOn", { a: upgrade(inv0.invig[0]), b: upgrade(inv0.invig[1]) })}</small>
+                {#if on?.invig}
+                  <small class="good">{t("helm.invigOn", { a: upgrade(on.invig[0]), b: upgrade(on.invig[1]) })}</small>
                 {:else if o.mine.length}
                   <small>{t("helm.youHave", { v: o.mine.map((m) => m.name).join(", ") })}</small>
                 {:else}
                   <small class="faint">{t("helm.notOwned")}</small>
                 {/if}
               </div>
-            {/each}
-          </div>
-        {/if}
-      </div>
-    </section>
-  </div>
-
-  <section class="panel list">
-    <header>
-      <nav class="seg">
-        {#each SUBS as x (x.id)}
-          <button class:on={sub === x.id} onclick={() => (sub = x.id)}>{t(x.label)} <em>{groups[x.id].length}</em></button>
-        {/each}
-      </nav>
-      <input class="q" placeholder={t("helm.search")} bind:value={q} />
-    </header>
-    <p class="hint">{t(sub === "can" ? "helm.canHint" : sub === "fed" ? "helm.fedHint" : "helm.missingHint")}</p>
-    <div class="body">
-      {#if !shown.length}
-        <div class="empty"><span>{t("helm.emptyList")}</span></div>
-      {:else}
-        <div class="rows">
-          {#each shown as f (f.frame)}{@render frameRow(f)}{/each}
+            </div>
+          {/each}
         </div>
       {/if}
-    </div>
-  </section>
+    </section>
+
+    <section class="block">
+      <div class="head tools">
+        <nav class="seg">
+          {#each SUBS as x (x.id)}
+            <button class:on={sub === x.id} onclick={() => (sub = x.id)}>{t(x.label)} <em>{groups[x.id].length}</em></button>
+          {/each}
+        </nav>
+        <input class="q" placeholder={t("helm.search")} bind:value={q} />
+      </div>
+      <p class="hint">{t(sub === "can" ? "helm.canHint" : sub === "fed" ? "helm.fedHint" : "helm.missingHint")}</p>
+      {#if !shown.length}
+        <div class="note"><span>{t("helm.emptyList")}</span></div>
+      {:else}
+        <div class="grid">
+          {#each shown as f (f.frame)}{@render card(f)}{/each}
+        </div>
+      {/if}
+    </section>
+  </div>
 {/if}
 
 <style>
-  .top {
-    display: grid;
-    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-    gap: 14px;
-    margin-bottom: 14px;
+  .helm {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
   }
-  .top.compact {
+  .note {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px 18px;
+    border-radius: 14px;
+    background: var(--surface);
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .note b {
+    color: var(--text);
+    font-weight: 600;
+  }
+  .block {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .head h2 {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .head .n {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+  .hint {
+    margin: -4px 0 0;
+    font-size: 12.5px;
+    color: var(--text-faint);
+  }
+  .good {
+    color: var(--good) !important;
+  }
+  .faint {
+    color: var(--text-faint);
+  }
+
+  /* Rank + secretions */
+  .overview {
+    display: grid;
+    grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.6fr);
+    gap: 12px;
+  }
+  .compact .overview {
     grid-template-columns: 1fr;
   }
-  @media (max-width: 900px) {
-    .top {
+  @media (max-width: 980px) {
+    .overview {
       grid-template-columns: 1fr;
     }
   }
-  .state {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 14px 18px;
-    padding: 18px;
-    align-items: center;
-  }
   .rank {
-    position: relative;
-    width: 84px;
-    height: 84px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 18px 20px;
+    border-radius: 16px;
+    background: radial-gradient(ellipse at 0% 0%, rgba(159, 211, 106, 0.1), transparent 60%), var(--surface);
   }
-  .rank svg {
+  .ring {
+    position: relative;
+    width: 116px;
+    height: 116px;
+    flex: none;
+  }
+  .ring svg {
     width: 100%;
     height: 100%;
-    transform: rotate(-90deg);
-  }
-  .rank circle {
-    fill: none;
-    stroke-width: 5;
   }
   .track {
-    stroke: rgba(255, 255, 255, 0.07);
+    fill: none;
+    stroke: var(--surface-2);
+    stroke-width: 7;
   }
   .arc {
+    fill: none;
     stroke: #9fd36a;
+    stroke-width: 7;
     stroke-linecap: round;
+    filter: drop-shadow(0 0 6px rgba(159, 211, 106, 0.45));
   }
-  .rank .in {
+  .in {
     position: absolute;
     inset: 0;
     display: flex;
@@ -223,58 +282,45 @@
     align-items: center;
     justify-content: center;
   }
-  .rank .in b {
-    font-size: 26px;
+  .in b {
+    font-size: 36px;
     font-weight: 600;
     line-height: 1;
   }
-  .rank .in small {
-    font-size: 10px;
-    color: var(--text-faint);
+  .in small {
+    margin-top: 2px;
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    color: var(--text-faint);
   }
-  .rank-text {
+  .rtext {
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 3px;
+    gap: 4px;
   }
-  .rank-text b {
-    font-size: 16px;
+  .rtext > b {
+    font-size: 18px;
     font-weight: 600;
   }
-  .rank-text small {
-    color: var(--text-dim);
+  .rtext > small {
     font-size: 12.5px;
-  }
-  .secs {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px 18px;
-  }
-  .sec {
-    display: grid;
-    grid-template-columns: 20px 86px minmax(0, 1fr) 46px;
-    align-items: center;
-    gap: 8px;
-    font-size: 12.5px;
-  }
-  .sec img {
-    width: 20px;
-    height: 20px;
-    object-fit: contain;
-  }
-  .sname {
     color: var(--text-dim);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  }
+  .fed {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 12.5px;
+    color: var(--text-dim);
   }
   .bar {
     height: 5px;
     border-radius: 3px;
-    background: rgba(255, 255, 255, 0.07);
+    background: var(--surface-2);
     overflow: hidden;
   }
   .bar i {
@@ -283,149 +329,240 @@
     border-radius: 3px;
     background: #9fd36a;
   }
-  .v {
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
-  header .count {
-    margin-left: auto;
-    font-size: 12px;
-    color: var(--text-faint);
-  }
-  .offers {
+  .secs {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
   }
-  .offer {
-    display: flex;
-    flex-direction: column;
+  .sec {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    gap: 4px;
-    padding: 12px 8px;
-    border-radius: 12px;
-    background: rgba(255, 255, 255, 0.03);
-    text-align: center;
-    opacity: 0.6;
+    gap: 6px 10px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: var(--surface);
   }
-  .offer.have {
-    opacity: 1;
-    box-shadow: inset 0 0 0 1px rgba(159, 211, 106, 0.25);
-  }
-  .offer img {
-    width: 52px;
-    height: 52px;
+  .sec img {
+    width: 34px;
+    height: 34px;
     object-fit: contain;
   }
-  .offer b {
-    font-weight: 500;
-    font-size: 13px;
+  .sv {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
   }
-  .offer small {
-    font-size: 11.5px;
+  .sv small {
+    font-size: 12px;
+    color: var(--text-faint);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sv b {
+    font-size: 20px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .sec .bar {
+    grid-column: 1 / -1;
+  }
+  .sec.low .sv b {
+    color: var(--warn);
+  }
+  .sec.low .bar i {
+    background: var(--warn);
+  }
+
+  /* Invigorations */
+  .offers {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .compact .offers {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+  .offer {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    border-radius: 14px;
+    background: var(--surface);
+    border: 1px solid transparent;
+  }
+  .offer.have {
+    border-color: rgba(201, 166, 107, 0.3);
+    background: linear-gradient(90deg, rgba(201, 166, 107, 0.1), var(--surface) 65%);
+  }
+  .offer.on {
+    border-color: rgba(111, 207, 151, 0.4);
+    background: linear-gradient(90deg, rgba(111, 207, 151, 0.12), var(--surface) 65%);
+  }
+  .offer .art {
+    width: 76px;
+    height: 76px;
+    flex: none;
+    display: grid;
+    place-items: center;
+  }
+  .offer .art img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+  .offer:not(.have) .art img {
+    opacity: 0.55;
+    filter: saturate(0.5);
+  }
+  .otext {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+  .otext b {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .otext small {
+    font-size: 12px;
     color: var(--text-dim);
-    line-height: 1.35;
   }
-  .good {
-    color: var(--good) !important;
-  }
-  .faint {
-    color: var(--text-faint) !important;
-  }
-  .list header {
+
+  /* Warframes */
+  .tools {
+    align-items: center;
     flex-wrap: wrap;
   }
   .seg em {
     font-style: normal;
-    opacity: 0.6;
-    margin-left: 3px;
+    margin-left: 4px;
+    color: var(--text-faint);
   }
   .q {
     margin-left: auto;
-    width: 220px;
-    padding: 6px 10px;
-    border-radius: 8px;
+    width: 260px;
+    padding: 8px 12px;
+    border-radius: 10px;
     border: 1px solid var(--line);
-    background: rgba(255, 255, 255, 0.03);
-    font-size: 12.5px;
+    background: var(--surface);
+    font-size: 13px;
     outline: none;
   }
   .q:focus {
-    border-color: var(--text-faint);
+    border-color: var(--accent);
   }
-  .hint {
-    margin: 0 18px 8px;
-    font-size: 12px;
-    color: var(--text-faint);
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+    gap: 8px;
   }
-  .rows {
-    background: none !important;
-    border: none !important;
-    padding: 0 !important;
-  }
-  .row {
+  .card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 11px 11px;
+    border-radius: 12px;
+    background: var(--surface);
+    border: 1px solid transparent;
     color: var(--text);
+    min-width: 0;
   }
-  .row > img {
-    width: 38px;
-    height: 38px;
+  .card:hover {
+    background: var(--surface-2);
+    border-color: var(--line);
+  }
+  .card.ok {
+    background: linear-gradient(180deg, rgba(111, 207, 151, 0.06), var(--surface) 60%);
+  }
+  .card.dim .art img {
+    opacity: 0.55;
+    filter: saturate(0.5);
+  }
+  .card .art {
+    height: 84px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .card .art img {
+    max-width: 100%;
+    max-height: 84px;
     object-fit: contain;
-    flex: none;
   }
-  .name b {
-    font-weight: 500;
+  .card > b {
+    font-size: 13.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .ab {
-    display: flex !important;
+    display: flex;
     align-items: center;
     gap: 5px;
+    font-size: 12px;
+    color: var(--text-dim);
+    min-width: 0;
   }
   .ab img {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     object-fit: contain;
-    opacity: 0.8;
+    flex: none;
+  }
+  .ab span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .tag {
-    flex: none;
-    font-size: 11px;
-    padding: 2px 8px;
-    border-radius: 20px;
-    color: var(--text-faint);
-    background: rgba(255, 255, 255, 0.04);
+    align-self: flex-start;
+    margin-top: 4px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    color: var(--text-dim);
+    background: var(--surface-2);
   }
   .tag.good {
     color: var(--good);
-    background: rgba(111, 207, 151, 0.1);
+    background: rgba(111, 207, 151, 0.14);
   }
   .tag.warn {
     color: var(--warn);
-    background: rgba(224, 161, 90, 0.1);
+    background: rgba(255, 170, 90, 0.12);
   }
   .costs {
-    flex: none;
     display: flex;
-    gap: 8px;
-    width: 230px;
-    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 3px;
   }
   .cost {
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    font-size: 12px;
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-size: 11.5px;
     font-variant-numeric: tabular-nums;
+    background: var(--surface-2);
     color: var(--text-dim);
   }
+  .card:hover .cost {
+    background: var(--bg);
+  }
   .cost img {
-    width: 16px;
-    height: 16px;
+    width: 14px;
+    height: 14px;
     object-fit: contain;
   }
   .cost.short {
     color: var(--warn);
-  }
-  :global(.compact) .costs {
-    width: auto;
   }
 </style>

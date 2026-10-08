@@ -1,5 +1,6 @@
 // Builds static/data/<lang>/gear.json: everything besides warframes that takes mods — primary, secondary and
-// melee weapons, companions and their weapons, archwings, arch-guns, arch-melee, necramechs.
+// melee weapons, companions and their weapons, archwings, arch-guns, arch-melee, necramechs, and the warframes' own
+// (exalted weapons, Khora's Venari: DE's SpecialItems, `of` = the warframes that summon them).
 // Stats are DE's (Public Export Plus: damage by type, crit, status, fire rate, multishot, magazine, reload;
 // health / shield / armor / energy), slot polarities WFCD's (@wfcd/items), names from DE's dictionaries.
 // `classes` + `tags` decide which mods fit (a mod's `compat` is a DE weapon class; the export has no class tree,
@@ -30,7 +31,7 @@ const clean = (s) => (s ?? "").replace(/<[^>]+>\s*/g, "").trim();
 // WFCD rows by uniqueName: polarities and the primary's kind (Rifle / Shotgun / Sniper / Launcher / Bow).
 const wfcd = new Map();
 const weaponRows = new Set(); // WFCD's weapon files: player weapons (DE's categories also hold pet parts and the like)
-for (const f of ["Primary", "Secondary", "Melee", "Arch-Gun", "Arch-Melee", "SentinelWeapons", "Sentinels", "Pets", "Archwing", "Warframes"])
+for (const f of ["Primary", "Secondary", "Melee", "Arch-Gun", "Arch-Melee", "SentinelWeapons", "Sentinels", "Pets", "Archwing", "Warframes", "Misc"])
   for (const x of read(`${WFCD}/${f}.json`)) {
     wfcd.set(x.uniqueName, x);
     if (["Primary", "Secondary", "Melee", "Arch-Gun", "Arch-Melee", "SentinelWeapons"].includes(f)) weaponRows.add(x.uniqueName);
@@ -41,6 +42,17 @@ const SLOTS = { primary: 8, secondary: 8, melee: 8, archgun: 8, archmelee: 8, cw
 
 // DE's damage array order (index.d.ts: DT_IMPACT … DT_RADIANT, DT_SENTIENT…): the first 15 are the ones modding knows.
 const DT = 15;
+
+// Exalted weapons and companions -> the warframes (and necramechs) whose abilities summon them.
+const exaltedOf = new Map();
+for (const [id, s] of Object.entries(peSuits)) for (const e of s.exalted ?? []) exaltedOf.set(e, [...(exaltedOf.get(e) ?? []), id]);
+// Which mods an exalted gun takes (the wiki's "Exalted Weapons": Artemis Bow, Neutralizer primary; the rest secondary).
+function exaltedKind(w) {
+  if (/Archwing\/Primary/.test(w.parentName ?? "")) return "archgun";
+  if (/Archwing\/Melee/.test(w.parentName ?? "")) return "archmelee";
+  if (!w.trigger) return "melee";
+  return w.holsterCategory === "BOW" || w.holsterCategory === "SNIPER" ? "primary" : "secondary";
+}
 
 const T = "/Lotus/Weapons/Tenno/";
 function weaponClasses(id, w, kind, type) {
@@ -159,15 +171,58 @@ for (const LANG of ["ru", "en"]) {
     };
   }
 
+  // Exalted weapons: no exilus on the pseudo-exalted melee (POWER_WEAPON_LITE: Whipclaw, Landslide Fists…),
+  // arcanes on all of them (wiki, Update 38.5); a stance slot only where stances fit (Garuda's Talons).
+  for (const [id, wpn] of Object.entries(peWeapons)) {
+    if (wpn.productCategory !== "SpecialItems" || !exaltedOf.has(id)) continue;
+    const kind = exaltedKind(wpn);
+    const w = wfcd.get(id);
+    const type = kind === "primary" ? (wpn.holsterCategory === "BOW" ? "Bow" : "Sniper") : undefined;
+    const tags = wpn.compatibilityTags ?? [];
+    const basic = ["primary", "secondary", "melee"].includes(kind);
+    items[id] = {
+      ...base(id, wpn, w),
+      kind,
+      type,
+      of: exaltedOf.get(id),
+      prime: /Prime/.test(id) || undefined,
+      maxRank: 30,
+      slots: SLOTS[kind],
+      exilus: (basic && !tags.includes("POWER_WEAPON_LITE")) || undefined,
+      stance: tags.some((x) => x.endsWith("_STANCE")) || undefined,
+      arcane: basic || undefined,
+      exPol: pol(w?.exilusPolarity) ?? undefined,
+      stPol: pol(w?.stancePolarity) ?? undefined,
+      classes: weaponClasses(id, wpn, kind, type),
+      tags: tags.length ? tags : undefined,
+      w: {
+        dmg: (wpn.damagePerShot ?? []).slice(0, DT).map(r2),
+        cc: wpn.criticalChance ?? 0,
+        cm: wpn.criticalMultiplier ?? 1,
+        sc: wpn.procChance ?? 0,
+        fr: r2(wpn.fireRate ?? 1),
+        ms: wpn.multishot ?? 1,
+        mag: wpn.magazineSize || undefined,
+        rel: wpn.reloadTime || undefined,
+        trig: wpn.trigger || undefined,
+        range: wpn.range || undefined,
+      },
+    };
+  }
+
   // Companions: DE's numbers are the rank-30 ones (the wiki's "max rank" infobox matches them).
   for (const [id, s] of Object.entries(peSentinels)) {
-    if (!["Sentinels", "KubrowPets", "MoaPets"].includes(s.productCategory)) continue;
+    // SpecialItems: Khora's Venari (a kavat).
+    const special = s.productCategory === "SpecialItems" && exaltedOf.has(id);
+    if (!["Sentinels", "KubrowPets", "MoaPets"].includes(s.productCategory) && !special) continue;
+    const cat = special ? "KubrowPets" : s.productCategory;
     const w = wfcd.get(id);
-    const { classes, tags } = companionClasses(id, s.productCategory);
+    const { classes, tags } = companionClasses(id, cat);
     items[id] = {
       ...base(id, s, w),
       kind: "companion",
-      type: s.productCategory,
+      type: cat,
+      of: special ? exaltedOf.get(id) : undefined,
       prime: /Prime/.test(id) || undefined,
       maxRank: 30,
       slots: SLOTS.companion,

@@ -1,11 +1,11 @@
 <script lang="ts">
-  // «Билды» for one kind of gear (weapons, companions, archwings, necramechs): your items on the left (the equipped
+  // «Билды» for one kind of gear (weapons, companions, archwings, necramechs, the warframes' own weapons): your items on the left (the equipped
   // one first), on the right its configs from the game (inventory) and your saved builds, the picked one's board
   // read-only with what you lack. Without any build the bare item shows its base stats. Editing: /gear (the app).
   import { num, t } from "$lib/i18n/index.svelte";
   import { iconUrl, normalize } from "$lib/db";
   import { loadFrames, type FramesDb } from "$lib/frames";
-  import { emptyGearBuild, gameGearBuilds, gearEquipped, gearForma, isWeapon, loadGear, type GearBuild, type GearCtx, type GearKind } from "$lib/gear";
+  import { emptyGearBuild, gameGearBuilds, gearEquipped, gearForma, inTab, isWeapon, loadGear, type GearBuild, type GearCtx, type GearTab } from "$lib/gear";
   import { gearBuilds } from "$lib/gearBuilds.svelte";
   import { inventory, bestXp } from "$lib/inventory.svelte";
   import { profile } from "$lib/profile.svelte";
@@ -14,7 +14,7 @@
   import GearBoard from "$lib/components/GearBoard.svelte";
   import { buildsSel, pickGear } from "./buildsSel.svelte";
 
-  let { kind }: { kind: GearKind } = $props();
+  let { kind }: { kind: GearTab } = $props();
 
   let ctx = $state<GearCtx | null>(null);
   let fdb = $state<FramesDb | null>(null);
@@ -27,17 +27,19 @@
 
   const inv = $derived(!!inventory.data);
   const equipped = $derived(inventory.data?.equipped ?? {});
-  const has = (id: string) => inventory.inArsenal(id);
+  // Exalted weapons and Venari come with their warframe (the inventory lists them apart, not in the arsenal).
+  const has = (id: string) => inventory.inArsenal(id) || !!inventory.data?.loadouts?.[id] || !!ctx?.items[id]?.of?.some((f) => inventory.inArsenal(f));
+  const ownerName = (id: string) => [...new Set((ctx?.items[id]?.of ?? []).map((f) => fdb?.frames[f]?.name).filter(Boolean))].join(", ");
   const rank = (id: string): number | null => {
     const g = ctx?.items[id];
-    const xp = bestXp(profile.data?.xp[id], id);
+    const xp = bestXp(profile.data?.xp[id], id) ?? (inventory.data?.loadouts?.[id]?.xp || undefined);
     return g && xp != null ? rankOf(xp, !isWeapon(g.kind), g.maxRank) : null;
   };
 
   const list = $derived.by(() => {
     if (!ctx) return [];
     const q = normalize(query);
-    const rows = Object.entries(ctx.items).filter(([, g]) => g.kind === kind && (!q || normalize(g.ru).includes(q) || normalize(g.en).includes(q)));
+    const rows = Object.entries(ctx.items).filter(([, g]) => inTab(g, kind) && (!q || normalize(g.ru).includes(q) || normalize(g.en).includes(q)));
     const shown = inv && !all && !q ? rows.filter(([id]) => has(id)) : rows;
     const score = (id: string) => (equipped[id] != null ? 2 : inv && has(id) ? 1 : 0);
     return shown.sort(([a, x], [b, y]) => score(b) - score(a) || x.name.localeCompare(y.name));
@@ -46,7 +48,7 @@
   const itemId = $derived.by(() => {
     if (!ctx) return "";
     const sel = buildsSel.item[kind];
-    if (sel && ctx.items[sel]?.kind === kind) return sel;
+    if (sel && ctx.items[sel] && inTab(ctx.items[sel], kind)) return sel;
     return list.find(([id]) => equipped[id] != null)?.[0] ?? list[0]?.[0] ?? "";
   });
   const gear = $derived(ctx && itemId ? ctx.items[itemId] : null);
@@ -100,6 +102,7 @@
             <span class="iname">
               {g.name}
               <small>
+                {#if g.of && ownerName(id)}<span class="owner">{ownerName(id)}</span>{/if}
                 {#if equipped[id] != null}<b class="now">{t("builds.equipped")}</b>{/if}
                 {#if r != null}{t("builds.rank", { r })}{/if}
                 {#if inv && inventory.gearOf(id)?.forma}· {t("fact.forma", { n: inventory.gearOf(id)!.forma })}{/if}
@@ -122,8 +125,9 @@
               {#if equipped[itemId] != null}<span class="now">{t("builds.equippedNow")}</span>{/if}
               {#if inv && has(itemId) && rank(itemId) != null}<span>{t("builds.rank", { r: rank(itemId)! })}</span>{/if}
               {#if gearInfo?.forma}<span><img src="/icons/forma.png" alt="" /> {gearInfo.forma}</span>{/if}
-              {#if gearInfo?.potato}<span>{isWeapon(kind) ? t("gb.catalystShort") : t("fact.reactor")}</span>{/if}
+              {#if gearInfo?.potato}<span>{isWeapon(gear.kind) ? t("gb.catalystShort") : t("fact.reactor")}</span>{/if}
               {#if inv && !has(itemId)}<span class="miss">{t("builds.notOwned")}</span>{/if}
+              {#if gear.of && ownerName(itemId)}<span>{t("gb.of", { f: ownerName(itemId) })}</span>{/if}
               {#if gear.mr}<span>{t("gb.mr", { v: gear.mr })}</span>{/if}
             </div>
           </div>
@@ -271,6 +275,9 @@
     font-size: 13px;
     display: flex;
     flex-direction: column;
+  }
+  .owner {
+    color: var(--accent);
   }
   .iname small {
     font-size: 11px;

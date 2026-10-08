@@ -1,5 +1,5 @@
 import { pickBuild, pickGear } from "./buildsSel.svelte";
-import { GEAR_KINDS, type GearKind } from "$lib/gear";
+import { GEAR_KINDS, type GearTab } from "$lib/gear";
 
 // Sub-tabs of the sections shared by the app and the hub ("Торговля", "Реликвии"): one remembered choice
 // for both windows (localStorage is shared), so the hub opens where the app was left and back.
@@ -99,7 +99,7 @@ export function followSection(href: string): "trade" | "relics" | "builds" | "sh
 export function followBuilds(q: URLSearchParams) {
   const id = q.get("id");
   const gear = q.get("gear");
-  const kind = q.get("kind") as GearKind | null;
+  const kind = q.get("kind") as GearTab | null;
   if (id) pickBuild(id, q.get("build") ?? "");
-  else if (gear && kind && GEAR_KINDS.includes(kind)) pickGear(kind, gear, q.get("build") ?? "");
+  else if (gear && kind && (kind === "exalted" || GEAR_KINDS.includes(kind))) pickGear(kind, gear, q.get("build") ?? "");
 }
