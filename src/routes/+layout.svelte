@@ -18,6 +18,8 @@
   import { startGoalWatch } from "$lib/goals/watch.svelte";
   import { startInventoryAuto } from "$lib/inventory.svelte";
   import { startNotifyWatch } from "$lib/notify/watch.svelte";
+  import { updater } from "$lib/updater.svelte";
+  import UpdateBanner from "$lib/components/UpdateBanner.svelte";
   import { i18n, LANGS, t, type Key } from "$lib/i18n/index.svelte";
 
   let { children } = $props();
@@ -83,6 +85,8 @@
     loadDb().then(startNotifyWatch).catch(() => {});
     // Inventory refresh after missions, when the player turned it on.
     startInventoryAuto();
+    // App updates from GitHub Releases (updater.svelte.ts).
+    updater.start();
     // "Открыть в приложении" in the hub.
     listen<string>("navigate", (e) => goto(e.payload));
   }
@@ -122,6 +126,8 @@
     {/if}
   </main>
 </div>
+
+<UpdateBanner />
 
 {#if paletteOpen && ready}
   <div class="overlay" role="presentation" onclick={(e) => e.target === e.currentTarget && (paletteOpen = false)}>

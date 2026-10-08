@@ -8,6 +8,7 @@
   import { overlaySettings, type Priority } from "$lib/overlaySettings.svelte";
   import { hubSettings, acceleratorOf, shortcutKeys, DEFAULT_SHORTCUT } from "$lib/hubSettings.svelte";
   import { appSettings } from "$lib/appSettings.svelte";
+  import { updater } from "$lib/updater.svelte";
   import { inventory } from "$lib/inventory.svelte";
   import { profile } from "$lib/profile.svelte";
   import type { CollMode } from "$lib/collection/need";
@@ -89,6 +90,23 @@
     </span>
     <input type="checkbox" checked={appSettings.value.tray} onchange={(e) => appSettings.set({ tray: e.currentTarget.checked })} />
   </label>
+
+  <div class="section-title">{t("upd.section")}</div>
+  <label class="row switch">
+    <span>
+      <b>{t("upd.auto")}</b>
+      <small>{t("upd.autoHint")}</small>
+    </span>
+    <input type="checkbox" checked={updater.saved.auto} onchange={(e) => updater.setAuto(e.currentTarget.checked)} />
+  </label>
+  <div class="links">
+    <span class="ver">{t("upd.version", { v: updater.current || "…" })}</span>
+    <button disabled={updater.status === "checking" || updater.status === "downloading"} onclick={() => updater.check(true)}>{t("upd.checkNow")}</button>
+    {#if updater.status === "checking"}<span class="ver">{t("upd.checking")}</span>
+    {:else if updater.status === "none"}<span class="ver">{t("upd.latest")}</span>
+    {:else if updater.status === "available"}<button onclick={() => (updater.hidden = false)}>{t("upd.title", { v: updater.version })}</button>
+    {:else if updater.status === "error"}<span class="ver">{t("upd.checkFailed")}</span>{/if}
+  </div>
 
   <NotifySettings />
 
@@ -310,6 +328,10 @@
   .err.hot {
     margin: 8px 2px 0;
     font-size: 13px;
+  }
+  .ver {
+    font-size: 12.5px;
+    color: var(--text-faint);
   }
   .links {
     display: flex;
