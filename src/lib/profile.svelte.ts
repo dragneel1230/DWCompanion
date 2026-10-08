@@ -108,6 +108,7 @@ function loadoutOf(inv: Raw): Gear[] {
 const URL = "https://api.warframe.com/cdn/getProfileViewingData.php?playerId=";
 const KEY = "dwc.profile";
 const KEY_ACC = "dwc.account"; // typed in by the player, wins over the one from the log
+const KEY_INV = "dwc.accountInv"; // last id seen with the inventory read (kept when the session is dropped)
 const STALE = 10 * 60_000;
 const MIN_GAP = 60_000;
 export const ID_RE = /^[0-9a-f]{24}$/i;
@@ -151,9 +152,24 @@ class ProfileStore {
       // storage unavailable
     }
     const fromLog = await invoke<string | null>("account_id").catch(() => null);
+    // The inventory read knows the id too (Rust gives the id alone, never the session nonce).
+    let fromInv = await invoke<string | null>("inv_session_account").catch(() => null);
+    try {
+      if (fromInv) localStorage.setItem(KEY_INV, fromInv);
+      else fromInv = localStorage.getItem(KEY_INV);
+    } catch {
+      // storage unavailable
+    }
     this.manual = !!typed;
-    this.account = typed || fromLog;
+    this.account = typed || fromLog || fromInv;
     if (!this.account) this.status = "noaccount";
+  }
+
+  // The inventory was just read: the id may be known now.
+  async inventoryRead() {
+    if (this.account) return;
+    await this.findAccount();
+    if (this.account) this.refresh(true);
   }
 
   setAccount(id: string | null) {

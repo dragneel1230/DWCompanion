@@ -46,6 +46,7 @@
     const addMod = (mid: string | null, slot: string, pol?: Polarity | null, rank?: number | null) =>
       mid && db!.mods[mid] && out.push({ id: mid, kind: "mod", slot, mod: db!.mods[mid], pol, rank: rankOf(db!.mods[mid], rank) });
     addMod(build.aura, t("bb.aura"), p?.aura, r?.aura);
+    addMod(build.aura2 ?? null, t("bb.aura"), p?.aura2, r?.aura2);
     addMod(build.exilus, t("bb.exilus"), p?.exilus, r?.exilus);
     build.slots.forEach((m, i) => addMod(m, t("bb.slot", { n: i + 1 }), p?.slots[i], r?.slots[i]));
     build.arcanes.forEach((a, i) => db!.arcanes[a] && out.push({ id: a, kind: "arcane", slot: t("bb.arcaneN", { n: i + 1 }), arcane: db!.arcanes[a] }));

@@ -3,7 +3,7 @@
   // on the right — configs A/B/C from the game (inventory: mods, Archon shards, Helminth), your saved builds, popular
   // ones — and the picked build's board read-only, with what you lack. Editing is the builder (/frame, the app).
   import { num, t } from "$lib/i18n/index.svelte";
-  import { buildsFor, formaInfo, equipped, loadFrames, searchFrames, type Build, type FramesDb } from "$lib/frames";
+  import { buildsFor, formaInfo, PAIR_OF, equipped, loadFrames, searchFrames, type Build, type FramesDb } from "$lib/frames";
   import { iconUrl } from "$lib/db";
   import { profile } from "$lib/profile.svelte";
   import { rankOf } from "$lib/mastery";
@@ -39,12 +39,13 @@
   let all = $state(false);
 
   const rank = (id: string): number | null => {
-    const xp = bestXp(profile.data?.xp[id], id);
+    const own = PAIR_OF[id] ?? id;
+    const xp = bestXp(profile.data?.xp[own], own);
     return xp == null ? null : rankOf(xp, true, 30);
   };
   const inv = $derived(!!inventory.data);
   const known = $derived(inv || !!profile.data);
-  const has = (id: string) => (inv ? inventory.inArsenal(id) : rank(id) != null);
+  const has = (id: string) => (inv ? inventory.inArsenal(PAIR_OF[id] ?? id) : rank(id) != null);
   const current = $derived(inventory.data?.current ?? null);
   const loadouts = $derived(inventory.data?.loadouts ?? null);
   // A snapshot from before shards and gear configs were read: suggest a refresh.

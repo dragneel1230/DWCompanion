@@ -42,6 +42,32 @@ const SLOTS = { primary: 8, secondary: 8, melee: 8, archgun: 8, archmelee: 8, cw
 
 // DE's damage array order (index.d.ts: DT_IMPACT … DT_RADIANT, DT_SENTIENT…): the first 15 are the ones modding knows.
 const DT = 15;
+const DT_NAMES = ["DT_IMPACT", "DT_PUNCTURE", "DT_SLASH", "DT_FIRE", "DT_FREEZE", "DT_ELECTRICITY", "DT_POISON", "DT_EXPLOSION",
+  "DT_RADIATION", "DT_GAS", "DT_MAGNETIC", "DT_VIRAL", "DT_CORROSIVE", "DT_RADIANT", "DT_SENTIENT"];
+
+// Weapon numbers as the arsenal shows them. For charge weapons (bows, Ballistica...) damagePerShot is the charged
+// shot, but the arsenal shows the uncharged one (checked in game: Nataruk 405/45 puncture/slash, not 648/252);
+// the charged shot goes to `chg` for the "charged" toggle.
+function weaponBase(wpn) {
+  const b = wpn.behaviours?.[0];
+  const arr = (a) => DT_NAMES.map((k) => r2(a[k] ?? 0));
+  const sum = (a) => (a ? DT_NAMES.reduce((s, k) => s + (a[k] ?? 0), 0) : 0);
+  const p = b?.projectile?.attack, c = b?.chargedProjectile?.attack;
+  const split = wpn.trigger === "CHARGE" && sum(p) > 0 && sum(c) > 0 && Math.abs(sum(p) - sum(c)) > 0.01;
+  return {
+    dmg: split ? arr(p) : (wpn.damagePerShot ?? []).slice(0, DT).map(r2),
+    cc: wpn.criticalChance ?? 0,
+    cm: wpn.criticalMultiplier ?? 1,
+    sc: split ? (p.procChance ?? wpn.procChance ?? 0) : (wpn.procChance ?? 0),
+    fr: r2(wpn.fireRate ?? 1),
+    ms: wpn.multishot ?? 1,
+    mag: wpn.magazineSize || undefined,
+    rel: wpn.reloadTime || undefined,
+    trig: wpn.trigger || undefined,
+    range: wpn.range || undefined,
+    chg: split ? { dmg: arr(c), sc: c.procChance ?? wpn.procChance ?? 0 } : undefined,
+  };
+}
 
 // Exalted weapons and companions -> the warframes (and necramechs) whose abilities summon them.
 const exaltedOf = new Map();
@@ -156,18 +182,7 @@ for (const LANG of ["ru", "en"]) {
       stPol: pol(w.stancePolarity) ?? undefined,
       classes: weaponClasses(id, wpn, kind, type),
       tags: wpn.compatibilityTags?.length ? wpn.compatibilityTags : undefined,
-      w: {
-        dmg: (wpn.damagePerShot ?? []).slice(0, DT).map(r2),
-        cc: wpn.criticalChance ?? 0,
-        cm: wpn.criticalMultiplier ?? 1,
-        sc: wpn.procChance ?? 0,
-        fr: r2(wpn.fireRate ?? 1),
-        ms: wpn.multishot ?? 1,
-        mag: wpn.magazineSize || undefined,
-        rel: wpn.reloadTime || undefined,
-        trig: wpn.trigger || undefined,
-        range: wpn.range || undefined,
-      },
+      w: weaponBase(wpn),
     };
   }
 
@@ -195,18 +210,7 @@ for (const LANG of ["ru", "en"]) {
       stPol: pol(w?.stancePolarity) ?? undefined,
       classes: weaponClasses(id, wpn, kind, type),
       tags: tags.length ? tags : undefined,
-      w: {
-        dmg: (wpn.damagePerShot ?? []).slice(0, DT).map(r2),
-        cc: wpn.criticalChance ?? 0,
-        cm: wpn.criticalMultiplier ?? 1,
-        sc: wpn.procChance ?? 0,
-        fr: r2(wpn.fireRate ?? 1),
-        ms: wpn.multishot ?? 1,
-        mag: wpn.magazineSize || undefined,
-        rel: wpn.reloadTime || undefined,
-        trig: wpn.trigger || undefined,
-        range: wpn.range || undefined,
-      },
+      w: weaponBase(wpn),
     };
   }
 

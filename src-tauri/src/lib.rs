@@ -80,6 +80,7 @@ pub fn run() {
             inv_session::inv_session_fetch,
             inv_session::inv_session_game_running,
             inv_session::inv_session_clear,
+            inv_session::inv_session_account,
             inv_helper::inv_helper_find,
             inv_helper::inv_helper_installed,
             inv_helper::inv_helper_install,

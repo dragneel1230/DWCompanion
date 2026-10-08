@@ -35,7 +35,7 @@
   const own = $derived(!!editId && !!userBuilds.all[editId]);
   const forma = $derived(frame && build ? formaInfo(frame, build.pols).count : 0);
   const endo = $derived(db && build ? buildEndo(db, build) : 0);
-  const empty = $derived(!build || (!build.aura && !build.exilus && build.slots.every((s) => !s) && !build.arcanes.length));
+  const empty = $derived(!build || (!build.aura && !build.aura2 && !build.exilus && build.slots.every((s) => !s) && !build.arcanes.length));
 
   function save() {
     if (!build) return;

@@ -132,8 +132,14 @@ function dropLocation(loc) {
 
 // ---------- Warframes
 const frames = {};
+// Two-in-one warframes: Sirius & Orion is two suits (Orion is a SpecialItem, modded on its own). Each gets
+// the pair's name with its own half: "Сириус и Орион (Сириус)", "Сириус и Орион (Орион)".
+const PAIRS = { "/Lotus/Powersuits/SiriusOrion/SiriusSuit": "/Lotus/Powersuits/SiriusOrion/SiriusSuit", "/Lotus/Powersuits/SiriusOrion/OrionSuit": "/Lotus/Powersuits/SiriusOrion/SiriusSuit" };
+const half = (s) => s.split(/\s+(?:&|и|and)\s+/)[0];
+// WFCD's "aura" polarity is DE's AP_ANY (universal); Jade has two aura slots (an array).
+const wfPol = (p) => (p === "aura" ? "any" : p);
 for (const f of wfFrames) {
-  if (f.productCategory !== "Suits" || !f.uniqueName.startsWith("/Lotus/Powersuits/")) continue;
+  if ((f.productCategory !== "Suits" && !PAIRS[f.uniqueName]) || !f.uniqueName.startsWith("/Lotus/Powersuits/")) continue;
   const pe = peFrames[f.uniqueName];
   if (!pe) continue;
   const ru = ruI18n[f.uniqueName] ?? {};
@@ -170,8 +176,9 @@ for (const f of wfFrames) {
     desc: clean(ru.description ?? f.description),
     parts,
     bpCost: f.isPrime ? undefined : f.bpCost,
-    aura: f.aura ?? null,
-    polarities: f.polarities ?? [],
+    aura: wfPol([f.aura ?? null].flat()[0]) ?? null,
+    aura2: Array.isArray(f.aura) && f.aura[1] ? wfPol(f.aura[1]) : undefined,
+    polarities: (f.polarities ?? []).map(wfPol),
     released: f.releaseDate ?? null,
     passive: clean(ru.passiveDescription ?? f.passiveDescription),
     abilities: (f.abilities ?? []).map((a) => {
@@ -186,6 +193,15 @@ for (const f of wfFrames) {
       };
     }),
   };
+}
+
+// Two-in-one: the pair's name + the own half, in each name field (DE names Orion "Orion & Sirius").
+{
+  const orig = Object.fromEntries(Object.keys(PAIRS).filter((id) => frames[id]).map((id) => [id, { ...frames[id] }]));
+  for (const [id, pairId] of Object.entries(PAIRS)) {
+    if (!frames[id] || !orig[pairId]) continue;
+    for (const k of ["ru", "en", "name"]) frames[id][k] = `${orig[pairId][k]} (${half(orig[id][k])})`;
+  }
 }
 
 // Numeric effects the stat panel understands, parsed from the English level texts.
@@ -218,36 +234,62 @@ const WFX = [
   [/^\+([\d.]+) (?:Melee )?Range$/, "range"],
   [/^\+([\d.]+) Punch Through$/, "pt"],
 ];
-// One rank's numbers. Lines after a condition header ("On Kill:") are conditional: not counted.
-function lineFx(text, table, out) {
-  for (const raw of text.split(/\r?\n/)) {
+// One rank's numbers. Lines after a condition header ("On Kill:") are conditional: they go to `cond`, at full
+// stacks ("Stacks up to 5x" multiplies, "Stacks up to 480%" is the cap); chance-based procs are left out.
+// A line under a header that is also a rank's own entry (arcanes repeat "+30% Reload Speed") is unconditional.
+const STACKS = /\.?\s*(?:Stacks up to ([\d.]+)(x|%)|\(Maximum ([\d.]+) stacks\)).*$/i;
+function matchFx(line, table) {
+  const el = /^([+-]?[\d.]+)% <DT_([A-Z]+)_COLOR>\s*[A-Za-z]+$/.exec(line);
+  if (el && DT_INDEX[el[2]] != null) return [`e${DT_INDEX[el[2]]}`, Number(el[1])];
+  for (const [re, key] of table) {
+    const m = re.exec(line);
+    if (m) return [key, Number(m[1])];
+  }
+  return null;
+}
+function lineFx(text, table, out, cond, own) {
+  let inCond = false;
+  for (const raw of text.split(/\\n|\r?\n/)) {
     const line = raw.trim();
-    if (line.endsWith(":")) break;
-    const bow = /^([+-]?[\d.]+)% Fire Rate \(x([\d.]+) for Bows\)$/.exec(line);
-    if (bow) {
-      out.fr = Number(bow[1]);
-      out.frb = Number(bow[1]) * Number(bow[2]);
+    if (!line) continue;
+    if (line.endsWith(":")) {
+      inCond = true;
       continue;
     }
-    const el = /^([+-]?[\d.]+)% <DT_([A-Z]+)_COLOR>\s*[A-Za-z]+$/.exec(line);
-    if (el && DT_INDEX[el[2]] != null) {
-      out[`e${DT_INDEX[el[2]]}`] = Number(el[1]);
+    if (!inCond || own.has(line)) {
+      const bow = /^([+-]?[\d.]+)% Fire Rate \(x([\d.]+) for Bows\)$/.exec(line);
+      if (bow) {
+        out.fr = Number(bow[1]);
+        out.frb = Number(bow[1]) * Number(bow[2]);
+        continue;
+      }
+      const hit = matchFx(line, table);
+      if (hit) out[hit[0]] = hit[1];
       continue;
     }
-    for (const [re, key] of table) {
-      const m = re.exec(line);
-      if (m) out[key] = Number(m[1]);
-    }
+    if (/chance (?:for|to)/i.test(line)) continue;
+    const st = STACKS.exec(line);
+    const body = line.replace(STACKS, "").replace(/\s+for [\d.]+s\.?$/, "").replace(/\s+when Aiming$/, "").replace(/\.$/, "");
+    const hit = matchFx(body, table);
+    if (!hit) continue;
+    const [key, v] = hit;
+    const total = st?.[2] === "%" ? Number(st[1]) : v * Number(st?.[1] ?? st?.[3] ?? 1);
+    cond[key] = (cond[key] ?? 0) + total;
   }
 }
+// Per-rank arrays: `fx` unconditional, `cfx` conditional (at full stacks).
 function parseFx(levels, table = FX) {
   const fx = {};
+  const cfx = {};
   levels.forEach((lv, rank) => {
     const one = {};
-    for (const text of lv.stats ?? []) lineFx(text, table, one);
+    const cond = {};
+    const own = new Set((lv.stats ?? []).map((x) => x.trim()));
+    for (const text of lv.stats ?? []) lineFx(text, table, one, cond, own);
     for (const [key, v] of Object.entries(one)) (fx[key] ??= Array(levels.length).fill(0))[rank] = v;
+    for (const [key, v] of Object.entries(cond)) (cfx[key] ??= Array(levels.length).fill(0))[rank] = v;
   });
-  return Object.keys(fx).length ? fx : undefined;
+  return { fx: Object.keys(fx).length ? fx : undefined, cfx: Object.keys(cfx).length ? cfx : undefined };
 }
 
 const sets = {};
@@ -261,12 +303,13 @@ for (const m of wfMods) {
   const pe = peUpgrades[m.uniqueName];
   if (!pe || m.isFrivolous) continue;
   const isAura = m.compatName === "AURA";
-  const forFrames = m.type === "Warframe Mod" || isAura || frameCompat.has(m.compatName);
+  const compat = m.compatName?.toUpperCase(); // WFCD writes most in caps, a few not ("Jade")
+  const forFrames = m.type === "Warframe Mod" || isAura || frameCompat.has(compat);
   if (!forFrames) {
     if (m.type === "Focus Way" || m.type.includes("Riven")) continue;
     otherMods[m.uniqueName] = {
       ...modRow(m, pe),
-      fx: parseFx(m.levelStats ?? [], [...WFX, ...FX]),
+      ...parseFx(m.levelStats ?? [], [...WFX, ...FX]),
       cat: pe.type,
       // Which gear it fits (gear.ts fits()): DE's class + family tags, exilus / stance slot.
       compat: pe.compat,
@@ -280,7 +323,7 @@ for (const m of wfMods) {
     ...modRow(m, pe),
     aura: isAura || undefined,
     exilus: pe.isUtility || undefined,
-    augment: m.isAugment && frameCompat.has(m.compatName) ? m.compatName : undefined,
+    augment: m.isAugment && frameCompat.has(compat) ? compat : undefined,
   };
 }
 
@@ -304,7 +347,7 @@ function modRow(m, pe) {
     max: m.fusionLimit ?? 0,
     stats: clean((stats[stats.length - 1]?.stats ?? []).join("\n")),
     levels: stats.map((l) => clean((l.stats ?? []).join("\n"))),
-    fx: parseFx(m.levelStats ?? []),
+    ...parseFx(m.levelStats ?? []),
     set: m.modSet,
     slug: wfm.get(m.uniqueName)?.slug,
     mname: wfm.get(m.uniqueName)?.i18n?.en?.name,
@@ -326,6 +369,7 @@ for (const a of wfArcanes) {
     max: stats.length - 1,
     stats: clean((stats[stats.length - 1]?.stats ?? []).join("\n")),
     levels: stats.map((l) => clean((l.stats ?? []).join("\n"))),
+    ...parseFx(a.levelStats ?? [], [...WFX, ...FX]),
     wf: a.type === "Warframe Arcane" || a.type === "Arcane" || undefined,
     // Weapon arcanes: the weapon slot (gear.ts), and the only primary kind for the Bow / Shotgun ones.
     use: { "Primary Arcane": "primary", "Bow Arcane": "primary", "Shotgun Arcane": "primary", "Secondary Arcane": "secondary", "Melee Arcane": "melee" }[a.type],
@@ -392,7 +436,16 @@ const helminth = {};
 for (const [id, a] of Object.entries(pe("ExportAbilities.json"))) {
   if (!/Helminth[^/]*Ability$/.test(id)) continue;
   const name = dictRu[a.name] ?? dictEn[a.name];
-  if (name) helminth[id] = { name: unshout(name), icon: img(a.icon) };
+  if (!name) continue;
+  const desc = dictRu[a.description] ?? dictEn[a.description];
+  helminth[id] = {
+    id,
+    name: unshout(name),
+    en: unshout(dictEn[a.name] ?? name),
+    desc: desc ? clean(desc) : "",
+    icon: img(a.icon),
+    stats: abilityStats(id, LANG, a.energyRequiredToActivate),
+  };
 }
 
 // ---------- Helminth's foundry (src/lib/ship/helminth.ts): secretions, what subsuming each warframe gives

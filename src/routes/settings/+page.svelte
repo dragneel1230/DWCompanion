@@ -8,6 +8,7 @@
   import { overlaySettings, type Priority } from "$lib/overlaySettings.svelte";
   import { hubSettings, acceleratorOf, shortcutKeys, DEFAULT_SHORTCUT } from "$lib/hubSettings.svelte";
   import { appSettings } from "$lib/appSettings.svelte";
+  import { uiScale, UI_SCALES } from "$lib/uiScale.svelte";
   import { updater } from "$lib/updater.svelte";
   import { inventory } from "$lib/inventory.svelte";
   import { profile } from "$lib/profile.svelte";
@@ -90,6 +91,17 @@
     </span>
     <input type="checkbox" checked={appSettings.value.tray} onchange={(e) => appSettings.set({ tray: e.currentTarget.checked })} />
   </label>
+  <div class="row switch">
+    <span>
+      <b>{t("settings.scale")}</b>
+      <small>{t("settings.scaleHint", { v: Math.round(uiScale.factor * 100) })}</small>
+    </span>
+    <div class="seg">
+      {#each UI_SCALES as v}
+        <button class:on={uiScale.value === v} onclick={() => uiScale.set(v)}>{v === "auto" ? t("settings.scaleAuto") : `${Math.round(v * 100)}%`}</button>
+      {/each}
+    </div>
+  </div>
 
   <div class="section-title">{t("upd.section")}</div>
   <label class="row switch">

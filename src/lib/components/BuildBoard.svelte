@@ -27,10 +27,11 @@
   import FloatTip from "./FloatTip.svelte";
   import PolIcon from "./PolIcon.svelte";
   import ShardRow from "./ShardRow.svelte";
+  import { statOpts } from "$lib/statOpts.svelte";
 
   let { db, frame, build = $bindable(), editable = false }: { db: FramesDb; frame: Frame; build: Build; editable?: boolean } = $props();
 
-  type SlotKey = "aura" | "exilus" | number; // number = mod slot 0..7
+  type SlotKey = "aura" | "aura2" | "exilus" | number; // number = mod slot 0..7; aura2: Jade's second aura
   type Picking = { kind: "mod"; slot: SlotKey } | { kind: "arcane"; index: number };
 
   let picking = $state<Picking | null>(null);
@@ -40,36 +41,48 @@
 
   const forma = $derived(formaInfo(frame, build.pols));
   const cap = $derived(buildCapacity(db, build));
-  const stats = $derived(buildStats(db, frame, build));
+  const stats = $derived(buildStats(db, frame, build, statOpts.value.cond));
   const counts = $derived(setCounts(db, build));
   // Helminth (game configs): the subsumed ability in place of the replaced one.
   const helm = $derived(build.helminth ? { i: build.helminth[1], a: abilityById(db, build.helminth[0]) } : null);
-  const used = $derived(new Set([build.aura, build.exilus, ...build.slots, ...build.arcanes].filter((x): x is string => !!x)));
+  // The frame's abilities as equipped: the subsumed one in its slot.
+  const abilities = $derived(frame.abilities.map((a, i) => (helm?.i === i && helm.a ? helm.a : a)));
+  // Mods / arcanes with conditional effects: the "conditional" toggle shows only when there are some.
+  const condNames = $derived([
+    ...[build.aura, build.aura2, build.exilus, ...build.slots].map((id) => (id ? db.mods[id] : null)).filter((m) => m?.cfx).map((m) => m!.name),
+    ...build.arcanes.map((id) => db.arcanes[id]).filter((a) => a?.cfx).map((a) => a!.name),
+  ]);
+  const used = $derived(new Set([build.aura, build.aura2, build.exilus, ...build.slots, ...build.arcanes].filter((x): x is string => !!x)));
 
-  const modAt = (s: SlotKey) => (s === "aura" ? build.aura : s === "exilus" ? build.exilus : build.slots[s]);
-  const polAt = (s: SlotKey) => (s === "aura" ? build.pols?.aura : s === "exilus" ? build.pols?.exilus : build.pols?.slots[s]) ?? null;
-  const rankAt = (s: SlotKey) => (s === "aura" ? build.ranks?.aura : s === "exilus" ? build.ranks?.exilus : build.ranks?.slots[s]) ?? null;
-  const changedAt = (s: SlotKey) => (s === "aura" ? forma.aura : s === "exilus" ? forma.exilus : forma.slots[s]);
+  const modAt = (s: SlotKey) => (s === "aura" ? build.aura : s === "aura2" ? (build.aura2 ?? null) : s === "exilus" ? build.exilus : build.slots[s]);
+  const polAt = (s: SlotKey) =>
+    (s === "aura" ? build.pols?.aura : s === "aura2" ? (build.pols ? build.pols.aura2 : frame.aura2) : s === "exilus" ? build.pols?.exilus : build.pols?.slots[s]) ?? null;
+  const rankAt = (s: SlotKey) => (s === "aura" ? build.ranks?.aura : s === "aura2" ? build.ranks?.aura2 : s === "exilus" ? build.ranks?.exilus : build.ranks?.slots[s]) ?? null;
+  const changedAt = (s: SlotKey) => (s === "aura" ? forma.aura : s === "aura2" ? forma.aura2 : s === "exilus" ? forma.exilus : forma.slots[s]);
+  const isAura = (s: SlotKey) => s === "aura" || s === "aura2";
 
   function ensure() {
-    build.pols ??= { aura: frame.aura, exilus: null, slots: Array(8).fill(null) };
+    build.pols ??= { aura: frame.aura, aura2: frame.aura2 ?? null, exilus: null, slots: Array(8).fill(null) };
     build.ranks ??= { aura: null, exilus: null, slots: Array(8).fill(null) };
   }
   function setMod(s: SlotKey, id: string | null) {
     ensure();
     if (s === "aura") (build.aura = id), (build.ranks!.aura = null);
+    else if (s === "aura2") (build.aura2 = id), (build.ranks!.aura2 = null);
     else if (s === "exilus") (build.exilus = id), (build.ranks!.exilus = null);
     else (build.slots[s] = id), (build.ranks!.slots[s] = null);
   }
   function setRank(s: SlotKey, r: number) {
     ensure();
     if (s === "aura") build.ranks!.aura = r;
+    else if (s === "aura2") build.ranks!.aura2 = r;
     else if (s === "exilus") build.ranks!.exilus = r;
     else build.ranks!.slots[s] = r;
   }
   function setPol(s: SlotKey, p: Polarity | null) {
     ensure();
     if (s === "aura") build.pols!.aura = p;
+    else if (s === "aura2") build.pols!.aura2 = p;
     else if (s === "exilus") build.pols!.exilus = p;
     else build.pols!.slots[s] = p;
     polMenu = null;
@@ -81,8 +94,8 @@
     build.arcanes = a.filter(Boolean);
   }
 
-  const slotTitle = (s: SlotKey) => (s === "aura" ? t("bb.aura") : s === "exilus" ? t("bb.exilus") : t("bb.slot", { n: s + 1 }));
-  const polOptions = (s: SlotKey): Polarity[] => (s === "aura" ? [...SLOT_POLARITIES.filter((p) => p !== "umbra"), "any"] : SLOT_POLARITIES);
+  const slotTitle = (s: SlotKey) => (isAura(s) ? t("bb.aura") : s === "exilus" ? t("bb.exilus") : t("bb.slot", { n: s + 1 }));
+  const polOptions = (s: SlotKey): Polarity[] => (isAura(s) ? [...SLOT_POLARITIES.filter((p) => p !== "umbra"), "any"] : SLOT_POLARITIES);
 
   const int = (n: number) => num(Math.round(n));
   const pct = (n: number) => `${Math.round(n)}%`;
@@ -127,7 +140,7 @@
       slotPol={polAt(s)}
       {rank}
       polRow={false}
-      label={s === "aura" || s === "exilus" ? s : ""}
+      label={isAura(s) ? "aura" : s === "exilus" ? "exilus" : ""}
       onclick={editable ? () => (picking = { kind: "mod", slot: s }) : undefined}
       onhover={(el) => (hoverMod = el && mod ? { el, mod, rank } : null)}
     />
@@ -137,24 +150,19 @@
 <div class="wrap">
   <aside class="side">
     <div class="abilities">
-      {#each frame.abilities as a, i}
-        {#if helm?.i === i && helm.a}
-          <div class="ability helm" role="img" aria-label={helm.a.name} title={t("bb.helminth", { a: helm.a.name, was: a.name })}>
-            <img src={iconUrl(helm.a.icon)} alt="" />
-            <span>{i + 1}</span>
-          </div>
-        {:else}
-          <div
-            class="ability"
-            role="img"
-            aria-label={a.name}
-            onmouseenter={(e) => (hoverAbility = { el: e.currentTarget as HTMLElement, i })}
-            onmouseleave={() => (hoverAbility = null)}
-          >
-            <img src={iconUrl(a.icon)} alt="" />
-            <span>{i + 1}</span>
-          </div>
-        {/if}
+      {#each abilities as a, i}
+        {@const helmed = helm?.i === i && !!helm.a}
+        <div
+          class="ability"
+          class:helm={helmed}
+          role="img"
+          aria-label={a.name}
+          onmouseenter={(e) => (hoverAbility = { el: e.currentTarget as HTMLElement, i })}
+          onmouseleave={() => (hoverAbility = null)}
+        >
+          <img src={iconUrl(a.icon)} alt="" />
+          <span>{i + 1}</span>
+        </div>
       {/each}
     </div>
 
@@ -174,6 +182,12 @@
       <span>{t("bb.reactor")}</span>
       <input type="checkbox" checked={build.reactor !== false} disabled={!editable} onchange={(e) => (build.reactor = e.currentTarget.checked)} />
     </label>
+    {#if condNames.length}
+      <label class="toggle" title={t("bb.condHint", { list: condNames.join(", ") })}>
+        <span>{t("bb.cond")}</span>
+        <input type="checkbox" checked={statOpts.value.cond} onchange={(e) => statOpts.set({ cond: e.currentTarget.checked })} />
+      </label>
+    {/if}
 
     <dl class="stats">
       <dt>{t("stat.health")}</dt><dd>{int(stats.health)}</dd>
@@ -198,6 +212,7 @@
   <section class="board">
     <div class="line2 top">
       {@render slot("aura")}
+      {#if frame.aura2}{@render slot("aura2")}{/if}
       {@render slot("exilus")}
     </div>
     <div class="grid">
@@ -240,7 +255,7 @@
     </div>
   </div>
   <div class="abil-grid">
-    {#each frame.abilities as a, i (a.en)}
+    {#each abilities as a, i (a.en)}
       <div class="abil">
         <div class="abil-top">
           {#if a.icon}<img src={iconUrl(a.icon)} alt="" />{/if}
@@ -261,9 +276,12 @@
 </FloatTip>
 <FloatTip anchor={hoverAbility?.el ?? null}>
   {#if hoverAbility}
-    {@const a = frame.abilities[hoverAbility.i]}
+    {@const a = abilities[hoverAbility.i]}
     <div class="ability-tip">
       <b>{a.name}</b>
+      {#if helm?.i === hoverAbility.i && helm.a}
+        <small>{t("bb.helminth", { a: a.name, was: frame.abilities[hoverAbility.i]?.name ?? "" })}</small>
+      {/if}
       <small>{t("ab.maxRank")}</small>
       <p>{a.desc}</p>
       <AbilityStats ability={a} mods={stats} compact />
@@ -276,7 +294,7 @@
   <ModPicker
     {db}
     {frame}
-    kind={p.kind === "arcane" ? "arcane" : p.slot === "aura" ? "aura" : p.slot === "exilus" ? "exilus" : "slot"}
+    kind={p.kind === "arcane" ? "arcane" : isAura(p.slot) ? "aura" : p.slot === "exilus" ? "exilus" : "slot"}
     title={p.kind === "arcane" ? t("bb.arcaneN", { n: p.index + 1 }) : slotTitle(p.slot)}
     current={p.kind === "arcane" ? (build.arcanes[p.index] ?? null) : modAt(p.slot)}
     rank={p.kind === "arcane" ? null : rankAt(p.slot)}

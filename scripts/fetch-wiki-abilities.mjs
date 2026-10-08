@@ -18,6 +18,13 @@ for (const f of wfFrames) {
   if (f.productCategory !== "Suits" || !f.uniqueName.startsWith("/Lotus/Powersuits/")) continue;
   for (const a of f.abilities ?? []) if (a.uniqueName && a.name) wanted.set(a.uniqueName, a.name);
 }
+// Helminth's own abilities (Feast, Pillage...: not on any warframe), named by DE's English dictionary.
+const PE = "node_modules/warframe-public-export-plus";
+const dictEn = JSON.parse(readFileSync(`${PE}/dict.en.json`, "utf8"));
+const unshout = (s) => (s && s === s.toUpperCase() ? s.replace(/(\w)(\w*)/g, (_, a, r) => a + r.toLowerCase()) : s);
+for (const [id, a] of Object.entries(JSON.parse(readFileSync(`${PE}/ExportAbilities.json`, "utf8")))) {
+  if (/Helminth[^/]*Ability$/.test(id) && dictEn[a.name]) wanted.set(id, unshout(dictEn[a.name]));
+}
 
 // Wiki markup inside a value: {{D|Viral}} -> Viral, [[Armor|armor]] -> armor, '''x''' -> x.
 const plain = (s) =>

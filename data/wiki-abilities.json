@@ -1,5 +1,5 @@
 {
- "fetchedAt": "2026-10-05T14:17:51.326Z",
+ "fetchedAt": "2026-10-08T18:06:57.371Z",
  "abilities": {
   "/Lotus/Powersuits/Ninja/Abilities/GlaiveAbility": {
    "title": "Shuriken",
@@ -15092,6 +15092,345 @@
      "n": 10,
      "unit": "m",
      "label": "pull radius"
+    }
+   ]
+  },
+  "/Lotus/Powersuits/PowersuitAbilities/HelminthEfficiencyAbility": {
+   "title": "Energized Munitions",
+   "energy": {
+    "v": "50",
+    "n": 50,
+    "unit": "",
+    "label": ""
+   },
+   "strength": [],
+   "duration": [
+    {
+     "v": "5 s",
+     "n": 5,
+     "unit": "s",
+     "label": ""
+    }
+   ],
+   "range": [],
+   "misc": [
+    {
+     "v": "75 %",
+     "n": 75,
+     "unit": "%",
+     "label": "ammo efficiency"
+    }
+   ]
+  },
+  "/Lotus/Powersuits/PowersuitAbilities/HelminthCompanionAbility": {
+   "title": "Master's Summons",
+   "energy": {
+    "v": "50",
+    "n": 50,
+    "unit": "",
+    "label": ""
+   },
+   "strength": [],
+   "duration": [],
+   "range": [],
+   "misc": [
+    {
+     "v": "100 %",
+     "n": 100,
+     "unit": "%",
+     "label": "health and shield restore"
+    },
+    {
+     "v": "∞",
+     "label": "teleport range"
+    }
+   ]
+  },
+  "/Lotus/Powersuits/PowersuitAbilities/HelminthEnergyShareAbility": {
+   "title": "Voracious Metastasis",
+   "energy": {
+    "v": "50",
+    "n": 50,
+    "unit": "",
+    "label": ""
+   },
+   "strength": [
+    {
+     "v": "500",
+     "n": 500,
+     "unit": "",
+     "label": "health restored"
+    }
+   ],
+   "duration": [
+    {
+     "v": "10 s",
+     "n": 10,
+     "unit": "s",
+     "label": ""
+    }
+   ],
+   "range": [],
+   "misc": []
+  },
+  "/Lotus/Powersuits/PowersuitAbilities/HelminthHackAbility": {
+   "title": "Perspicacity",
+   "energy": {
+    "v": "25",
+    "n": 25,
+    "unit": "",
+    "label": ""
+   },
+   "strength": [],
+   "duration": [],
+   "range": [],
+   "misc": [
+    {
+     "v": "100%",
+     "n": 100,
+     "unit": "%",
+     "label": "hack chance"
+    },
+    {
+     "v": "∞",
+     "label": "chance duration"
+    }
+   ]
+  },
+  "/Lotus/Powersuits/PowersuitAbilities/HelminthMaxStatusAbility": {
+   "title": "Sickening Pulse",
+   "energy": {
+    "v": "50",
+    "n": 50,
+    "unit": "",
+    "label": ""
+   },
+   "strength": [],
+   "duration": [
+    {
+     "v": "2 s",
+     "n": 2,
+     "unit": "s",
+     "label": "expansion duration"
+    }
+   ],
+   "range": [
+    {
+     "v": "8 m",
+     "n": 8,
+     "unit": "m",
+     "label": "pulse initial radius"
+    }
+   ],
+   "misc": [
+    {
+     "v": "20 m/s",
+     "n": 20,
+     "unit": "mps",
+     "label": "expansion distance per sec"
+    },
+    {
+     "v": "1 status stack",
+     "n": 1,
+     "unit": "",
+     "label": "Heat, Slash, and Toxin"
+    }
+   ]
+  },
+  "/Lotus/Powersuits/PowersuitAbilities/HelminthProcBlockAbility": {
+   "title": "Hideous Resistance",
+   "energy": {
+    "v": "50",
+    "n": 50,
+    "unit": "",
+    "label": ""
+   },
+   "strength": [
+    {
+     "v": "10 Charges",
+     "n": 10,
+     "unit": "",
+     "label": ""
+    }
+   ],
+   "duration": [],
+   "range": [],
+   "misc": []
+  },
+  "/Lotus/Powersuits/PowersuitAbilities/HelminthShieldArmorAbility": {
+   "title": "Parasitic Armor",
+   "energy": {
+    "v": "50",
+    "n": 50,
+    "unit": "",
+    "label": ""
+   },
+   "strength": [
+    {
+     "v": "100 %",
+     "n": 100,
+     "unit": "%",
+     "label": "Shields to Armor conversion"
+    }
+   ],
+   "duration": [
+    {
+     "v": "25 s",
+     "n": 25,
+     "unit": "s",
+     "label": ""
+    }
+   ],
+   "range": [],
+   "misc": []
+  },
+  "/Lotus/Powersuits/PowersuitAbilities/HelminthShieldsAbility": {
+   "title": "Rebuild Shields",
+   "energy": {
+    "v": "50",
+    "n": 50,
+    "unit": "",
+    "label": ""
+   },
+   "strength": [],
+   "duration": [],
+   "range": [],
+   "misc": [
+    {
+     "v": "100 %",
+     "n": 100,
+     "unit": "%",
+     "label": "shields restored"
+    },
+    {
+     "v": "12 s",
+     "n": 12,
+     "unit": "s",
+     "label": "cooldown"
+    }
+   ]
+  },
+  "/Lotus/Powersuits/PowersuitAbilities/HelminthSpeedAbility": {
+   "title": "Infested Mobility",
+   "energy": {
+    "v": "50",
+    "n": 50,
+    "unit": "",
+    "label": ""
+   },
+   "strength": [
+    {
+     "v": "60 %",
+     "n": 60,
+     "unit": "%",
+     "label": "sprint speed bonus"
+    },
+    {
+     "v": "30 %",
+     "n": 30,
+     "unit": "%",
+     "label": "parkour velocity bonus"
+    }
+   ],
+   "duration": [
+    {
+     "v": "8 s",
+     "n": 8,
+     "unit": "s",
+     "label": ""
+    }
+   ],
+   "range": [],
+   "misc": []
+  },
+  "/Lotus/Powersuits/PowersuitAbilities/HelminthStatusAbility": {
+   "title": "Expedite Suffering",
+   "energy": {
+    "v": "50",
+    "n": 50,
+    "unit": "",
+    "label": ""
+   },
+   "strength": [
+    {
+     "v": "1 x",
+     "n": 1,
+     "unit": "x",
+     "label": "damage multiplier"
+    }
+   ],
+   "duration": [],
+   "range": [
+    {
+     "v": "12 m",
+     "n": 12,
+     "unit": "m",
+     "label": ""
+    }
+   ],
+   "misc": [
+    {
+     "v": "45°",
+     "n": 45,
+     "unit": "",
+     "label": "cone angle"
+    },
+    {
+     "v": "100%",
+     "n": 100,
+     "unit": "%",
+     "label": "stagger on hit"
+    }
+   ]
+  },
+  "/Lotus/Powersuits/PowersuitAbilities/HelminthStrengthAbility": {
+   "title": "Empower",
+   "energy": {
+    "v": "25",
+    "n": 25,
+    "unit": "",
+    "label": ""
+   },
+   "strength": [],
+   "duration": [],
+   "range": [],
+   "misc": [
+    {
+     "v": "50 %",
+     "n": 50,
+     "unit": "%",
+     "label": "strength bonus"
+    },
+    {
+     "v": "∞",
+     "label": "bonus duration"
+    }
+   ]
+  },
+  "/Lotus/Powersuits/PowersuitAbilities/HelminthTreasureAbility": {
+   "title": "Golden Instinct",
+   "energy": {
+    "v": "50",
+    "n": 50,
+    "unit": "",
+    "label": ""
+   },
+   "strength": [],
+   "duration": [],
+   "range": [
+    {
+     "v": "200m",
+     "n": 200,
+     "unit": "m",
+     "label": ""
+    }
+   ],
+   "misc": [
+    {
+     "v": "20s",
+     "n": 20,
+     "unit": "s",
+     "label": "cooldown"
     }
    ]
   }

@@ -43,6 +43,7 @@ export interface Frame {
   energy: number;
   sprint: number;
   aura: Polarity | null;
+  aura2?: Polarity | null; // a second aura slot (Jade)
   polarities: Polarity[];
   released: string | null;
   passive: string;
@@ -74,6 +75,7 @@ export interface Mod {
   stats: string;
   levels: string[]; // stat text per rank
   fx?: Partial<Record<string, number[]>>; // numeric effects per rank (FxKey for warframes, gear.ts keys for weapons)
+  cfx?: Partial<Record<string, number[]>>; // conditional ones ("On Kill:"), at full stacks
   set?: string;
   aura?: boolean;
   exilus?: boolean;
@@ -98,12 +100,15 @@ export interface Arcane {
   wf?: boolean; // usable on warframes
   use?: "primary" | "secondary" | "melee"; // weapon arcane: its weapon slot
   only?: string; // and only this primary kind (Bow / Shotgun)
+  fx?: Partial<Record<string, number[]>>; // numeric effects per rank, like Mod.fx
+  cfx?: Partial<Record<string, number[]>>; // conditional ones, at full stacks
   slug?: string;
   mname?: string;
 }
 
 export interface BuildRanks {
   aura: number | null;
+  aura2?: number | null;
   exilus: number | null;
   slots: (number | null)[];
 }
@@ -117,6 +122,7 @@ export interface Build {
   note: string;
   tags: string[];
   aura: string | null;
+  aura2?: string | null; // second aura slot (Jade)
   exilus: string | null;
   slots: (string | null)[];
   arcanes: string[];
@@ -137,6 +143,7 @@ export interface Build {
 
 export interface BuildPols {
   aura: Polarity | null;
+  aura2?: Polarity | null;
   exilus: Polarity | null;
   slots: (Polarity | null)[];
 }
@@ -148,7 +155,7 @@ export interface FramesDb {
   builds: Record<string, Build>;
   sets: Record<string, ModSet>;
   shards: Record<string, { item: string; name: string; icon: string | null }>; // "ACC_RED", "ACC_RED_MYTHIC"
-  helminth: Record<string, { name: string; icon: string | null }>; // Helminth's own abilities
+  helminth: Record<string, Ability>; // Helminth's own abilities
   infest?: Infest; // absent in data built before 2026-10-08
 }
 
@@ -160,8 +167,8 @@ export interface Infest {
   base: Record<string, string>; // warframe -> base suit (Invigoration offers name these)
 }
 
-// Name and icon of an ability by its game path: a frame's (subsumed through Helminth) or Helminth's own.
-let abilityIndex: Map<string, { name: string; icon: string | null }> | null = null;
+// An ability by its game path: a frame's (subsumed through Helminth) or Helminth's own.
+let abilityIndex: Map<string, Ability> | null = null;
 export function abilityById(db: FramesDb, id: string) {
   if (!abilityIndex) {
     abilityIndex = new Map(Object.entries(db.helminth ?? {}));
@@ -227,18 +234,19 @@ const AP_POLARITY: Record<string, Polarity> = {
 };
 
 // Configs A/B/C on the warframe from the inventory snapshot (empty configs skipped); mods this
-// database doesn't know are left out. Forma'd slots come from the snapshot by index; where innate
+// database doesn't know are left out. The game numbers slots 0-7 from the end (checked in game: index 7 is the
+// top-left card, 0 the bottom-right), so index k shows at 7 - k. Forma'd slots come from the snapshot by index; where innate
 // polarities sit the snapshot doesn't say, so each goes under a mod of its polarity (a config that
 // fits in the game has them there), the rest to empty slots.
 function gameBuilds(db: FramesDb, frameId: string): [string, Build][] {
   const lo = inventory.data?.loadouts?.[frameId];
   const frame = db.frames[frameId];
   if (!lo || !frame) return [];
-  const forma: BuildPols = { aura: frame.aura, exilus: null, slots: Array(8).fill(null) };
+  const forma: BuildPols = { aura: frame.aura, aura2: frame.aura2 ?? null, exilus: null, slots: Array(8).fill(null) };
   for (const [slot, ap] of lo.pol) {
     const p = AP_POLARITY[ap];
     if (!p) continue;
-    if (slot < 8) forma.slots[slot] = p;
+    if (slot < 8) forma.slots[7 - slot] = p;
     else if (slot === 8) forma.aura = p;
     else if (slot === 9) forma.exilus = p;
   }
@@ -264,10 +272,20 @@ function gameBuilds(db: FramesDb, frameId: string): [string, Build][] {
   const out: [string, Build][] = [];
   lo.cfg.forEach((c, i) => {
     const mod = (k: number) => (c.m[k] && db.mods[c.m[k]![0]] ? c.m[k]! : null);
-    const slots = Array.from({ length: 8 }, (_, k) => mod(k));
-    const aura = mod(8);
-    const exilus = mod(9);
-    const arcanes = [c.m[10], c.m[11]].filter((a): a is [string, number] => !!a && !!db.arcanes[a[0]]).map((a) => a[0]);
+    const slots = Array.from({ length: 8 }, (_, k) => mod(7 - k));
+    // Past the 8 slots: by what sits there (aura 8, exilus 9, arcanes 10-11; Jade's second aura has its own index).
+    const auras: [string, number][] = [];
+    let exilus: [string, number] | null = null;
+    const arcanes: string[] = [];
+    for (let k = 8; k < c.m.length; k++) {
+      const e = c.m[k];
+      if (!e) continue;
+      if (db.arcanes[e[0]]) arcanes.push(e[0]);
+      else if (!db.mods[e[0]]) continue;
+      else if (db.mods[e[0]].aura) auras.push(e);
+      else exilus ??= e;
+    }
+    const [aura, aura2] = auras;
     if (!aura && !exilus && !arcanes.length && slots.every((s) => !s)) return;
     const letter = String.fromCharCode(65 + i);
     out.push([
@@ -280,12 +298,13 @@ function gameBuilds(db: FramesDb, frameId: string): [string, Build][] {
         note: "",
         tags: [],
         aura: aura?.[0] ?? null,
+        aura2: frame.aura2 ? (aura2?.[0] ?? null) : undefined,
         exilus: exilus?.[0] ?? null,
         slots: slots.map((s) => s?.[0] ?? null),
         arcanes,
         source: "game",
         pols: layout(slots),
-        ranks: { aura: aura?.[1] ?? null, exilus: exilus?.[1] ?? null, slots: slots.map((s) => s?.[1] ?? null) },
+        ranks: { aura: aura?.[1] ?? null, aura2: aura2?.[1] ?? null, exilus: exilus?.[1] ?? null, slots: slots.map((s) => s?.[1] ?? null) },
         // A copy without XP (seen on a modded frame) takes the mastery list's affinity.
         rank: xpRank(lo.xp || (inventory.xpOf(frameId) ?? 0), true, 30),
         reactor: lo.potato,
@@ -296,6 +315,9 @@ function gameBuilds(db: FramesDb, frameId: string): [string, Build][] {
   });
   return out;
 }
+
+// Two-in-one warframes: the half that isn't an arsenal item of its own -> the one that is (owned, rank, XP).
+export const PAIR_OF: Record<string, string> = { "/Lotus/Powersuits/SiriusOrion/OrionSuit": "/Lotus/Powersuits/SiriusOrion/SiriusSuit" };
 
 // Mod drain at a rank (default max); a matching slot polarity halves it (rounded up), a mismatch adds 25%.
 // Auras give capacity instead: returned as a negative number, doubled in a matching aura slot.
@@ -325,6 +347,7 @@ export const SLOT_POLARITIES: Polarity[] = ["madurai", "vazarin", "naramon", "ze
 export function innatePols(frame: Frame): BuildPols {
   return {
     aura: frame.aura,
+    aura2: frame.aura2 ?? null,
     exilus: null,
     slots: Array.from({ length: 8 }, (_, i) => frame.polarities[i] ?? null),
   };
@@ -345,8 +368,9 @@ export function formaInfo(frame: Frame, pols: BuildPols | undefined) {
     return false;
   });
   const aura = !!p.aura && p.aura !== frame.aura;
+  const aura2 = !!frame.aura2 && !!p.aura2 && p.aura2 !== frame.aura2;
   const exilus = !!p.exilus;
-  return { count: slots.filter(Boolean).length + (aura ? 1 : 0) + (exilus ? 1 : 0), aura, exilus, slots };
+  return { count: slots.filter(Boolean).length + (aura ? 1 : 0) + (aura2 ? 1 : 0) + (exilus ? 1 : 0), aura, aura2, exilus, slots };
 }
 
 // Endo to fuse a mod from 0 to a rank: base by rarity × (2^rank − 1).
@@ -363,6 +387,7 @@ export function equipped(db: FramesDb, b: Build) {
     if (id && mod) out.push({ id, mod, rank: rankOf(mod, r), pol: pol ?? null, kind });
   };
   add(b.aura, b.pols?.aura, b.ranks?.aura, "aura");
+  add(b.aura2 ?? null, b.pols?.aura2, b.ranks?.aura2, "aura");
   add(b.exilus, b.pols?.exilus, b.ranks?.exilus, "exilus");
   b.slots.forEach((m, i) => add(m, b.pols?.slots[i], b.ranks?.slots[i], "slot"));
   return out;
@@ -401,16 +426,27 @@ export function modFx(db: FramesDb, mod: Mod, rank: number, counts: Record<strin
   return out;
 }
 
-// Warframe stats at rank 30 with the build's mods (unconditional stat lines only).
-export function buildStats(db: FramesDb, frame: Frame, b: Build) {
+// Warframe stats at rank 30 with the build's mods and arcanes (max rank); conditional effects at full stacks
+// only with `cond`.
+export function buildStats(db: FramesDb, frame: Frame, b: Build, cond = false) {
   const counts = setCounts(db, b);
   const sum: Record<FxKey, number> = { str: 0, dur: 0, rng: 0, eff: 0, hp: 0, hpFlat: 0, sh: 0, shFlat: 0, shMul: 0, arm: 0, en: 0, spd: 0 };
   let shMul = 1;
+  const addRaw = (fx: Partial<Record<string, number[]>> | undefined, rank: number) => {
+    for (const [k, v] of Object.entries(fx ?? {}) as [FxKey, number[]][]) if (k in sum && k !== "shMul") sum[k] += v[rank] ?? 0;
+  };
   for (const e of equipped(db, b)) {
     for (const [k, v] of Object.entries(modFx(db, e.mod, e.rank, counts)) as [FxKey, number][]) {
       if (k === "shMul") shMul *= v;
       else sum[k] += v;
     }
+    if (cond) addRaw(e.mod.cfx, e.rank);
+  }
+  for (const id of b.arcanes) {
+    const a = db.arcanes[id];
+    if (!a) continue;
+    addRaw(a.fx, a.max);
+    if (cond) addRaw(a.cfx, a.max);
   }
   // Shards: strength / duration add to the mods' percent; health, shield, armor, energy are flat after everything.
   const sh = shardFx(b.shards);
@@ -461,7 +497,8 @@ const betterMod = (a: Mod, b: Mod) => (!!a.slug !== !!b.slug ? !!a.slug : a.max 
 // Mods that fit a slot: auras only in the aura slot, exilus-capable mods in exilus, augments only
 // for their frame. Same-named duplicates (the game has a few) are collapsed.
 export function modsForSlot(db: FramesDb, frame: Frame, kind: "aura" | "exilus" | "slot") {
-  const base = frame.en.replace(/ Prime$/, "").toUpperCase();
+  // Augments name the frame as WFCD does: no "Prime", no own-half suffix ("Sirius & Orion (Orion)").
+  const base = frame.en.replace(/ \(.*\)$/, "").replace(/ Prime$/, "").toUpperCase();
   const best = new Map<string, [string, Mod]>();
   for (const [id, m] of Object.entries(db.mods)) {
     if (kind === "aura" ? !m.aura : m.aura) continue;
@@ -510,6 +547,7 @@ export function assembleImport(db: FramesDb, dec: DecodedBuild, fallbackFrame: s
   const ranks: BuildRanks = { aura: null, exilus: null, slots: Array(8).fill(null) };
   const slots: (string | null)[] = Array(8).fill(null);
   let aura: string | null = null;
+  let aura2: string | null = null;
   let exilus: string | null = null;
   const arc: string[] = [];
 
@@ -527,6 +565,10 @@ export function assembleImport(db: FramesDb, dec: DecodedBuild, fallbackFrame: s
       slots[i] = modId!;
       pols.slots[i] = pol;
       ranks.slots[i] = e.rank;
+    } else if (db.mods[modId!].aura && aura) {
+      aura2 = modId!; // Jade's second aura
+      pols.aura2 = pol;
+      ranks.aura2 = e.rank;
     } else if (db.mods[modId!].aura) {
       aura = modId!;
       pols.aura = pol;
@@ -539,7 +581,7 @@ export function assembleImport(db: FramesDb, dec: DecodedBuild, fallbackFrame: s
   });
 
   return {
-    build: frameId ? { frame: frameId, aura, exilus, slots, arcanes: arc, pols, ranks, source: "overframe", url: dec.url ?? undefined } : null,
+    build: frameId ? { frame: frameId, aura, ...(aura2 ? { aura2 } : {}), exilus, slots, arcanes: arc, pols, ranks, source: "overframe", url: dec.url ?? undefined } : null,
     frameId,
     unknown,
     total: dec.entries.length,

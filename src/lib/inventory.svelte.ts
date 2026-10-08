@@ -402,7 +402,10 @@ class Inventory {
     this.error = "";
     try {
       const text = await invoke<string>("inv_session_fetch");
-      return this.#keep(text, auto);
+      const ok = this.#keep(text, auto);
+      // «Коллекция» takes the account id from the same session when the log hasn't shown it yet.
+      if (ok) import("$lib/profile.svelte").then((m) => m.profile.inventoryRead()).catch(() => {});
+      return ok;
     } catch (e) {
       this.error = String(e);
       return false;

@@ -351,11 +351,20 @@
         {t("coll.helpIntro")}
         {#if profile.status === "error"}<span class="err">{t("coll.errorPrefix", { error: profile.error })}</span>{/if}
       </p>
-      <ol>
-        <li>{t("coll.help1a")} <b>warframe.com</b> {t("coll.help1b")} <code>warframe.com/user#gdprSettings</code></li>
-        <li>{t("coll.help2a")} <b>«Share Loadout Information with the Warframe Arsenal»</b> — {t("coll.help2b")}</li>
-        <li>{t("coll.help3")}</li>
-      </ol>
+      {#if profile.status === "noaccount"}
+        <p class="small">{t("coll.idWays")}</p>
+        <ol>
+          <li>{t("coll.idWayInv")} <a href="/settings">{t("coll.idWayInvLink")}</a></li>
+          <li>{t("coll.idWayRelic")}</li>
+          <li>{t("coll.idWayManual")}</li>
+        </ol>
+      {:else}
+        <ol>
+          <li>{t("coll.help1a")} <b>warframe.com</b> {t("coll.help1b")} <code>warframe.com/user#gdprSettings</code></li>
+          <li>{t("coll.help2a")} <b>«Share Loadout Information with the Warframe Arsenal»</b> — {t("coll.help2b")}</li>
+          <li>{t("coll.help3")}</li>
+        </ol>
+      {/if}
       <p class="small">
         {t("coll.idHint")}
       </p>

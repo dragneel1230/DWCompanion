@@ -222,6 +222,15 @@ pub fn inv_session_game_running() -> bool {
     game_pid().is_some()
 }
 
+// The account id alone from the saved pair (the nonce never leaves Rust): the public profile
+// (getProfileViewingData) takes it, so «Коллекция» works without a relic opened since the log began.
+#[tauri::command]
+pub fn inv_session_account() -> Option<String> {
+    let s = load_session()?;
+    let id = s.authz.strip_prefix("?accountId=")?.get(..ACCOUNT_LEN)?;
+    id.bytes().all(|b| b.is_ascii_hexdigit()).then(|| id.to_string())
+}
+
 #[tauri::command]
 pub fn inv_session_clear() {
     clear_session();

@@ -6,6 +6,7 @@
   import { POLARITY_RU, SLOT_POLARITIES, type FramesDb, type Mod, type Polarity } from "$lib/frames";
   import {
     arcanesForGear,
+    condSources,
     DMG_TYPES,
     gearCapacity,
     gearForma,
@@ -24,6 +25,7 @@
   import ModPicker from "./ModPicker.svelte";
   import FloatTip from "./FloatTip.svelte";
   import PolIcon from "./PolIcon.svelte";
+  import { statOpts } from "$lib/statOpts.svelte";
 
   let { ctx, fdb, gear, build = $bindable(), editable = false }: { ctx: GearCtx; fdb: FramesDb; gear: Gear; build: GearBuild; editable?: boolean } = $props();
 
@@ -34,8 +36,12 @@
 
   const forma = $derived(gearForma(gear, build.pols));
   const cap = $derived(gearCapacity(ctx, gear, build));
-  const ws = $derived(weaponStats(ctx, gear, build));
-  const ss = $derived(suitStats(ctx, gear, build));
+  const opt = $derived({ cond: statOpts.value.cond, charged: statOpts.value.charged });
+  const ws = $derived(weaponStats(ctx, gear, build, opt));
+  const ss = $derived(suitStats(ctx, gear, build, opt));
+  const condNames = $derived(condSources(ctx, build));
+  // Base numbers the stats compare against: the charged shot when that's shown.
+  const wb = $derived(gear.w && opt.charged && gear.w.chg ? { ...gear.w, dmg: gear.w.chg.dmg, sc: gear.w.chg.sc } : gear.w);
   const used = $derived(new Set([build.exilus, build.stance, ...build.slots, ...build.arcanes].filter((x): x is string => !!x)));
   const cols = $derived(gear.slots === 10 ? 5 : 4);
 
@@ -143,9 +149,21 @@
       <span>{isWeapon(gear.kind) ? t("gb.catalyst") : t("bb.reactor")}</span>
       <input type="checkbox" checked={build.catalyst !== false} disabled={!editable} onchange={(e) => (build.catalyst = e.currentTarget.checked)} />
     </label>
+    {#if gear.w?.chg}
+      <label class="toggle" title={t("gb.chargedHint")}>
+        <span>{t("gb.charged")}</span>
+        <input type="checkbox" checked={statOpts.value.charged} onchange={(e) => statOpts.set({ charged: e.currentTarget.checked })} />
+      </label>
+    {/if}
+    {#if condNames.length}
+      <label class="toggle" title={t("bb.condHint", { list: condNames.join(", ") })}>
+        <span>{t("bb.cond")}</span>
+        <input type="checkbox" checked={statOpts.value.cond} onchange={(e) => statOpts.set({ cond: e.currentTarget.checked })} />
+      </label>
+    {/if}
 
-    {#if ws && gear.w}
-      {@const w = gear.w}
+    {#if ws && wb}
+      {@const w = wb}
       <dl class="stats">
         {@render stat(t("gb.dmg"), num(ws.total, 1), num(w.dmg.reduce((a, x) => a + x, 0), 1))}
         {@render stat(t("gb.cc"), pct(ws.cc), pct(w.cc))}

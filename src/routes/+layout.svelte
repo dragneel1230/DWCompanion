@@ -14,6 +14,7 @@
   import { overlaySettings } from "$lib/overlaySettings.svelte";
   import { hubSettings } from "$lib/hubSettings.svelte";
   import { appSettings } from "$lib/appSettings.svelte";
+  import { uiScale } from "$lib/uiScale.svelte";
   import { wfmStatus } from "$lib/wfm.svelte";
   import { startGoalWatch } from "$lib/goals/watch.svelte";
   import { startInventoryAuto } from "$lib/inventory.svelte";
@@ -73,6 +74,8 @@
   const current = $derived(SECTION[page.url.pathname] ?? page.url.pathname);
   // Windows over the game (reward overlay, hub) render their page alone, without the app shell.
   const bare = page.url.pathname === "/overlay" || page.url.pathname === "/hub";
+  // Interface scale: the app and the hub; the reward overlay maps screen pixels and stays 1x.
+  if (page.url.pathname !== "/overlay") uiScale.start();
   // Saved settings reach the Rust side once, from the main window.
   if (!bare) {
     overlaySettings.sync();

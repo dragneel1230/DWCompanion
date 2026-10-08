@@ -27,6 +27,7 @@ export interface WeaponBase {
   rel?: number; // reload, s
   trig?: string;
   range?: number; // melee, m
+  chg?: { dmg: number[]; sc: number }; // charge weapons: the charged shot (dmg / sc above are the uncharged one, as the arsenal shows)
 }
 
 export interface Gear {
@@ -208,23 +209,46 @@ export const DMG_TYPES = [
 const COMBINE: Record<string, number> = { "3,4": 7, "3,5": 8, "3,6": 9, "4,5": 10, "4,6": 11, "5,6": 12 };
 const combo = (a: number, b: number) => COMBINE[[a, b].sort((x, y) => x - y).join(",")];
 
-function modSums(ctx: GearCtx, g: Gear, b: GearBuild) {
+// Options of the stat panel (statOpts.svelte.ts): conditional effects at full stacks, the charged shot.
+export interface StatOpt {
+  cond?: boolean;
+  charged?: boolean;
+}
+
+// Mods in slot order, then the arcane (max rank); conditional effects (cfx) only with `cond`.
+function modSums(ctx: GearCtx, g: Gear, b: GearBuild, opt: StatOpt = {}) {
   const sum: Record<string, number> = {};
   const order: number[] = []; // elements in slot order
-  for (const e of gearEquipped(ctx, b)) {
-    const fx = e.mod.fx ?? {};
+  const add = (fx: Partial<Record<string, number[]>>, rank: number) => {
     for (const [k, arr] of Object.entries(fx)) {
-      const v = arr?.[e.rank] ?? 0;
+      const v = arr?.[rank] ?? 0;
       if (!v || k === "frb") continue;
       if (k === "fr" && g.type === "Bow" && fx.frb) {
-        sum.fr = (sum.fr ?? 0) + (fx.frb[e.rank] ?? 0);
+        sum.fr = (sum.fr ?? 0) + (fx.frb[rank] ?? 0);
         continue;
       }
       if (/^e\d+$/.test(k) && !order.includes(Number(k.slice(1)))) order.push(Number(k.slice(1)));
       sum[k] = (sum[k] ?? 0) + v;
     }
+  };
+  for (const e of gearEquipped(ctx, b)) {
+    add(e.mod.fx ?? {}, e.rank);
+    if (opt.cond && e.mod.cfx) add(e.mod.cfx, e.rank);
+  }
+  for (const id of b.arcanes) {
+    const a = ctx.arcanes[id];
+    if (!a) continue;
+    if (a.fx) add(a.fx, a.max);
+    if (opt.cond && a.cfx) add(a.cfx, a.max);
   }
   return { sum, order };
+}
+
+// Mods / arcanes of the build whose conditional effects the "conditional" option adds.
+export function condSources(ctx: GearCtx, b: GearBuild): string[] {
+  const out = gearEquipped(ctx, b).filter((e) => e.mod.cfx).map((e) => e.mod.name);
+  for (const id of b.arcanes) if (ctx.arcanes[id]?.cfx) out.push(ctx.arcanes[id].name);
+  return out;
 }
 
 export interface WeaponStats {
@@ -245,10 +269,11 @@ export interface WeaponStats {
 
 // Damage: base × (1 + Damage mods); physical mods scale only their own type; an elemental mod adds its % of the
 // modded base total. Elements combine in slot order, the weapon's innate ones last (or into the same one).
-export function weaponStats(ctx: GearCtx, g: Gear, b: GearBuild): WeaponStats | null {
-  const w = g.w;
-  if (!w) return null;
-  const { sum, order } = modSums(ctx, g, b);
+export function weaponStats(ctx: GearCtx, g: Gear, b: GearBuild, opt: StatOpt = {}): WeaponStats | null {
+  const w0 = g.w;
+  if (!w0) return null;
+  const w = opt.charged && w0.chg ? { ...w0, dmg: w0.chg.dmg, sc: w0.chg.sc } : w0;
+  const { sum, order } = modSums(ctx, g, b, opt);
   const pct = (k: string) => (sum[k] ?? 0) / 100;
   const dm = 1 + pct("dmg");
   const base = [...w.dmg, ...Array(Math.max(0, 15 - w.dmg.length)).fill(0)];
@@ -293,9 +318,9 @@ export function weaponStats(ctx: GearCtx, g: Gear, b: GearBuild): WeaponStats | 
 }
 
 // Companions, archwings, necramechs: max-rank numbers with the mods' percent.
-export function suitStats(ctx: GearCtx, g: Gear, b: GearBuild) {
+export function suitStats(ctx: GearCtx, g: Gear, b: GearBuild, opt: StatOpt = {}) {
   if (!g.d) return null;
-  const { sum } = modSums(ctx, g, b);
+  const { sum } = modSums(ctx, g, b, opt);
   const pct = (k: string) => 1 + (sum[k] ?? 0) / 100;
   return {
     health: g.d.health * pct("hp") + (sum.hpFlat ?? 0),
@@ -319,6 +344,8 @@ const AP: Record<string, Polarity> = {
 export const GAME_PREFIX = "game:";
 
 // Configs A/B/C as the game keeps them: slots by index, then (by what sits there) stance, exilus, arcane.
+// The game numbers the mod slots from the end: index 0 is the last slot on screen (checked in game on a
+// warframe: index 7 is the top-left card), so slot k shows at slots - 1 - k; forma'd slots likewise.
 // Innate polarities' places are not in the snapshot: each goes under the dearest mod of its polarity.
 export function gameGearBuilds(ctx: GearCtx, id: string): [string, GearBuild][] {
   const lo = inventory.data?.loadouts?.[id];
@@ -328,7 +355,7 @@ export function gameGearBuilds(ctx: GearCtx, id: string): [string, GearBuild][] 
   for (const [slot, ap] of lo.pol) {
     const p = AP[ap];
     if (!p) continue;
-    if (slot < g.slots) forma.slots[slot] = p;
+    if (slot < g.slots) forma.slots[g.slots - 1 - slot] = p;
     else if (g.stance && slot === 8) forma.stance = p;
     else forma.exilus = p;
   }
@@ -343,7 +370,7 @@ export function gameGearBuilds(ctx: GearCtx, id: string): [string, GearBuild][] 
       if (ctx.arcanes[e[0]]) arcanes.push(e[0]);
       else if (!ctx.mods[e[0]]) return;
       else if (ctx.mods[e[0]].stance) stance = e;
-      else if (k < g.slots) slots[k] = e;
+      else if (k < g.slots) slots[g.slots - 1 - k] = e;
       else exilus = e;
     });
     if (!exilus && !stance && !arcanes.length && slots.every((s) => !s)) return;
