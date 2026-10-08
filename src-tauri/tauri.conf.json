@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "DWCompanion",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "identifier": "com.dragneel.dwcompanion",
   "build": {
     "beforeDevCommand": "pnpm dev",
