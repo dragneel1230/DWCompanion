@@ -16,6 +16,7 @@ export interface AbilityStat {
   n?: number;
   u?: "x" | "%" | "s" | "m" | "ps" | "mps"; // ps: per second, mps: meters per second
   l?: string; // label in the file's language
+  max?: number; // a cap the build can't push it past (the wiki's "… cap" line)
 }
 
 export interface Ability {
@@ -25,8 +26,11 @@ export interface Ability {
   desc: string;
   icon: string | null;
   // Absent for the few abilities the wiki has no numbers for.
-  stats?: { cost?: number; str: AbilityStat[]; dur: AbilityStat[]; rng: AbilityStat[]; misc: AbilityStat[]; wiki: string };
+  stats?: AbilityStats;
+  // As subsumed on another warframe through Helminth, when that differs (weaker numbers, a note): data/helminth.json.
+  helm?: { stats: AbilityStats; note: string };
 }
+type AbilityStats = { cost?: number; str: AbilityStat[]; dur: AbilityStat[]; rng: AbilityStat[]; misc: AbilityStat[]; wiki: string };
 
 // Energy cost with Ability Efficiency: base × (2 − efficiency), efficiency capped at 175% (DE's rule).
 export const abilityCost = (base: number, eff: number) => base * (2 - Math.min(175, eff) / 100);

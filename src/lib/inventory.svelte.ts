@@ -34,6 +34,8 @@ export interface InvData {
   foundry?: InvFoundry[];
   // Helminth (InfestedFoundry), when the player has it. Absent before 2026-10-08.
   helminth?: InvHelminth;
+  // Weekly activities (the «Сейчас» weekly panel). Absent before 2026-10-09.
+  week?: InvWeek;
   credits: number;
   plat: number;
   ducats: number;
@@ -62,6 +64,20 @@ export interface InvHelminth {
   offers: string[]; // this week's Invigoration warframes (base suits)
   // Invigorated warframes now: warframe -> [offensive, utility, until ms]. Fields as SpaceNinjaServer names them.
   invig: Record<string, [string, string, number]>;
+}
+
+// What the player did this week, as the inventory keeps it (field names as SpaceNinjaServer documents them;
+// a field shows up only once the player did the activity at least once).
+export interface InvWeek {
+  netra?: [number, number]; // Netracells done in the period, when the period resets (ms)
+  descent: Record<string, [number, number]>; // DM_COH_NORMAL / DM_COH_HARD -> [floor claimed, expires ms]
+  archon: string[]; // SortieId of the last Archon hunt rewarded
+  sortie: string[]; // the same for the Sortie
+  // 1999 calendar: season, its iteration and version, last completed day index, upgrades picked this year.
+  cal?: { season: string; it: number; ver: number; day: number; up: string[] };
+  circuit: Record<string, { choices: string[]; earn: number; claim: number; until: number }>; // EXC_NORMAL / EXC_HARD
+  nw: string[]; // Nightwave challenge ids done (SeasonChallengeHistory)
+  incarnon: string[]; // weapons with an Incarnon Genesis installed (Features bit 512)
 }
 
 type Raw = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -129,10 +145,12 @@ export function parseInventory(text: string): InvData {
   for (const k of STACKS) for (const x of j[k] ?? []) if (x?.ItemType) items[x.ItemType] = (items[x.ItemType] ?? 0) + (x.ItemCount ?? 1);
   const arsenal = new Set<string>();
   const gear: Record<string, [number, boolean]> = {};
+  const incarnon = new Set<string>();
   for (const k of ARSENAL)
     for (const x of j[k] ?? []) {
       if (!x?.ItemType) continue;
       arsenal.add(x.ItemType);
+      if ((Number(x.Features) || 0) & 512) incarnon.add(x.ItemType);
       const g = (gear[x.ItemType] ??= [0, false]);
       g[0] = Math.max(g[0], Number(x.Polarized) || 0);
       g[1] ||= ((Number(x.Features) || 0) & 1) === 1;
@@ -198,6 +216,30 @@ export function parseInventory(text: string): InvData {
         invig,
       }
     : undefined;
+  const sortieIds = (v: unknown) => (Array.isArray(v) ? v.map((r: Raw) => r?.SortieId?.$oid).filter((x): x is string => typeof x === "string") : []);
+  const cp = j.CalendarProgress as Raw | undefined;
+  const week: InvWeek = {
+    netra: j.EntratiVaultCountResetDate ? [Number(j.EntratiVaultCountLastPeriod) || 0, dateMs(j.EntratiVaultCountResetDate)] : undefined,
+    descent: Object.fromEntries(((j.DescentRewards ?? []) as Raw[]).filter((d) => d?.Category).map((d) => [d.Category, [Number(d.FloorClaimed) || 0, dateMs(d.Expiry)]])),
+    archon: sortieIds(j.LastLiteSortieReward),
+    sortie: sortieIds(j.LastSortieReward),
+    cal: cp?.SeasonProgress
+      ? {
+          season: String(cp.SeasonProgress.SeasonType ?? ""),
+          it: Number(cp.Iteration) || 0,
+          ver: Number(cp.Version) || 0,
+          day: Number(cp.SeasonProgress.LastCompletedDayIdx ?? -1),
+          up: (cp.YearProgress?.Upgrades ?? []).filter((u: unknown) => typeof u === "string"),
+        }
+      : undefined,
+    circuit: Object.fromEntries(
+      ((j.EndlessXP ?? []) as Raw[])
+        .filter((e) => e?.Category)
+        .map((e) => [e.Category, { choices: (e.Choices ?? []).filter((c: unknown) => typeof c === "string"), earn: Number(e.Earn) || 0, claim: Number(e.Claim) || 0, until: dateMs(e.Expiry) }]),
+    ),
+    nw: ((j.SeasonChallengeHistory ?? []) as Raw[]).map((c) => c?.id).filter((x): x is string => typeof x === "string"),
+    incarnon: [...incarnon],
+  };
   return {
     at: oidTime(j.LastInventorySync) || Date.now(),
     got: Date.now(),
@@ -211,6 +253,7 @@ export function parseInventory(text: string): InvData {
     xp,
     foundry,
     helminth,
+    week,
     credits: j.RegularCredits ?? 0,
     plat: (j.PremiumCredits ?? 0) + (j.PremiumCreditsFree ?? 0),
     ducats: j.PrimeTokens ?? 0,

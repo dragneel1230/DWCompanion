@@ -1,29 +1,30 @@
-// World data of the hub (fissures, timers) kept across hub opens and app restarts.
+// World data of the hub (fissures, timers, this week's activities) kept across hub opens and app restarts.
 // The hub unmounts its content when hidden, so state lives here: the cached copy is shown at once,
 // then refreshed in the background. Rows that did not change keep their objects, so a keyed {#each}
 // only adds the new ones and drops the gone ones.
-import { getFissures, getTimers, type Fissure, type Timers } from "$lib/api";
+import { getFissures, getTimers, getWeek, type Fissure, type Timers, type Week } from "$lib/api";
 
 const KEY = "dwc.hub.world";
 
 interface Saved {
   fissures: Fissure[];
   timers: Timers | null;
+  week?: Week | null;
 }
 
 function load(): Saved {
   try {
     const s = JSON.parse(localStorage.getItem(KEY) ?? "null") as Saved | null;
-    if (s) return { fissures: s.fissures.filter((f) => f.expiry > Date.now()), timers: s.timers };
+    if (s) return { fissures: s.fissures.filter((f) => f.expiry > Date.now()), timers: s.timers, week: s.week ?? null };
   } catch {
     // storage unavailable or broken
   }
-  return { fissures: [], timers: null };
+  return { fissures: [], timers: null, week: null };
 }
 
 function save() {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ fissures: world.fissures, timers: world.timers }));
+    localStorage.setItem(KEY, JSON.stringify({ fissures: world.fissures, timers: world.timers, week: world.week }));
   } catch {
     // storage unavailable
   }
@@ -34,6 +35,7 @@ const saved = load();
 export const world = $state({
   fissures: saved.fissures,
   timers: saved.timers,
+  week: saved.week ?? null,
   loaded: saved.fissures.length > 0, // something to show, even if from the cache
   error: "",
 });
@@ -56,6 +58,7 @@ export function refreshWorld(): Promise<void> {
       world.loaded = true;
     }),
     getTimers().then((t) => (world.timers = t)),
+    getWeek().then((w) => (world.week = w)),
   ])
     .then(() => {
       world.error = "";

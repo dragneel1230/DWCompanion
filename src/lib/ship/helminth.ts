@@ -32,7 +32,7 @@ export interface HelminthFrame {
   frame: string;
   name: string;
   icon: string;
-  ability: { id: string; name: string; icon: string };
+  ability: { id: string; name: string; icon: string; note: string }; // note: how the subsumed version differs
   cost: Cost[]; // subsume
   inject: Cost[]; // each injection
   time: number;
@@ -56,7 +56,7 @@ export function helminthFrames(db: FramesDb, inv: InvData, h: InvHelminth): Helm
       frame,
       name: f.name,
       icon: iconUrl(f.icon),
-      ability: { id: s.ab, name: a.name, icon: iconUrl(a.icon) },
+      ability: { id: s.ab, name: a.name, icon: iconUrl(a.icon), note: a.helm?.note ?? "" },
       cost: costs(s.cost, h),
       inject: costs(s.inject, h),
       time: s.time,

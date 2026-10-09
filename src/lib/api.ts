@@ -199,6 +199,18 @@ interface WorldState {
   PrimeVaultTraders?: { Activation: WsDate; Expiry: WsDate; Manifest?: { ItemType: string }[] }[];
   Invasions?: WsInvasion[];
   Alerts?: WsAlert[];
+  LiteSorties?: { _id: { $oid: string }; Expiry: WsDate; Boss: string }[];
+  Sorties?: { _id: { $oid: string }; Expiry: WsDate }[];
+  Descents?: { Expiry: WsDate; Challenges?: unknown[] }[];
+  EndlessXpSchedule?: { Expiry: WsDate; CategoryChoices?: { Category: string; Choices: string[] }[] }[];
+  KnownCalendarSeasons?: {
+    Expiry: WsDate;
+    Season: string;
+    YearIteration: number;
+    Version: number;
+    Days: { day: number; events: { type: string; challenge?: string; reward?: string; upgrade?: string }[] }[];
+  }[];
+  SeasonInfo?: { ActiveChallenges?: { _id: { $oid: string }; Daily?: boolean; Expiry: WsDate; Challenge: string }[] };
 }
 
 type WsReward = { countedItems?: { ItemType: string; ItemCount: number }[]; items?: string[]; credits?: number };
@@ -274,6 +286,44 @@ export async function getTimers(): Promise<Timers> {
           relics: (pv.Manifest ?? []).filter((m) => m.ItemType.includes("/Projections/")).length,
         }
       : null,
+  };
+}
+
+// This week's activities (the «Сейчас» weekly panel; the player's progress is in the inventory, InvWeek).
+export interface Week {
+  archon: { id: string; boss: string; until: number } | null;
+  descent: { floors: number; until: number } | null;
+  circuit: { normal: string[]; hard: string[]; until: number } | null;
+  calendar: { season: string; it: number; ver: number; until: number; days: { type: string; ids: string[] }[] } | null;
+  nightwave: { id: string; key: string; daily: boolean; until: number }[];
+}
+
+export async function getWeek(): Promise<Week> {
+  const ws = await worldState();
+  const lite = ws.LiteSorties?.[0];
+  const d = ws.Descents?.[0];
+  const ex = ws.EndlessXpSchedule?.[0];
+  const cal = ws.KnownCalendarSeasons?.[0];
+  const choices = (cat: string) => ex?.CategoryChoices?.find((c) => c.Category === cat)?.Choices ?? [];
+  return {
+    archon: lite ? { id: lite._id.$oid, boss: lite.Boss, until: ms(lite.Expiry) } : null,
+    descent: d ? { floors: d.Challenges?.length ?? 0, until: ms(d.Expiry) } : null,
+    circuit: ex ? { normal: choices("EXC_NORMAL"), hard: choices("EXC_HARD"), until: ms(ex.Expiry) } : null,
+    calendar: cal
+      ? {
+          season: cal.Season,
+          it: cal.YearIteration,
+          ver: cal.Version,
+          until: ms(cal.Expiry),
+          days: cal.Days.map((x) => ({
+            type: x.events[0]?.type ?? "",
+            ids: x.events.map((e) => e.challenge ?? e.reward ?? e.upgrade ?? "").filter(Boolean),
+          })),
+        }
+      : null,
+    nightwave: (ws.SeasonInfo?.ActiveChallenges ?? [])
+      .filter((c) => ms(c.Expiry) > Date.now())
+      .map((c) => ({ id: c._id.$oid, key: c.Challenge.split("/").pop() ?? c.Challenge, daily: !!c.Daily, until: ms(c.Expiry) })),
   };
 }
 

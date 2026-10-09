@@ -69,7 +69,8 @@
   <a class="card" class:ok={sub !== "missing" && enough(list)} class:dim={sub === "missing"} href="/frame?id={encodeURIComponent(f.frame)}">
     <div class="art"><img src={f.icon} alt="" loading="lazy" /></div>
     <b title={f.name}>{f.name}</b>
-    <span class="ab" title={f.ability.name}>{#if f.ability.icon}<img src={f.ability.icon} alt="" />{/if}<span>{f.ability.name}</span></span>
+    <span class="ab" title={f.ability.note ? `${f.ability.name}
+${f.ability.note}` : f.ability.name}>{#if f.ability.icon}<img src={f.ability.icon} alt="" />{/if}<span>{f.ability.name}</span>{#if f.ability.note}<i class="weak">*</i>{/if}</span>
     {@render costs(list)}
     {#if sub === "can"}
       <span class="tag" class:good={f.prime} class:warn={!f.prime}>{f.prime ? t("helm.primeKept") : t("helm.onlyCopy")}</span>
@@ -508,6 +509,11 @@
     font-size: 12px;
     color: var(--text-dim);
     min-width: 0;
+  }
+  .ab .weak {
+    flex: none;
+    font-style: normal;
+    color: var(--accent);
   }
   .ab img {
     width: 18px;

@@ -1,12 +1,13 @@
 <script lang="ts">
   // «Сейчас» (app page and hub tab): where I am (mission / lobby from EE.log with the squad's relics),
-  // open fissures with how many relics of each tier I hold, and the world's timers. Every timer and
+  // open fissures with how many relics of each tier I hold, the world's timers and this week's activities. Every timer and
   // Baro's goods open over it ("time" / "baro" views).
   import type { Priority } from "$lib/overlaySettings.svelte";
   import type { Mission, View } from "$lib/hub/hub";
   import MissionPanel from "$lib/hub/Mission.svelte";
   import Fissures from "$lib/hub/Fissures.svelte";
   import World from "$lib/hub/World.svelte";
+  import Weekly from "$lib/hub/Weekly.svelte";
 
   let {
     mission,
@@ -20,7 +21,10 @@
 <div class="now">
   <div class="cell" style:--d="0ms"><MissionPanel {mission} {game} {priority} {onopen} /></div>
   <div class="cell" style:--d="30ms"><Fissures {now} /></div>
-  <div class="cell" style:--d="60ms"><World {now} {onopen} /></div>
+  <div class="cell side" style:--d="60ms">
+    <World {now} {onopen} />
+    <Weekly {now} />
+  </div>
 </div>
 
 <style>
@@ -43,6 +47,13 @@
   }
   .cell > :global(.panel) {
     flex: 1;
+  }
+  /* World and the week share the column; each scrolls inside. */
+  .side {
+    gap: 16px;
+  }
+  .side > :global(.panel) {
+    flex: 1 1 0;
   }
   @keyframes rise {
     from {

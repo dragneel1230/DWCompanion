@@ -8,13 +8,16 @@
   import { getDb, iconUrl, itemName } from "$lib/db";
   import { loadDrops, type DropsDb } from "$lib/drops";
   import { loadCraft, type CraftDb } from "$lib/craft";
-  import { buildIndex, findFarm, hintOf, popular, FARM_KIND, FARM_KINDS, FARM_KINDS_PL, type FarmEntry, type FarmKind } from "$lib/farm";
+  import { buildIndex, findFarm, hintOf, parentsOf, popular, FARM_KIND, FARM_KINDS, FARM_KINDS_PL, type FarmEntry, type FarmKind } from "$lib/farm";
   import type { Mission } from "$lib/hub/hub";
   import FarmResource from "$lib/components/farm/FarmResource.svelte";
   import FarmCraft from "$lib/components/farm/FarmCraft.svelte";
   import FarmPrime from "$lib/components/farm/FarmPrime.svelte";
   import FarmHere from "$lib/components/farm/FarmHere.svelte";
   import GoalButton from "$lib/goals/GoalButton.svelte";
+  import UpLink from "$lib/components/UpLink.svelte";
+  import OwnBadges from "$lib/components/OwnBadges.svelte";
+  import { heldCount } from "$lib/ownership.svelte";
   import { farmState, setFarmMode, type FarmMode, type FarmSel } from "./farmState.svelte";
 
   let {
@@ -80,6 +83,24 @@
     const e = index.find((x) => x.id === sel.id && x.kind !== "resource");
     return c ? { name: c.name, en: c.en, icon: c.icon, tag: e ? FARM_KIND[e.kind] : FARM_KIND.part, craft: true, craftAlso: false, rarity: undefined } : null;
   });
+  // What the opened part goes into (a prime part blueprint: through the component it builds): a way back up.
+  const up = $derived.by(() => {
+    if (!sel || !craft || sel.kind === "resource") return [];
+    let id = sel.id;
+    if (sel.kind === "prime") {
+      const comp = id.replace(/Blueprint$/, "Component");
+      if (craft.items[comp]) id = comp;
+    } else if (craft.items[id]?.kind !== "part") return [];
+    return parentsOf(craft, id).map((pid) => ({ id: pid, name: craft!.items[pid].name, icon: craft!.items[pid].icon }));
+  });
+  // Mine: things that level get the arsenal / mastered marks, the rest how many are held (with the blueprint).
+  const LEVELS = new Set<FarmKind>(["frame", "weapon", "companion"]);
+  const levels = (kind: FarmKind | FarmSel["kind"]) => LEVELS.has(kind as FarmKind);
+  const held = (id: string) => {
+    const c = craft?.items[id];
+    return heldCount(id, c ? (c.r ?? c.bp) : null);
+  };
+  const selKind = $derived(sel?.kind === "craft" ? (index.find((x) => x.id === sel.id && x.kind !== "resource")?.kind ?? "part") : (sel?.kind ?? "part"));
   const RARITY = labels({ common: "res.rar.common", uncommon: "res.rar.uncommon", rare: "res.rar.rare", legendary: "res.rar.legendary" }) as Record<string, string>;
   const picks = $derived(db && craft ? popular(craft, db) : []);
 
@@ -151,6 +172,11 @@
                 <span class="hint">{hintOf(e, db, craft)}</span>
               </small>
             </span>
+            {#if levels(e.kind)}
+              <OwnBadges id={e.id} size={18} />
+            {:else if held(e.id)}
+              <span class="held" title={t("own.held", { n: held(e.id)! })}>×{held(e.id)}</span>
+            {/if}
           </button>
         {:else}
           <p class="muted">{t("search.none")}</p>
@@ -165,8 +191,15 @@
   <section class="panel view">
     <div class="body">
       {#if sel && hero && db && craft}
-        {#if onback}
-          <button class="back" onclick={onback}><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg>{t("common.back")}</button>
+        {#if onback || up.length}
+          <div class="nav">
+            {#if onback}
+              <button class="back" onclick={onback}><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" /></svg>{t("common.back")}</button>
+            {/if}
+            {#each up as p (p.id)}
+              <UpLink name={p.name} icon={p.icon} onclick={() => open("craft", p.id)} />
+            {/each}
+          </div>
         {/if}
         {#key sel.kind + sel.id}
           <div class="swap">
@@ -179,6 +212,11 @@
                   <span class="tag">{hero.tag}</span>
                   {#if hero.craft}<span class="tag craft">{hero.craftAlso ? t("farm.craftAlsoTag") : t("farm.craftTag")}</span>{/if}
                   {#if hero.rarity && RARITY[hero.rarity]}<span class="tag">{RARITY[hero.rarity]}</span>{/if}
+                  {#if levels(selKind)}
+                    <OwnBadges id={sel.id} />
+                  {:else if held(sel.id)}
+                    <span class="tag have">{t("own.held", { n: held(sel.id)! })}</span>
+                  {/if}
                 </div>
               </div>
               {#if sel.kind === "craft" && craft.items[sel.id] && craft.items[sel.id].kind !== "part" && craft.items[sel.id].kind !== "resource"}
@@ -360,11 +398,17 @@
   .compact .view .body {
     padding: 16px 22px 22px;
   }
+  .nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: -6px 0 12px -6px;
+  }
   .back {
     display: flex;
     align-items: center;
     gap: 4px;
-    margin: -6px 0 10px -6px;
     padding: 4px 10px 4px 6px;
     border-radius: 8px;
     font-size: 13px;
@@ -393,6 +437,19 @@
   .hero .goal {
     margin-left: auto;
     align-self: flex-start;
+  }
+  .held {
+    flex: none;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    color: var(--accent);
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+  .tag.have {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
   }
   .tag.craft {
     color: var(--accent);

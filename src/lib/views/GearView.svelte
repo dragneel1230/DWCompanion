@@ -12,6 +12,7 @@
   import { rankOf } from "$lib/mastery";
   import { owned } from "$lib/owned.svelte";
   import GearBoard from "$lib/components/GearBoard.svelte";
+  import ShareButton from "$lib/components/ShareButton.svelte";
   import { buildsSel, pickGear } from "./buildsSel.svelte";
 
   let { kind }: { kind: GearTab } = $props();
@@ -162,6 +163,7 @@
               <small>{build ? build.author : t("gb.bareHint")}</small>
             </div>
             {#if build}
+              <ShareButton get={() => ({ k: "g", b: $state.snapshot(build) })} />
               <a class="act primary" href="/gear?id={enc(itemId)}&build={enc(buildId)}">{isMine ? t("build.edit") : t("build.copyEdit")}</a>
             {:else}
               <a class="act primary" href="/gear?id={enc(itemId)}&new=1">{t("gb.make")}</a>

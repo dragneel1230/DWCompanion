@@ -9,6 +9,7 @@
   import { emptyGearBuild, gameGearBuilds, gearEquipped, gearForma, loadGear, type GearBuild, type GearCtx } from "$lib/gear";
   import { gearBuilds } from "$lib/gearBuilds.svelte";
   import GearBoard from "$lib/components/GearBoard.svelte";
+  import ShareButton from "$lib/components/ShareButton.svelte";
 
   let ctx = $state<GearCtx | null>(null);
   let fdb = $state<FramesDb | null>(null);
@@ -66,6 +67,7 @@
           </div>
           <div class="actions">
             {#if own}<button class="act" onclick={remove}>{t("build.delete")}</button>{/if}
+            {#if !empty}<ShareButton get={() => (build ? { k: "g", b: { ...$state.snapshot(build), item: id, title: title.trim() } } : null)} />{/if}
             <button class="act primary" onclick={save} disabled={empty}>{own ? t("common.save") : t("frame.saveToMine")}</button>
           </div>
         </div>

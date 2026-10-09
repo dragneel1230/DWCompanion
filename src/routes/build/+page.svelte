@@ -9,6 +9,7 @@
   import ModCard from "$lib/components/ModCard.svelte";
   import ArcaneCard from "$lib/components/ArcaneCard.svelte";
   import BuildBoard from "$lib/components/BuildBoard.svelte";
+  import ShareButton from "$lib/components/ShareButton.svelte";
 
   let db = $state<FramesDb | null>(null);
   loadFrames().then((d) => (db = d));
@@ -75,6 +76,7 @@
           <div class="actions">
             {#if build.url}<a class="act" href={build.url} target="_blank" rel="noreferrer">Overframe ↗</a>{/if}
             {#if own}<button class="act danger" onclick={remove}>{t("build.delete")}</button>{/if}
+            <ShareButton get={() => ({ k: "f", b: $state.snapshot(build) })} />
             <a class="act primary" href={editUrl}>{own ? t("build.edit") : t("build.copyEdit")}</a>
           </div>
         </div>

@@ -9,6 +9,7 @@
   import { loadMastery, summarize, mrPlan, duration, CAT_RU, CAT_ORDER, MR_NAME, perRank, type MasteryDb, type MasteryCat, type Row, type Status } from "$lib/mastery";
   import { loadBulk, bulkSell } from "$lib/api";
   import Plat from "$lib/components/Plat.svelte";
+  import OwnBadges from "$lib/components/OwnBadges.svelte";
   import CollSyndicates from "./CollSyndicates.svelte";
   import CollStats from "./CollStats.svelte";
   import { record, readHistory, type History } from "./history";
@@ -630,24 +631,29 @@
         <div class="grid">
           {#each g.rows as r (r.id)}
             <button class="card {r.status}" class:prime={r.it.prime} onclick={() => (open = r)} title={r.it.name}>
-              {#if r.status === "mastered"}<span class="check">✓</span>{/if}
               {#if goals.get(r.id)}<span class="in-goal" title={t("goal.pick.inGoals")}>⚑</span>{/if}
-              {#if r.status === "progress"}
-                <span class="ring-lvl" style:--p="{(r.rank / r.it.max) * 100}%"><b>{r.rank}</b></span>
-              {/if}
+              <!-- Fixed-size marks instead of words: in the arsenal, mastered (or the level ring while levelling). -->
+              <span class="marks">
+                <OwnBadges owned={inventory.data ? inventory.inArsenal(r.id) : null} mastered={r.status === "mastered"} />
+                {#if r.status === "progress"}
+                  <span class="ring-lvl" style:--p="{(r.rank / r.it.max) * 100}%" title={t("coll.lvl", { a: r.rank, b: r.it.max })}><b>{r.rank}</b></span>
+                {/if}
+              </span>
               <div class="art"><img src={iconUrl(r.it.icon)} alt="" loading="lazy" /></div>
               <b>{r.it.name}</b>
               <!-- Grouped by category the category says nothing new: the arsenal says more (forma, reactor, sold). -->
               <small class="meta-line">{[group ? null : CAT_RU[r.it.cat], r.it.mr ? `MR ${r.it.mr}` : null].filter(Boolean).join(" · ")}</small>
               {#if inventory.data && r.status !== "none"}
                 {@const g = gearOf(r.id, r.it.cat)}
-                {#if g}<small class="gear-line" class:gone={g.gone}>{g.text}</small>{/if}
+                {#if g && !g.gone}<small class="gear-line">{g.text}</small>{/if}
               {/if}
               {#if r.status === "none"}
                 {@const it = invTag(r.id)}
                 {#if it}<small class="inv-tag">{it.k === "parts" ? t("coll.inv.parts", { a: it.a, b: it.b }) : t(`coll.inv.${it.k}`)}</small>{/if}
               {/if}
-              <small class="st"><span class="dot"></span>{r.status === "none" ? t("coll.st.none") : r.status === "mastered" ? t("coll.st.mastered") : `${t("coll.lvl", { a: r.rank, b: r.it.max })} · +${fmt(r.left)}`}</small>
+              {#if r.status !== "mastered"}
+                <small class="st"><span class="dot"></span>{r.status === "none" ? t("coll.st.none") : `${t("coll.lvl", { a: r.rank, b: r.it.max })} · +${fmt(r.left)}`}</small>
+              {/if}
               {#if sort === "price" && setPrice(r.id) != null}
                 <span class="price-tag"><img src="/icons/platinum.png" alt="" />{setPrice(r.id)}</span>
               {/if}
@@ -1254,26 +1260,16 @@
   .card.prime:hover {
     border-color: rgba(201, 166, 107, 0.5);
   }
-  .check {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 20px;
-    height: 20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    background: rgba(111, 207, 151, 0.16);
-    color: var(--good);
-    font-size: 11px;
-    font-weight: 700;
-  }
-  /* Level ring of an item in progress: conic fill around the rank number. */
-  .ring-lvl {
+  .marks {
     position: absolute;
     top: 7px;
     right: 7px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  /* Level ring of an item in progress: conic fill around the rank number. */
+  .ring-lvl {
     width: 26px;
     height: 26px;
     border-radius: 50%;

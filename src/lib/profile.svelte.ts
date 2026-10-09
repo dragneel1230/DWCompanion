@@ -62,6 +62,11 @@ export interface Stats {
 
 type Raw = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
+// DE appends a platform glyph from the Private Use Area (U+E000 = PC …) that no font draws.
+export function cleanName(name: string): string {
+  return name.replace(/[-]/g, "").trim();
+}
+
 // Standing still allowed today, by limit bin: "DailyAffiliationCetus" -> CETUS, "DailyAffiliation" -> NORMAL.
 function dailyOf(r: Raw): Record<string, number> {
   const out: Record<string, number> = {};
@@ -117,7 +122,9 @@ type Status = "idle" | "loading" | "ok" | "noaccount" | "empty" | "error";
 
 function readCache(): Profile | null {
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? "null");
+    const p: Profile | null = JSON.parse(localStorage.getItem(KEY) ?? "null");
+    if (p) p.name = cleanName(p.name ?? "");
+    return p;
   } catch {
     return null;
   }
@@ -208,7 +215,7 @@ class ProfileStore {
       const p: Profile = {
         at: Date.now(),
         account: this.account,
-        name: r.DisplayName ?? "",
+        name: cleanName(r.DisplayName ?? ""),
         mr: r.PlayerLevel ?? 0,
         xp: Object.fromEntries(xpInfo.map((x) => [x.ItemType, x.XP])),
         missions: (r.Missions ?? []).map((m: { Tag: string; Tier?: number }) => ({ tag: m.Tag, sp: m.Tier === 1 })),

@@ -1,5 +1,5 @@
 {
- "fetchedAt": "2026-10-08T18:06:57.371Z",
+ "fetchedAt": "2026-10-09T09:45:54.838Z",
  "abilities": {
   "/Lotus/Powersuits/Ninja/Abilities/GlaiveAbility": {
    "title": "Shuriken",
@@ -926,6 +926,9 @@
      "unit": "",
      "label": ""
     }
+   ],
+   "helminth": [
+    "However, subsumed Sentient Wrath only strikes in a frontal cone and does not inflict Tau status effects."
    ]
   },
   "/Lotus/Powersuits/Sentient/Abilities/SentientSummonAbility": {
@@ -1417,7 +1420,10 @@
      "label": ""
     }
    ],
-   "misc": []
+   "misc": [],
+   "helminth": [
+    "However, Subsumed Fractured Blast's damage is reduced to 125 / 150 / 200 / 250, Health Orb drop chance reduced to 25%, and Energy Orb drop chance reduced to 10%."
+   ]
   },
   "/Lotus/Powersuits/Geode/Abilities/GeodeShellAbility": {
    "title": "Preserving Shell",
@@ -1811,6 +1817,10 @@
      "unit": "s",
      "label": "cooldown"
     }
+   ],
+   "helminth": [
+    "However, Subsumed Evade's maximum duration is reduced to 15 seconds and is capped at 25 seconds.",
+    "Currently this helminth is bugged and the maximum duration is not capped at 25 seconds."
    ]
   },
   "/Lotus/Powersuits/Frumentarius/Abilities/FrumentariusSniperAbility": {
@@ -1934,6 +1944,10 @@
      "unit": "m",
      "label": ""
     }
+   ],
+   "helminth": [
+    "However, Subsumed Wyrd Scythe's slow is reduced to 15 / 18 / 22 / 26%.",
+    "Slow is capped to 71% achievable with 272% Ability Strength."
    ]
   },
   "/Lotus/Powersuits/Dagath/Abilities/DagathCurseAbility": {
@@ -2471,6 +2485,10 @@
      "unit": "%",
      "label": "total heat removal for Immolation"
     }
+   ],
+   "helminth": [
+    "Armor reduction per cast is capped at 75%, achievable with 100% Ability Strength.",
+    "Healing Flame will not generate Overguard on other Warframes."
    ]
   },
   "/Lotus/Powersuits/Ember/Abilities/EmberInfernoAbility": {
@@ -3152,6 +3170,9 @@
      "unit": "m",
      "label": "maximum spawn range"
     }
+   ],
+   "helminth": [
+    "However, Subsumed Self Portrait's maximum Damage Reduction caps at 75% and does not apply Inkblot."
    ]
   },
   "/Lotus/Powersuits/Inkblot/Abilities/InkBalloonAbility": {
@@ -4180,6 +4201,10 @@
      "unit": "",
      "label": "limit of areas per element"
     }
+   ],
+   "helminth": [
+    "The damage dealt by Subsumed Thermal Sunder is equivalent to 50% of Gauss's battery: 225 / 300 / 375 / 450 Cold damage and 450 / 600 / 750 / 900 Heat damage.",
+    "However, the damage scaling from Heat status is capped to 10x of the ability's damage."
    ]
   },
   "/Lotus/Powersuits/Runner/Abilities/RunnerRedlineAbility": {
@@ -4393,6 +4418,11 @@
      "unit": "s",
      "label": "explosion cooldown"
     }
+   ],
+   "helminth": [
+    "Other Warframes are omitted from the swallowed enemy requirement, due to their inability to cast Feast.",
+    "However, Subsumed Nourish does not provide healing, the explosion only applies 1 Viral stack, the energy multiplier is reduced to 1.3 / 1.39 / 1.48 / 1.6x, and Viral weapon bonus damage is reduced to +24% / +30% / +36% / +45%.",
+    "Subsumed energy bonus is calculated with the following formula: Ability Strength)}}"
    ]
   },
   "/Lotus/Powersuits/Devourer/Abilities/DevourerBowlAbility": {
@@ -5037,6 +5067,10 @@
      "unit": "%",
      "label": "status cleanse on cast"
     }
+   ],
+   "helminth": [
+    "Subsumed Pillage uses 50 energy instead of shields.",
+    "Does not generate shields for Inaros, Nidus, or Kullervo."
    ]
   },
   "/Lotus/Powersuits/IronFrame/Abilities/IronFrameAuraAbility": {
@@ -5812,6 +5846,9 @@
      "unit": "s",
      "label": ""
     }
+   ],
+   "helminth": [
+    "However, Subsumed Ophanim Eyes will not have the ability to revive allies from Bleedout."
    ]
   },
   "/Lotus/Powersuits/Khora/Abilities/KhoraCrackAbility": {
@@ -6296,6 +6333,11 @@
      "unit": "s",
      "label": ""
     }
+   ],
+   "helminth": [
+    "However, Subsumed Wrathful Advance's range is reduced to 10 / 11 / 11.5 / 12.5 meters and melee critical chance bonus reduced to 25% / 50% / 75% / 100%",
+    "(only the targeting, the hold to teleport range is unchanged)",
+    "The bonus critical chance also applies to Exalted Weapons, including formerly pseudo-exalted abilities such as Landslide, Slash Dash, Shattered Lash and Whipclaw."
    ]
   },
   "/Lotus/Powersuits/PaxDuviricus/Abilities/PaxBladesAbility": {
@@ -6554,6 +6596,10 @@
      "unit": "mps",
      "label": "charge speed"
     }
+   ],
+   "helminth": [
+    "Subsumed Vial Rush includes the 0 energy cost, 5 second cooldown, as well as 3 Cold status proc stacks per application from the explosion and residue pools.",
+    "Subsumed Vial Rush does not include the hold-cast to imbue the next ability cast with Cold damage."
    ]
   },
   "/Lotus/Powersuits/Alchemist/Abilities/AlchemistTransmuteAbility": {
@@ -7078,6 +7124,9 @@
      "unit": "",
      "label": "angle"
     }
+   ],
+   "helminth": [
+    "However, Subsumed Pull's pull range is reduced to 7.5 / 10 / 11 / 12.5 meters."
    ]
   },
   "/Lotus/Powersuits/Mag/Abilities/BulletAttractorAbility": {
@@ -7615,6 +7664,9 @@
      "unit": "%",
      "label": "damage reduction cap"
     }
+   ],
+   "helminth": [
+    "However, Subsumed Eclipse's damage reduction caps at 75% and damage bonus is reduced to 2% / 9% / 15% / 30%."
    ]
   },
   "/Lotus/Powersuits/Harlequin/Abilities/Prism": {
@@ -8448,6 +8500,10 @@
      "unit": "s",
      "label": "release delay for unaffected targets"
     }
+   ],
+   "helminth": [
+    "However, Subsumed Larva's range is reduced to 5.33 / 6 / 6.67 / 8 meters.",
+    "When Larva is injected onto a Prime Warframe, it will gain the appearance of Nidus Prime's Larva."
    ]
   },
   "/Lotus/Powersuits/Infestation/Abilities/InfestLinkAbility": {
@@ -8726,6 +8782,10 @@
      "unit": "s",
      "label": ""
     }
+   ],
+   "helminth": [
+    "The Ability Strength bonus is diminished to 10% / 13% / 17% / 20% and energy restore is reduced to 6.67 / 8 / 8.67 / 10.",
+    "The Ability Strength bonus cap is diminished to 100%, which is still doubled if Invigorated by ."
    ]
   },
   "/Lotus/Powersuits/Nokko/Abilities/NokkoShrinkAbility": {
@@ -9478,6 +9538,9 @@
      "unit": "%",
      "label": "initial target Armor and Overguard removal"
     }
+   ],
+   "helminth": [
+    "However, Subsumed Smite's percentage damage cap is reduced to 50% and the AoE percentage damage cap is reduced to 20%, achievable with 143% and 200% Ability Strength respectively."
    ]
   },
   "/Lotus/Powersuits/Paladin/Abilities/StairwayToHeavenAbility": {
@@ -11100,7 +11163,11 @@
      "label": ""
     }
    ],
-   "misc": []
+   "misc": [],
+   "helminth": [
+    "However, Subsumed Roar's damage bonus is reduced to 2% / 9% / 15% / 30%.",
+    "For example, With 253% Can only get 75.9% bonus"
+   ]
   },
   "/Lotus/Powersuits/Rhino/Abilities/RhinoStompAbility": {
    "title": "Rhino Stomp",
@@ -11619,6 +11686,9 @@
      "unit": "%",
      "label": "Death Well gain per second per enemy"
     }
+   ],
+   "helminth": [
+    "When infused into Lavos, Gloom is altered to cost 0 energy to cast and sustain, lasts for 12 seconds that triggers a 10 second cooldown after deactivation."
    ]
   },
   "/Lotus/Powersuits/Wraith/Abilities/WraithReaperAbility": {
@@ -13018,6 +13088,9 @@
      "unit": "s",
      "label": ""
     }
+   ],
+   "helminth": [
+    "However, Subsumed Remedium's healing is reduced to 24% / 28% / 31% / 35% and does not summon Uriel's Demons."
    ]
   },
   "/Lotus/Powersuits/DemonFrame/Abilities/DemonFrameCloneAbility": {
@@ -13270,7 +13343,10 @@
     }
    ],
    "range": [],
-   "misc": []
+   "misc": [],
+   "helminth": [
+    "However, Subsumed Warcry's attack speed bonus is reduced to 9% / 12% / 15% / 30%."
+   ]
   },
   "/Lotus/Powersuits/Berserker/Abilities/ShieldBashAbility": {
    "title": "Paralysis",
@@ -14448,6 +14524,9 @@
      "unit": "",
      "label": "armor bonus cap"
     }
+   ],
+   "helminth": [
+    "However, Subsumed Defy's armor bonus is capped at 750."
    ]
   },
   "/Lotus/Powersuits/MonkeyKing/Abilities/MonkeyStaffAbility": {

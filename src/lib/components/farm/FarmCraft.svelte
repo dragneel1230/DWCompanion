@@ -6,7 +6,7 @@
   import { getDb, iconUrl, RARITY_RU } from "$lib/db";
   import { pct, type DropsDb } from "$lib/drops";
   import { totals, whereShort, buildTime, type CraftDb, type CraftItem } from "$lib/craft";
-  import { srcText, relicPart, parentsOf, orderSrc } from "$lib/farm";
+  import { srcText, relicPart, orderSrc } from "$lib/farm";
   import CraftTree from "$lib/components/CraftTree.svelte";
 
   let {
@@ -19,7 +19,6 @@
   const c = $derived(craft.items[id]);
   const tot = $derived(totals(craft, db, id));
   const isPart = $derived(c.kind === "part");
-  const parents = $derived(isPart ? parentsOf(craft, id) : []);
   const wiki = (en: string) => `https://wiki.warframe.com/w/${encodeURIComponent(en.replace(/ /g, "_"))}`;
 
   // Relics that hold a prime blueprint, active first.
@@ -155,19 +154,6 @@
     </div>
   </div>
 
-  {#if parents.length}
-    <div class="step">
-      <span class="n">↑</span>
-      <div>
-        <div class="lead">{t("farm.partOf")}</div>
-        <div class="main">
-          {#each parents as pid (pid)}
-            <button class="link" onclick={() => onopen("craft", pid)}>{craft.items[pid].name}</button>
-          {/each}
-        </div>
-      </div>
-    </div>
-  {/if}
 </div>
 
 <div class="section-title">{t("farm.fullTree")}</div>
@@ -245,9 +231,5 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .link {
-    color: var(--accent);
-    font-size: 14px;
   }
 </style>

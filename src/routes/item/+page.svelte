@@ -6,6 +6,7 @@
   import Plat from "$lib/components/Plat.svelte";
   import Cur from "$lib/components/Cur.svelte";
   import MarketPanel from "$lib/components/MarketPanel.svelte";
+  import UpLink from "$lib/components/UpLink.svelte";
 
   const db = getDb();
   const id = $derived(page.url.searchParams.get("id") ?? "");
@@ -40,13 +41,13 @@
 
 {#if item}
   <div class="page">
+    {#if set}<div class="up"><UpLink name={set.name} icon={set.icon} href="/set?id={encodeURIComponent(item.set ?? '')}" /></div>{/if}
     <header class="hero">
       <img src={iconUrl(item.icon)} alt="" />
       <div>
         <h1>{itemName(item)}</h1>
         <div class="sub">
           <span>{item.en}</span>
-          {#if set}<a class="tag" href="/set?id={encodeURIComponent(item.set ?? '')}">{t("detail.setOf", { name: set.name })}</a>{/if}
           <Facts kind="item" {id} price={false} />
         </div>
       </div>
@@ -81,6 +82,9 @@
 {/if}
 
 <style>
+  .up {
+    margin-bottom: 12px;
+  }
   .price {
     margin-left: auto;
     text-align: right;

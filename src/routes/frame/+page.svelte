@@ -8,6 +8,7 @@
   import BuildBoard from "$lib/components/BuildBoard.svelte";
   import ImportBuild from "$lib/components/ImportBuild.svelte";
   import GoalButton from "$lib/goals/GoalButton.svelte";
+  import ShareButton from "$lib/components/ShareButton.svelte";
 
   let db = $state<FramesDb | null>(null);
   loadFrames().then((d) => (db = d));
@@ -91,6 +92,7 @@
           <div class="actions">
             <GoalButton {id} />
             {#if editId}<button class="act" onclick={reset}>{t("frame.new")}</button>{/if}
+            {#if !empty}<ShareButton get={() => (build ? { k: "f", b: { ...$state.snapshot(build), frame: id, title: title.trim() } } : null)} />{/if}
             <button class="act primary" onclick={save} disabled={empty}>{own ? t("common.save") : t("frame.saveToMine")}</button>
           </div>
         </div>

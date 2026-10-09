@@ -84,7 +84,8 @@ function abilityStats(uniqueName, LANG, deCost) {
     for (const n of abilityNames) if (r.includes(n)) r = r.split(n).join(`«${abilityRu.get(n)}»`);
     return r;
   };
-  const list = (xs) => xs.map((x) => ({ v: x.v, n: x.n, u: x.unit || undefined, l: label(x.label) }));
+  // `le`: the wiki's English label, kept until caps are linked (finishStats).
+  const list = (xs) => xs.map((x) => ({ v: x.v, n: x.n, u: x.unit || undefined, l: label(x.label), le: x.label || undefined }));
   return {
     cost: deCost || w.energy?.n, // DE has 0 for a few (Spores): the wiki then
     str: list(w.strength),
@@ -93,6 +94,58 @@ function abilityStats(uniqueName, LANG, deCost) {
     misc: list(w.misc),
     wiki: w.title,
   };
+}
+
+// Subsumed (Helminth) versions: data/helminth.json changes the stats and adds a note. The wiki's `helminth` text is
+// compared with the one the entry was written from: a new or changed note on the wiki is reported, not guessed.
+const helmFix = existsSync("data/helminth.json") ? read("data/helminth.json") : {};
+for (const [id, a] of Object.entries(wikiAbilities)) {
+  const wiki = a.helminth?.join(" ");
+  if (!wiki) continue;
+  if (!helmFix[id]) console.warn(`  helminth: no data/helminth.json entry for ${a.title}: ${wiki}`);
+  else if (helmFix[id].wiki !== wiki) console.warn(`  helminth: the wiki changed ${a.title}: ${wiki}`);
+}
+const FIELD = { str: "str", dur: "dur", rng: "rng", misc: "misc" };
+// The wiki lists a cap as its own line: "damage reduction cap" next to "damage reduction". The capped stat gets
+// `max` (the app stops it there, whatever the Strength). Copies, so the base and the Helminth version stay apart.
+function finishStats(stats) {
+  if (!stats) return stats;
+  const out = { ...stats };
+  for (const f of ["str", "dur", "rng", "misc"]) out[f] = stats[f].map((x) => ({ ...x }));
+  for (const c of out.misc) {
+    const m = c.le?.match(/^(.*?)\s+caps?$/i);
+    if (!m || c.n == null || c.u !== "%") continue;
+    const s = out.str.find((x) => x.le?.toLowerCase() === m[1].toLowerCase() && x.u === "%");
+    if (s) s.max = c.n;
+  }
+  for (const f of ["str", "dur", "rng", "misc"]) for (const x of out[f]) delete x.le;
+  return out;
+}
+function helminthOf(uniqueName, LANG, stats) {
+  const fx = helmFix[uniqueName];
+  if (!fx || !stats) return undefined;
+  const out = { ...stats, str: [...stats.str], dur: [...stats.dur], rng: [...stats.rng], misc: [...stats.misc] };
+  const at = (key) => {
+    const [f, i] = key.split(".");
+    const list = out[FIELD[f]];
+    if (!list?.[+i]) throw new Error(`helminth.json ${fx.title}: no stat ${key}`);
+    return [list, +i];
+  };
+  for (const [key, val] of Object.entries(fx.set ?? {})) {
+    const [list, i] = at(key);
+    const old = list[i];
+    // The number inside the wiki's text ("500 Impact and Slash damage") follows the new value.
+    const v = old.v.replace(/[+-]?\d[\d,]*(?:\.\d+)?(?:\s*[-–]\s*\d[\d,]*(?:\.\d+)?)?/, String(val));
+    list[i] = typeof val === "number" ? { ...old, v, n: val } : { ...old, v, n: Number(val) || undefined };
+  }
+  // Dropped ones go last-index-first so the indexes in `set` above stay right.
+  for (const key of [...(fx.drop ?? [])].sort().reverse()) {
+    const [list, i] = at(key);
+    list.splice(i, 1);
+  }
+  for (const x of fx.add ?? []) out[FIELD[x.in]].push({ v: x.v, n: x.n, u: x.u, l: x.l?.[LANG] ?? x.l?.en });
+  if (fx.cost != null) out.cost = fx.cost;
+  return { stats: finishStats(out), note: fx.note?.[LANG] ?? fx.note?.en ?? "" };
 }
 
 for (const LANG of ["ru", "en"]) {
@@ -183,13 +236,15 @@ for (const f of wfFrames) {
     passive: clean(ru.passiveDescription ?? f.passiveDescription),
     abilities: (f.abilities ?? []).map((a) => {
       const r = ruAbilities.get(a.uniqueName);
+      const stats = abilityStats(a.uniqueName, LANG, pe.abilities?.find((x) => x.uniqueName === a.uniqueName)?.energyRequiredToActivate);
       return {
         id: a.uniqueName, // Helminth: a config's AbilityOverride names the ability by it
         name: r?.abilityName ?? a.name,
         en: a.name,
         desc: clean(r?.description ?? a.description),
         icon: img(pe.abilities?.find((x) => x.uniqueName === a.uniqueName)?.icon),
-        stats: abilityStats(a.uniqueName, LANG, pe.abilities?.find((x) => x.uniqueName === a.uniqueName)?.energyRequiredToActivate),
+        helm: helminthOf(a.uniqueName, LANG, stats), // as subsumed on another warframe, when that differs
+        stats: finishStats(stats),
       };
     }),
   };
@@ -444,7 +499,7 @@ for (const [id, a] of Object.entries(pe("ExportAbilities.json"))) {
     en: unshout(dictEn[a.name] ?? name),
     desc: desc ? clean(desc) : "",
     icon: img(a.icon),
-    stats: abilityStats(id, LANG, a.energyRequiredToActivate),
+    stats: finishStats(abilityStats(id, LANG, a.energyRequiredToActivate)),
   };
 }
 

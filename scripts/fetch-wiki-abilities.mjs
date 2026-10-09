@@ -4,7 +4,8 @@
 // Ranks are separated by "/", the last one is the max rank; several stats in one field are split by <br>.
 // Checked against the game (Octavia Prime, 112% str / 222% dur / 202% rng): Mallet 2.5x → 2.8x, 20 s → 44.4 s.
 // Output: data/wiki-abilities.json { fetchedAt, abilities: { "<uniqueName>": { title, energy, strength, duration, range, misc } } },
-// each stat [{ v: "2.5x", n: 2.5, unit: "x", label: "damage multiplier" }]; read by build-frames.mjs.
+// each stat [{ v: "2.5x", n: 2.5, unit: "x", label: "damage multiplier" }], `helminth`: how the subsumed version differs
+// (English lines); read by build-frames.mjs.
 // Offline: the old file stays. 50 pages per request (MediaWiki API).
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
@@ -72,7 +73,18 @@ function infobox(text) {
       .filter((x) => x && x.v && !/^n\/?a$/i.test(x.v));
   };
   const energy = field("energy")[0];
-  return { energy, strength: field("strength"), duration: field("duration"), range: field("range"), misc: field("misc") };
+  // What changes when another warframe gets it through Helminth: the infobox's prose, the lines that say how
+  // (not "subsuming X offers…", which slots it replaces, augments). data/helminth.json turns them into numbers.
+  const hm = body.match(/\n\s*\|\s*helminth\s*=([\s\S]*?)(?=\n\s*\|\s*[a-z_]+\s*=|\n\}\})/i);
+  const helminth = (hm?.[1] ?? "")
+    .split("\n")
+    .filter((l) => l.trim() && !/will offer|can only replace|when placed on|augment/i.test(l))
+    .map((l) => plain(l.replace(/^[*:\s]+/, "").replace(/<!--[\s\S]*?-->/g, "").replace(/\{\{\s*Stat\s*\|[^}]*icon\s*=\s*only[^}]*\}\}/gi, "")))
+    .filter(Boolean);
+  return {
+    energy, strength: field("strength"), duration: field("duration"), range: field("range"), misc: field("misc"),
+    ...(helminth.length ? { helminth } : {}),
+  };
 }
 
 async function fetchPages(titles) {

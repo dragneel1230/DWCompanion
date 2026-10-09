@@ -1,0 +1,280 @@
+{
+ "_": "Subsumed (Helminth) versions of warframe abilities: how they differ from the original. Numbers and wording from the wiki infobox `helminth` field (scripts/fetch-wiki-abilities.mjs); `wiki` is that text as of the last check: build-frames.mjs warns when the wiki changes it. set: {\"str.0\": value} replaces a stat (field.index as in data/wiki-abilities.json), drop: stats that do not apply, add: extra stats, cost: energy, note: shown with the ability.",
+ "/Lotus/Powersuits/Sentient/Abilities/SentientStompAbility": {
+  "title": "Sentient Wrath",
+  "wiki": "However, subsumed Sentient Wrath only strikes in a frontal cone and does not inflict Tau status effects.",
+  "note": {
+   "ru": "Привитая: бьёт только конусом перед собой и не накладывает статус Тау.",
+   "en": "Subsumed: strikes only in a frontal cone, no Tau status."
+  }
+ },
+ "/Lotus/Powersuits/Geode/Abilities/GeodeShardsAbility": {
+  "title": "Fractured Blast",
+  "wiki": "However, Subsumed Fractured Blast's damage is reduced to 125 / 150 / 200 / 250, Health Orb drop chance reduced to 25%, and Energy Orb drop chance reduced to 10%.",
+  "set": {
+   "str.0": 250,
+   "str.1": 25,
+   "str.2": 10
+  },
+  "note": {
+   "ru": "Привитая: урон и шансы сфер здоровья/энергии вдвое ниже.",
+   "en": "Subsumed: half the damage and orb drop chances."
+  }
+ },
+ "/Lotus/Powersuits/Frumentarius/Abilities/FrumentariusCloakAbility": {
+  "title": "Evade",
+  "wiki": "However, Subsumed Evade's maximum duration is reduced to 15 seconds and is capped at 25 seconds. Currently this helminth is bugged and the maximum duration is not capped at 25 seconds.",
+  "set": {
+   "dur.2": 25
+  },
+  "note": {
+   "ru": "Привитая: невидимость короче, предел — 25 с (по вики сейчас предел не работает из-за бага).",
+   "en": "Subsumed: shorter invisibility capped at 25 s (bugged in game: the cap doesn't apply)."
+  }
+ },
+ "/Lotus/Powersuits/Dagath/Abilities/DagathVolleyAbility": {
+  "title": "Wyrd Scythes",
+  "wiki": "However, Subsumed Wyrd Scythe's slow is reduced to 15 / 18 / 22 / 26%. Slow is capped to 71% achievable with 272% Ability Strength.",
+  "set": {
+   "str.0": 26,
+   "misc.1": 71
+  },
+  "note": {
+   "ru": "Привитая: замедление слабее, предел 71% (при 272% силы).",
+   "en": "Subsumed: weaker slow, capped at 71% (272% Strength)."
+  }
+ },
+ "/Lotus/Powersuits/Ember/Abilities/FireBlastAbility": {
+  "title": "Fire Blast",
+  "wiki": "Armor reduction per cast is capped at 75%, achievable with 100% Ability Strength. Healing Flame will not generate Overguard on other Warframes.",
+  "add": [
+   {
+    "in": "misc",
+    "v": "75%",
+    "n": 75,
+    "u": "%",
+    "l": {
+     "ru": "предел снижения брони за применение",
+     "en": "armor reduction cap per cast"
+    }
+   }
+  ],
+  "note": {
+   "ru": "Привитая: снижение брони за применение не выше 75% (при 100% силы); «Целебное пламя» не даёт сверхщит союзникам.",
+   "en": "Subsumed: armor reduction per cast capped at 75% (100% Strength); Healing Flame gives no Overguard to others."
+  }
+ },
+ "/Lotus/Powersuits/Inkblot/Abilities/InkCloneAbility": {
+  "title": "Self Portrait",
+  "wiki": "However, Subsumed Self Portrait's maximum Damage Reduction caps at 75% and does not apply Inkblot.",
+  "set": {
+   "misc.1": 75
+  },
+  "note": {
+   "ru": "Привитая: снижение урона не выше 75%, без Кляксы.",
+   "en": "Subsumed: damage reduction capped at 75%, no Inkblot."
+  }
+ },
+ "/Lotus/Powersuits/Runner/Abilities/RunnerTransferAbility": {
+  "title": "Thermal Sunder",
+  "wiki": "The damage dealt by Subsumed Thermal Sunder is equivalent to 50% of Gauss's battery: 225 / 300 / 375 / 450 Cold damage and 450 / 600 / 750 / 900 Heat damage. However, the damage scaling from Heat status is capped to 10x of the ability's damage.",
+  "set": {
+   "str.0": "450"
+  },
+  "add": [
+   {
+    "in": "str",
+    "v": "900",
+    "n": 900,
+    "l": {
+     "ru": "урон Огнём",
+     "en": "Heat damage"
+    }
+   }
+  ],
+  "note": {
+   "ru": "Привитая: урон как от половины батареи Гаусса — 450 Холода и 900 Огня; рост урона от статуса Огня — не больше 10×.",
+   "en": "Subsumed: damage as from half of Gauss's battery — 450 Cold and 900 Heat; Heat status scaling capped at 10×."
+  }
+ },
+ "/Lotus/Powersuits/Devourer/Abilities/DevourerConsumeAbility": {
+  "title": "Nourish",
+  "wiki": "Other Warframes are omitted from the swallowed enemy requirement, due to their inability to cast Feast. However, Subsumed Nourish does not provide healing, the explosion only applies 1 Viral stack, the energy multiplier is reduced to 1.3 / 1.39 / 1.48 / 1.6x, and Viral weapon bonus damage is reduced to +24% / +30% / +36% / +45%. Subsumed energy bonus is calculated with the following formula: Ability Strength)}}",
+  "set": {
+   "str.2": 1.6,
+   "str.4": 45,
+   "misc.0": 1
+  },
+  "drop": [
+   "str.1"
+  ],
+  "note": {
+   "ru": "Привитая: не лечит, взрыв даёт 1 заряд Вируса, множитель энергии 1,6×, бонус Вирусного урона оружию +45%.",
+   "en": "Subsumed: no healing, the explosion applies 1 Viral stack, energy multiplier 1.6×, Viral weapon bonus +45%."
+  }
+ },
+ "/Lotus/Powersuits/IronFrame/Abilities/IronFrameStripAbility": {
+  "title": "Pillage",
+  "wiki": "Subsumed Pillage uses 50 energy instead of shields. Does not generate shields for Inaros, Nidus, or Kullervo.",
+  "cost": 50,
+  "note": {
+   "ru": "Привитая: стоит 50 энергии вместо щитов; Инаросу, Нидусу и Куллерво щиты не даёт.",
+   "en": "Subsumed: costs 50 energy instead of shields; gives no shields to Inaros, Nidus or Kullervo."
+  }
+ },
+ "/Lotus/Powersuits/Choir/Abilities/ChoirEyesAbility": {
+  "title": "Ophanim Eyes",
+  "wiki": "However, Subsumed Ophanim Eyes will not have the ability to revive allies from Bleedout.",
+  "note": {
+   "ru": "Привитая: не поднимает союзников из Обескровливания.",
+   "en": "Subsumed: can't revive allies from Bleedout."
+  }
+ },
+ "/Lotus/Powersuits/PaxDuviricus/Abilities/PaxTeleportAbility": {
+  "title": "Wrathful Advance",
+  "wiki": "However, Subsumed Wrathful Advance's range is reduced to 10 / 11 / 11.5 / 12.5 meters and melee critical chance bonus reduced to 25% / 50% / 75% / 100% (only the targeting, the hold to teleport range is unchanged) The bonus critical chance also applies to Exalted Weapons, including formerly pseudo-exalted abilities such as Landslide, Slash Dash, Shattered Lash and Whipclaw.",
+  "set": {
+   "str.0": 100,
+   "rng.0": 12.5
+  },
+  "note": {
+   "ru": "Привитая: дальность выбора цели 12,5 м (телепорт по удержанию — как был), бонус к шансу крита ближнего боя 100%; действует и на экзальтед-оружие.",
+   "en": "Subsumed: 12.5 m targeting range (hold-to-teleport unchanged), +100% melee crit chance; applies to Exalted weapons too."
+  }
+ },
+ "/Lotus/Powersuits/Alchemist/Abilities/AlchemistVialAbility": {
+  "title": "Vial Rush",
+  "wiki": "Subsumed Vial Rush includes the 0 energy cost, 5 second cooldown, as well as 3 Cold status proc stacks per application from the explosion and residue pools. Subsumed Vial Rush does not include the hold-cast to imbue the next ability cast with Cold damage.",
+  "cost": 0,
+  "add": [
+   {
+    "in": "misc",
+    "v": "5 s",
+    "n": 5,
+    "u": "s",
+    "l": {
+     "ru": "перезарядка",
+     "en": "cooldown"
+    }
+   }
+  ],
+  "drop": [
+   "str.1"
+  ],
+  "note": {
+   "ru": "Привитая: без затрат энергии, перезарядка 5 с; без зарядки следующей способности Холодом (удержание).",
+   "en": "Subsumed: no energy cost, 5 s cooldown; no hold-cast Cold imbue."
+  }
+ },
+ "/Lotus/Powersuits/Mag/Abilities/PullAbility": {
+  "title": "Pull",
+  "wiki": "However, Subsumed Pull's pull range is reduced to 7.5 / 10 / 11 / 12.5 meters.",
+  "set": {
+   "rng.0": 12.5
+  },
+  "note": {
+   "ru": "Привитая: дальность притяжения 12,5 м.",
+   "en": "Subsumed: 12.5 m pull range."
+  }
+ },
+ "/Lotus/Powersuits/Harlequin/Abilities/LightAbility": {
+  "title": "Eclipse",
+  "wiki": "However, Subsumed Eclipse's damage reduction caps at 75% and damage bonus is reduced to 2% / 9% / 15% / 30%.",
+  "set": {
+   "str.1": 30,
+   "misc.0": 75
+  },
+  "note": {
+   "ru": "Привитая: бонус урона 30%, снижение урона не выше 75%.",
+   "en": "Subsumed: 30% damage bonus, damage reduction capped at 75%."
+  }
+ },
+ "/Lotus/Powersuits/Infestation/Abilities/InfestTendrilsAbility": {
+  "title": "Larva",
+  "wiki": "However, Subsumed Larva's range is reduced to 5.33 / 6 / 6.67 / 8 meters. When Larva is injected onto a Prime Warframe, it will gain the appearance of Nidus Prime's Larva.",
+  "set": {
+   "rng.0": 8
+  },
+  "note": {
+   "ru": "Привитая: радиус захвата 8 м.",
+   "en": "Subsumed: 8 m grab radius."
+  }
+ },
+ "/Lotus/Powersuits/Nokko/Abilities/NokkoPowerShroomAbility": {
+  "title": "Brightbonnet",
+  "wiki": "The Ability Strength bonus is diminished to 10% / 13% / 17% / 20% and energy restore is reduced to 6.67 / 8 / 8.67 / 10. The Ability Strength bonus cap is diminished to 100%, which is still doubled if Invigorated by .",
+  "set": {
+   "str.0": 10,
+   "str.1": 20,
+   "misc.4": 100
+  },
+  "note": {
+   "ru": "Привитая: бонус силы 20% (предел 100%, вдвое выше с усилением Арбуцепа), энергия 10.",
+   "en": "Subsumed: 20% Strength bonus (cap 100%, doubled by the Arbucep Invigoration), 10 energy."
+  }
+ },
+ "/Lotus/Powersuits/Paladin/Abilities/SmiteAbility": {
+  "title": "Smite",
+  "wiki": "However, Subsumed Smite's percentage damage cap is reduced to 50% and the AoE percentage damage cap is reduced to 20%, achievable with 143% and 200% Ability Strength respectively.",
+  "set": {
+   "misc.0": 50,
+   "misc.1": 20
+  },
+  "note": {
+   "ru": "Привитая: предел процентного урона 50% (при 143% силы), по площади — 20% (при 200%).",
+   "en": "Subsumed: percentage damage cap 50% (143% Strength), AoE cap 20% (200%)."
+  }
+ },
+ "/Lotus/Powersuits/Rhino/Abilities/RhinoRoarAbility": {
+  "title": "Roar",
+  "wiki": "However, Subsumed Roar's damage bonus is reduced to 2% / 9% / 15% / 30%. For example, With 253% Can only get 75.9% bonus",
+  "set": {
+   "str.0": 30
+  },
+  "note": {
+   "ru": "Привитый: бонус урона 30% вместо 50%.",
+   "en": "Subsumed: 30% damage bonus instead of 50%."
+  }
+ },
+ "/Lotus/Powersuits/Wraith/Abilities/WraithGloomAbility": {
+  "title": "Gloom",
+  "wiki": "When infused into Lavos, Gloom is altered to cost 0 energy to cast and sustain, lasts for 12 seconds that triggers a 10 second cooldown after deactivation.",
+  "note": {
+   "ru": "На Лавосе: без затрат энергии, 12 с, затем перезарядка 10 с.",
+   "en": "On Lavos: no energy cost, lasts 12 s, then a 10 s cooldown."
+  }
+ },
+ "/Lotus/Powersuits/DemonFrame/Abilities/DemonFrameHealAbility": {
+  "title": "Remedium",
+  "wiki": "However, Subsumed Remedium's healing is reduced to 24% / 28% / 31% / 35% and does not summon Uriel's Demons.",
+  "set": {
+   "str.0": 35
+  },
+  "note": {
+   "ru": "Привитое: лечение 35%, без демонов Уриэля.",
+   "en": "Subsumed: 35% healing, no Uriel's demons."
+  }
+ },
+ "/Lotus/Powersuits/Berserker/Abilities/BerserkerScreamAbility": {
+  "title": "Warcry",
+  "wiki": "However, Subsumed Warcry's attack speed bonus is reduced to 9% / 12% / 15% / 30%.",
+  "set": {
+   "str.0": 30
+  },
+  "note": {
+   "ru": "Привитый: бонус скорости атаки 30% вместо 50%.",
+   "en": "Subsumed: 30% attack speed instead of 50%."
+  }
+ },
+ "/Lotus/Powersuits/MonkeyKing/Abilities/MonkeyDeathNewAbility": {
+  "title": "Defy",
+  "wiki": "However, Subsumed Defy's armor bonus is capped at 750.",
+  "set": {
+   "misc.4": 750
+  },
+  "note": {
+   "ru": "Привитый: бонус брони не выше 750.",
+   "en": "Subsumed: armor bonus capped at 750."
+  }
+ }
+}

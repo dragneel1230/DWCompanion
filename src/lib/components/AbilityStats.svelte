@@ -26,9 +26,11 @@
     return `${f(m[1])}–${f(m[2])}${m[3] ? ` ${m[3].replace(/^m$/, t("ab.m", { v: "" }).trim())}` : ""}`;
   }
 
+  // Capped stats stop at the cap ("damage reduction cap 90%").
+  const capped = (s: AbilityStat, mul: number) => s.max != null && s.n != null && s.n * mul > s.max;
   function fmt(s: AbilityStat, mul: number): string {
     if (s.n == null) return range(s.v, mul);
-    const v = s.n * mul;
+    const v = capped(s, mul) ? s.max! : s.n * mul;
     const digits = Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2;
     const text = num(+v.toFixed(digits));
     switch (s.u) {
@@ -73,7 +75,9 @@
   {#each rows as r, i (i)}
     <div class="row k-{r.k}" title={r.k === "misc" ? t("ab.miscHint") : t("ab.scales", { stat: KIND_LABEL[r.k]() })}>
       <span class="lbl">{r.label}</span>
-      <span class="val {trend(r.mul)}">{fmt(r.s, r.mul)}</span>
+      <span class="val {trend(r.mul)}" title={capped(r.s, r.mul) ? t("ab.capped", { v: num(r.s.max!) }) : undefined}>
+        {fmt(r.s, r.mul)}{#if capped(r.s, r.mul)}<small class="cap">{t("ab.cap")}</small>{/if}
+      </span>
     </div>
   {/each}
   {#if !st}
@@ -82,6 +86,12 @@
 </div>
 
 <style>
+  .cap {
+    margin-left: 4px;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: var(--text-faint);
+  }
   .ab {
     display: flex;
     flex-direction: column;

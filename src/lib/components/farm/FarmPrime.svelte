@@ -1,10 +1,9 @@
 <script lang="ts">
   // A prime part: it comes only from relics. Relics that hold it, active ones first, with rarity;
-  // what it builds; a link to the item page (market prices, full relic list).
+  // a link to the item page (market prices, full relic list). What it goes into: FarmView, above the title.
   import { t } from "$lib/i18n/index.svelte";
   import { getDb, RARITY_RU } from "$lib/db";
   import type { CraftDb } from "$lib/craft";
-  import { parentsOf } from "$lib/farm";
 
   let { craft, id, onopen }: { craft: CraftDb; id: string; onopen: (kind: "resource" | "craft" | "prime", id: string) => void } = $props();
 
@@ -14,9 +13,6 @@
     it.relics.map((x) => ({ ...x, r: d.relics[x.relic] })).filter((x) => x.r).sort((a, b) => +a.r.vaulted - +b.r.vaulted),
   );
   const live = $derived(relics.filter((x) => !x.r.vaulted));
-  // The component this blueprint builds, and what that goes into.
-  const comp = $derived(id.replace(/Blueprint$/, "Component"));
-  const parents = $derived(parentsOf(craft, craft.items[comp] ? comp : id));
 </script>
 
 <div class="howto">
@@ -34,19 +30,6 @@
       </div>
     </div>
   </div>
-  {#if parents.length}
-    <div class="step">
-      <span class="n">↑</span>
-      <div>
-        <div class="lead">{t("farm.partOf")}</div>
-        <div class="main">
-          {#each parents as pid (pid)}
-            <button class="link" onclick={() => onopen("craft", pid)}>{craft.items[pid].name}</button>
-          {/each}
-        </div>
-      </div>
-    </div>
-  {/if}
   <div class="step">
     <span class="n">→</span>
     <div><a class="link" href="/item?id={encodeURIComponent(id)}">{t("farm.primePage")}</a></div>

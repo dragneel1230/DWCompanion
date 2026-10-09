@@ -32,11 +32,13 @@
     }),
   );
 
-  // Most used by time: warframes and weapons apart (companions go with weapons' neighbours: skipped).
+  // Most used by time: warframes and weapons apart (companions and the Parazon skipped).
   const used = $derived.by(() => {
     const frames: { n: ReturnType<typeof nameOf>; time: number; kills: number }[] = [];
     const weapons: typeof frames = [];
     for (const g of s?.gear ?? []) {
+      // The Parazon is always equipped and gains time on its own: not a choice of the player.
+      if (/\/HackingDevices\//.test(g.type)) continue;
       const n = nameOf(g.type);
       const row = { n, time: g.time, kills: g.kills };
       if (n.cat === "warframe" || /\/Powersuits\//.test(g.type)) frames.push(row);

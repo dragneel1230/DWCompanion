@@ -14,6 +14,8 @@
   import ShardRow from "$lib/components/ShardRow.svelte";
   import { buildsSel, pickBuild, pickGear, setBuildsTab, type BuildsTab } from "./buildsSel.svelte";
   import GearView from "./GearView.svelte";
+  import ShareButton from "$lib/components/ShareButton.svelte";
+  import ImportCode from "$lib/components/ImportCode.svelte";
   import { loadGear, type Gear, type GearTab } from "$lib/gear";
   import type { Key } from "$lib/i18n/index.svelte";
 
@@ -37,6 +39,7 @@
 
   let query = $state("");
   let all = $state(false);
+  let importing = $state(false);
 
   const rank = (id: string): number | null => {
     const own = PAIR_OF[id] ?? id;
@@ -124,7 +127,9 @@
         {/each}
       </div>
     {/if}
+    {#if !importing}<button class="act imp" onclick={() => (importing = true)}>{t("share.import")}</button>{/if}
   </div>
+  {#if importing}<ImportCode onclose={() => (importing = false)} />{/if}
 
   {#if buildsSel.tab !== "frame"}
     {#key buildsSel.tab}<GearView kind={buildsSel.tab as GearTab} />{/key}
@@ -222,6 +227,7 @@
               <small>{build.author}{#if build.note} · {build.note}{/if}</small>
             </div>
             {#if build.url}<a class="act" href={build.url} target="_blank" rel="noreferrer">Overframe ↗</a>{/if}
+            <ShareButton get={() => ({ k: "f", b: $state.snapshot(build) })} />
             <a class="act primary" href="/frame?id={enc(frameId)}&build={enc(buildId)}">{isMine ? t("build.edit") : t("build.copyEdit")}</a>
           </div>
 
@@ -460,6 +466,9 @@
   .act:hover {
     color: var(--text);
     border-color: var(--text-faint);
+  }
+  .act.imp {
+    margin-left: auto;
   }
   .act.primary {
     color: var(--accent);

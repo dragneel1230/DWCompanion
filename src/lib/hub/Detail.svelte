@@ -2,6 +2,7 @@
   // Hub detail panel for a search pick: what it is, where it drops, prices, and the market with
   // "Купить / Продать" whispers. Links inside open the next view in the hub (stack, "Назад").
   import Facts from "$lib/components/Facts.svelte";
+  import UpLink from "$lib/components/UpLink.svelte";
   import { t } from "$lib/i18n/index.svelte";
   import { getDb, iconUrl, itemName, RARITY_RU, setParts as uniqueParts } from "$lib/db";
   import type { Price } from "$lib/api";
@@ -126,6 +127,9 @@
 
   {#if head}
     <div class="body">
+      {#if item && set}
+        <div class="upnav"><UpLink name={set.name} icon={set.icon} onclick={() => onopen({ kind: "set", id: item.set ?? "" })} /></div>
+      {/if}
       <div class="hero">
         {#if mod}
           <ModCard {mod} scale={0.42} bare />
@@ -138,9 +142,6 @@
           <h1>{head.name}</h1>
           <div class="sub">
             <span>{head.en}</span>
-            {#if item && set}
-              <button class="tag" onclick={() => onopen({ kind: "set", id: item.set ?? "" })}>{t("detail.setOf", { name: set.name })}</button>
-            {/if}
             {#if relic}
               <span class="tag {relic.vaulted ? 'vaulted' : 'active'}">{relic.vaulted ? t("tag.inVault") : t("tag.dropsNow")}</span>
             {/if}
@@ -289,6 +290,9 @@
 </section>
 
 <style>
+  .upnav {
+    margin-bottom: 10px;
+  }
   .craft-title {
     margin-top: 22px;
   }
@@ -349,10 +353,6 @@
     align-items: center;
     gap: 8px;
     color: var(--text-dim);
-  }
-  button.tag:hover {
-    color: var(--text);
-    border-color: var(--accent);
   }
   .price {
     margin-left: auto;

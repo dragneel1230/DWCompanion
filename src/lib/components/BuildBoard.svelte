@@ -45,8 +45,9 @@
   const counts = $derived(setCounts(db, build));
   // Helminth (game configs): the subsumed ability in place of the replaced one.
   const helm = $derived(build.helminth ? { i: build.helminth[1], a: abilityById(db, build.helminth[0]) } : null);
-  // The frame's abilities as equipped: the subsumed one in its slot.
-  const abilities = $derived(frame.abilities.map((a, i) => (helm?.i === i && helm.a ? helm.a : a)));
+  // The frame's abilities as equipped: the subsumed one in its slot, with its Helminth numbers when they differ.
+  const abilities = $derived(frame.abilities.map((a, i) => (helm?.i === i && helm.a ? (helm.a.helm ? { ...helm.a, stats: helm.a.helm.stats } : helm.a) : a)));
+  const helmNote = $derived(helm?.a?.helm?.note ?? "");
   // Mods / arcanes with conditional effects: the "conditional" toggle shows only when there are some.
   const condNames = $derived([
     ...[build.aura, build.aura2, build.exilus, ...build.slots].map((id) => (id ? db.mods[id] : null)).filter((m) => m?.cfx).map((m) => m!.name),
@@ -265,6 +266,7 @@
           </div>
         </div>
         <AbilityStats ability={a} mods={stats} compact />
+        {#if helm?.i === i && helmNote}<p class="helm-diff">{helmNote}</p>{/if}
       </div>
     {/each}
   </div>
@@ -284,6 +286,7 @@
       {/if}
       <small>{t("ab.maxRank")}</small>
       <p>{a.desc}</p>
+      {#if helm?.i === hoverAbility.i && helmNote}<p class="helm-diff">{helmNote}</p>{/if}
       <AbilityStats ability={a} mods={stats} compact />
     </div>
   {/if}
@@ -310,6 +313,15 @@
 {/if}
 
 <style>
+  .helm-diff {
+    margin: 6px 0 0;
+    padding: 6px 8px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--accent);
+  }
   .wrap {
     display: grid;
     grid-template-columns: 230px minmax(0, 1fr);
