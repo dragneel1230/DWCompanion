@@ -1060,3 +1060,296 @@ Whipclaw damage distribution	распределение урона Whipclaw
 width	ширина
 wind wave projectile deflection	отражение снарядов волной ветра
 Wormhole damage absorb	поглощение урона Wormhole
+# Labels the wiki writes inside the value ("15 EP Energy restore"), split off in build-frames.mjs (2026-10-09)
+Tau status effect	статус Тау
+Impact and Slash damage	урон Ударом и Разрезом
+energy orb drop chance	шанс сферы энергии
+initial damage reduction	начальное снижение урона
+damage reduction per kill	снижение урона за убийство
+damage reduction per assist	снижение урона за содействие
+Affinity Range	радиус синтеза
+Stagger radius	радиус ошеломления
+Knockback distance	дальность отбрасывания
+initial decay delay	задержка до спада
+minimum damage reduction	мин. снижение урона
+kill/assist decay delay	задержка спада после убийства/содействия
+max damage reduction	макс. снижение урона
+Heat, Cold, Electricity, Toxin damage	урон Огнём, Холодом, Электричеством, Токсином
+beam per ally	лучей на союзника
+retarget delay	задержка смены цели
+primary elemental status on hit	статусов основной стихии за попадание
+stack per status	стак за статус
+gem limit	предел самоцветов
+growth per enemy	рост за врага
+Viral damage during spin	урон Вирусом при вращении
+Viral damage on throw	урон Вирусом при броске
+slow time	время замедления
+Doom spread range	радиус распространения Doom
+number of sickles	число серпов
+spin time and recast cooldown	время вращения и перезарядка повтора
+sickle throw delay	задержка броска серпа
+Phantom Wrath damage stored per damage instance	урон Phantom Wrath, накапливаемый за попадание
+cone range	дальность конуса
+damage redirection per damage instance cap	предел перенаправления урона за попадание
+Phantom Wrath damage storage time limit	время накопления урона Phantom Wrath
+critical damage bonus	бонус крит. урона
+Doom critical damage bonus	бонус крит. урона по Doom
+invulnerable time	время неуязвимости
+Knockdown radius	радиус сбивания с ног
+Health Orb drop per kill in spectral form	шанс сферы здоровья за убийство в призрачной форме
+Viral damage per interval per Kaithe	урон Вирусом за интервал от каждого кайта
+Doom defense reduction per interval per Kaithe	снижение защиты Doom за интервал от каждого кайта
+number of Kaithes	число кайтов
+summon radius	радиус призыва
+charge velocity	скорость рывка
+base Slash damage on primary fire	базовый урон Разрезом (основной огонь)
+base Radiation damage on alt-fire	базовый урон Радиацией (альт. огонь)
+page fragments	фрагментов страниц
+page fragment seek distance	дальность наведения фрагментов
+Overguard gain	получение Сверхщита
+Overguard cap	предел Сверхщита
+HP healed based on max health	лечение от макс. здоровья
+ally buff radius	радиус усиления союзников
+Final Verse Light page	светлая страница Final Verse
+enemy target range	дальность выбора врагов
+Slash statuses and Stagger	статусов Разреза и ошеломление
+Final Verse Dark page	тёмная страница Final Verse
+Overguard regen on kills and assists	восстановление Сверхщита за убийства и содействия
+Overguard regen timer	таймер восстановления Сверхщита
+Corrosive damage on dive and emerge	урон Коррозией при нырке и выходе
+max teleport range	макс. дальность телепорта
+Corrosive damage on creation and expiry	урон Коррозией при создании и исчезновении
+object lifetime	время жизни объекта
+object creation range	дальность создания объекта
+object types	типов объектов
+Brush Stroke layers	слоёв мазка кисти
+Freeze status procs on direct hit	статусов заморозки при прямом попадании
+Freeze status procs on impact radius	статусов заморозки в радиусе попадания
+seconds of shield gating for allies	с защиты щитов союзников
+Corrosive and Stagger status chance	шанс статуса Коррозии и ошеломления
+striking radius	радиус удара
+speed	скорость
+recast energy discount	скидка энергии на повтор
+Knockdown recovery delay	задержка подъёма после сбивания
+Heat damage per half second	урон Огнём за полсекунды
+health restore per second	восстановление здоровья в секунду
+well and buff timer	таймер колодца и усиления
+wells limit	предел колодцев
+armor and shield strip per second	снятие брони и щитов в секунду
+slow per second	замедление в секунду
+damage ticks	интервал урона
+chance to earn rare Decree	шанс редкого указа
+cooldown tiers	ступени перезарядки
+cooldown cap	предел перезарядки
+ally kill window	окно убийств союзников
+heal multiplier	множитель лечения
+block chance	шанс блока
+heal cooldown	перезарядка лечения
+charms recast threshold	порог амулетов для повтора
+Puncture damage	урон Пробиванием
+status duration pause	пауза длительности статусов
+melee final critical chance	итоговый крит. шанс ближнего боя
+melee crit buff duration	длительность крит. усиления ближнего боя
+teleport distance	дальность телепорта
+Cooldown	перезарядка
+Slash damage per dagger hit	урон Разрезом за попадание кинжала
+HP or Overguard per dagger hit	здоровье или Сверхщит за попадание кинжала
+Overguard or HP drained per missed dagger	Сверхщит или здоровье за промах кинжала
+max Overguard	макс. Сверхщит
+dagger orbit radius	радиус орбиты кинжалов
+daggers	кинжалов
+dagger airtime	время полёта кинжала
+daggers max per enemy	макс. кинжалов на врага
+HP self damage threshold	порог урона по себе (здоровье)
+melee combo per dagger hit on enemy	комбо ближнего боя за попадание кинжала
+dmg redirection cap	предел перенаправления урона
+melee combo per melee attack or dagger hit via spread	комбо за удар или попадание кинжала через распространение
+Impact	Удар
+Modified Critical and Status Chance	изменённый крит. шанс и шанс статуса
+Cold damage per hit	урон Холодом за попадание
+meters	м
+hits	попаданий
+Cold and 1 Puncture status per hit	статуса Холода и 1 Пробивания за попадание
+Ice per cast	льда за применение
+Ice per hit	льда за попадание
+Overguard Cap	предел Сверхщита
+Cold Landing Damage	урон Холодом при приземлении
+Cold Damage per second	урон Холодом в секунду
+Cold Damage Vulnerability	уязвимость к Холоду
+storm duration	длительность бури
+storm radius	радиус бури
+maximum flight duration	макс. длительность полёта
+Cold status on landing	статусов Холода при приземлении
+Cold status per second	статусов Холода в секунду
+Ice Storm Limit	предел ледяных бурь
+Cold Radial Damage	урон Холодом по области
+Cold Icy Slash Damage	урон Холодом ледяного разреза
+Cold Explosion Damage	урон Холодом взрыва
+Shield and Armor Reduction per Cold Status Effect when hit	снижение щитов и брони за статус Холода при попадании
+Maximum Duration	макс. длительность
+ice aura radius	радиус ледяной ауры
+frozen enemy explosion range	радиус взрыва замёрзшего врага
+Damage On Marked Target	урон по отмеченной цели
+Radial Status Chance	шанс статуса по области
+Ice Cost Per Swing	расход льда за взмах
+Icy Slash Travel Distance	дальность ледяного разреза
+Targeting Radius	радиус наведения
+Targeting Duration	длительность наведения
+Duration	длительность
+Range	радиус
+Viral Status Chance and Sleep on pulse	шанс статуса Вируса и усыпление за импульс
+Sleep duration	длительность сна
+Finisher damage vulnerability	уязвимость к добиванию
+Stinkbrain cap	предел Stinkbrain
+Sporespring pulse interval	интервал импульса с Sporespring
+Energy restore	восстановление энергии
+Ability Strength bonus	бонус силы способностей
+Brightbonnet duration	длительность Brightbonnet
+Ability Strength bonus duration	длительность бонуса силы
+damage on sprout	урон при прорастании
+sprout radius	радиус прорастания
+Brightbonnet cap	предел Brightbonnet
+Ability Strength bonus caps	предел бонуса силы
+Health/Shield Restore per second	восстановление здоровья/щитов в секунду
+Health/Shield Restore per pickup	восстановление здоровья/щитов за подбор
+Fungal Spores	грибных спор
+Fungal Spore spawn radius	радиус появления спор
+move speed bonus duration	длительность бонуса скорости
+bounce distance	дальность отскока
+Bounces	отскоков
+Initial Critical Chance	начальный крит. шанс
+Critical Damage	крит. урон
+Flat Critical Chance per Bounce	крит. шанс за отскок
+Sporespring cap	предел Sporespring
+Toxin Damage	урон Токсином
+Health Orb Drop Chance	шанс сферы здоровья
+Energy Orb Drop Chance	шанс сферы энергии
+Melee Finisher prompt	окно добивания
+hitpoints Instant Kill Threshold	порог мгновенного убийства (здоровье)
+Toxin Status Chance	шанс статуса Токсина
+max webs	макс. паутин
+Toxin damage per dart	урон Токсином за дротик
+Mark Duration	длительность метки
+Scuttler Duration	длительность скаттлера
+dart projectiles	дротиков
+forced Toxin status effects	гарантированных статусов Токсина
+max Scuttlers	макс. скаттлеров
+Scuttler status duration bonus	бонус длительности статусов скаттлера
+recall radius	радиус отзыва
+Health Bonus	бонус здоровья
+Toxin Weapon Damage	урон оружия Токсином
+Wall Latch Toxin Weapon Damage	урон оружия Токсином на стене
+Toxin Explosion Damage	урон Токсином взрыва
+Explosion Radius	радиус взрыва
+Dodge Range	дальность уклонения
+movement speed	скорость движения
+parkour velocity	скорость паркура
+jump height	высота прыжка
+explosion max radius	макс. радиус взрыва
+Silken Thread travel speed	скорость шёлковой нити
+Radiation damage per pulse	урон Радиацией за импульс
+empowered duration	длительность усиления
+slam and pulse radius	радиус удара и импульса
+pillar height	высота столба
+pillars limit	предел столбов
+empowered pulse interval	интервал усиленного импульса
+Radiation damage per tick	урон Радиацией за тик
+Impact damage on smash	урон Ударом при разрушении
+walls length	длина стен
+parallel walls	параллельных стен
+walls gap	расстояние между стенами
+assembly time	время сборки
+Radiation damage ticks	тиков урона Радиацией
+Radiation damage on cast	урон Радиацией при применении
+initial status immunity stacks	начальных стаков иммунитета к статусам
+max status immunity stacks	макс. стаков иммунитета к статусам
+stack chance per active Radiation status on enemy from kills and assists	шанс стака за статус Радиации на убитом враге
+stack chance cap	предел шанса стака
+Radiation total damage per second	общий урон Радиацией в секунду
+Radiation base damage per explosion	базовый урон Радиацией за взрыв
+Radiation extra damage per status	доп. урон Радиацией за статус
+beam duration	длительность луча
+beam cylindrical radius	радиус луча
+beam ticks per second	тиков луча в секунду
+beam tick interval	интервал тика луча
+explosions per irradiated enemy in chain reaction	взрывов за облучённого врага в цепной реакции
+stored damage decay/sec	спад накопленного урона в секунду
+Impact Puncture Slash Damage	урон Ударом, Пробиванием, Разрезом
+Pillars	столбов
+Ripper's Wail Bonus	бонус Ripper's Wail
+Pyrotechnics Bonus	бонус Pyrotechnics
+Heat Damage	урон Огнём
+Critical Chance	крит. шанс
+deafened stun	оглушение
+Overdrive Bonus	бонус Overdrive
+Backbeat Bonus	бонус за попадание в ритм
+Max buff Duration	макс. длительность усиления
+Heat Damage Cap	предел урона Огнём
+Invulnerability Bonus	бонус неуязвимости
+Heat damage on cast	урон Огнём при применении
+Catenach Chain Damage per second	урон цепи Катенаха в секунду
+Catenach Slow	замедление Катенаха
+Catenach Chain Duration	длительность цепи Катенаха
+Catenach Chain Range	дальность цепи Катенаха
+Catenach Target Range	дальность цели Катенаха
+Catenach Minimum Chained Enemies	мин. врагов в цепи Катенаха
+Catenach Maximum Chained Enemies	макс. врагов в цепи Катенаха
+Catenach Chain Damage Redirection	перенаправление урона цепи Катенаха
+Catenach Slow Cap	предел замедления Катенаха
+Health Restore	восстановление здоровья
+Gulphagor damage per tick	урон Гульфагора за тик
+Gulphagor Heat Field Damage per half second	урон огненного поля Гульфагора за полсекунды
+Gulphagor Heat Field Duration	длительность огненного поля Гульфагора
+Gulphagor Heat Field Range	радиус огненного поля Гульфагора
+Gulphagor Range	дальность Гульфагора
+Gulphagor latch damage ticks per second	тиков урона хватки Гульфагора в секунду
+Gulphagor Heat Field Status Chance	шанс статуса огненного поля Гульфагора
+Gulphagor Heat damage ticks	интервал урона Огнём Гульфагора
+Gulphagor target cooldown	перезарядка цели Гульфагора
+Gulphagor Health Orb Drop Chance	шанс сферы здоровья с Гульфагора
+Gulphagor Energy Orb Drop Chance	шанс сферы энергии с Гульфагора
+Vythelas Rune Fire Rate	скорострельность руны Вителас
+Vythelas Rune Bonus Heat Damage	бонус урона Огнём руны Вителас
+Projectile Duration	длительность снаряда
+Vythelas Rune Duration	длительность руны Вителас
+Explosion Range	радиус взрыва
+Demon Health Drain	поглощение здоровья демона
+Minimum Projectile	мин. снарядов
+Maximum Projectiles	макс. снарядов
+Max Direct Hits Per Soul	макс. прямых попаданий за душу
+Max Vythelas Runes	макс. рун Вителас
+Projectile Speed	скорость снаряда
+field per demon	поле за демона
+Heat Damage growth per 0.5 sec	рост урона Огнём за 0,5 с
+damage multiplier cap	предел множителя урона
+Slow	замедление
+Melee Damage Vulnerability	уязвимость к ближнему бою
+health restore per hit	восстановление здоровья за попадание
+bastille cap	предел Bastille
+vortex cap	предел Vortex
+Electricity Damage	урон Электричеством
+Shield Limit	предел щитов
+shields and health restored	восстановление щитов и здоровья
+critical chance	крит. шанс
+bonus damage from status effect	бонус урона от статусов
+damage bonus on kill	бонус урона за убийство
+critical chance bonus on kill	бонус крит. шанса за убийство
+critical damage multiplier bonus on kill	бонус множителя крит. урона за убийство
+HP health pool	запас здоровья
+initial invuln. time	начальная неуязвимость
+dismount invuln. time	неуязвимость при спешивании
+Charges	зарядов
+max attack range	макс. дальность атаки
+Orion Slash status chance	шанс статуса Разреза Ориона
+damage increase	рост урона
+damage increase at max Immolation	рост урона при макс. Immolation
+sight detection cone	конус обнаружения
+cone angle	угол конуса
+page fragment seek angle	угол наведения фрагментов
+cone	конус
+explosion delay	задержка взрыва
+Angle	угол
+decay rate at 25%-75%	спад при 25–75%
+decay rate at 75%-90%	спад при 75–90%
+Static Shield	размер неподвижного щита
+Mobile Shield	размер подвижного щита

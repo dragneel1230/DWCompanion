@@ -94,3 +94,56 @@ export function collNeed(id: string, mode: CollMode, c: CollCtx): CollNeed | nul
   const gives = m.max * perRank(m.fl);
   return { set: sid, name: set.name, have, total, score: (gives * (Math.max(0, have) + 1)) / total };
 }
+
+// What the reward overlay says about any part, whatever the priority: its set, how much of it is collected
+// (complete copies and the parts toward the next one), this part held and needed per set, the item's state.
+export interface PartInfo {
+  set: string; // set id (the item's uniqueName)
+  name: string; // set name, interface language
+  per: number; // this part per set (two blades…)
+  have: number; // this part held (blueprint, part or built component); -1 = unknown (no inventory)
+  next: number; // parts toward the next copy of the set, this one not counted; -1 = unknown
+  total: number; // parts in a set
+  full: number; // complete copies held
+  mastered: boolean | null; // null: neither profile nor inventory
+  owned: boolean | null; // in the arsenal; null without the inventory
+  // Every part of the set: blueprints / parts held, components already built from them, how many a set takes.
+  parts: { id: string; name: string; per: number; bp: number; built: number }[];
+}
+export function partInfo(id: string, c: CollCtx | null): PartInfo | null {
+  const db = getDb();
+  const sid = db.items[id]?.set;
+  const set = sid ? db.sets[sid] : undefined;
+  if (!sid || !set) return null;
+  const parts = setParts(set);
+  const total = parts.reduce((n, x) => n + x.count, 0);
+  const per = parts.find((x) => x.id === id)?.count ?? 1;
+  const inv = c?.inv ?? null;
+  const known = !!c && (!!inv || Object.keys(c.xp).length > 0);
+  let have = -1;
+  let next = -1;
+  let full = 0;
+  if (inv) {
+    have = held(inv, id);
+    full = Math.min(...parts.map((x) => Math.floor(held(inv, x.id) / x.count)));
+    next = parts.reduce((n, x) => n + Math.min(x.count, held(inv, x.id) - full * x.count), 0);
+  }
+  return {
+    set: sid,
+    name: set.name,
+    per,
+    have,
+    next,
+    total,
+    full,
+    mastered: known ? mastered(sid, c!) : null,
+    owned: inv ? inv.arsenal.includes(sid) : null,
+    parts: parts.map((x) => {
+      const it = db.items[x.id];
+      const built = inv && x.id.endsWith("Blueprint") ? (inv.items[x.id.replace(/Blueprint$/, "Component")] ?? 0) : 0;
+      // "Лекс Прайм: Ствол" -> "Ствол"; the main blueprint has no part name.
+      const name = it?.name.includes(": ") ? it.name.split(": ").pop()! : "";
+      return { id: x.id, name, per: x.count, bp: inv ? tradeable(inv, x.id) : -1, built };
+    }),
+  };
+}

@@ -199,9 +199,16 @@ interface WorldState {
   PrimeVaultTraders?: { Activation: WsDate; Expiry: WsDate; Manifest?: { ItemType: string }[] }[];
   Invasions?: WsInvasion[];
   Alerts?: WsAlert[];
-  LiteSorties?: { _id: { $oid: string }; Expiry: WsDate; Boss: string }[];
+  LiteSorties?: { _id: { $oid: string }; Expiry: WsDate; Boss: string; Missions?: { missionType: string; node: string }[] }[];
+  Conquests?: {
+    Activation: WsDate;
+    Expiry: WsDate;
+    Type: string; // CT_LAB (Deep Archimedea) / CT_HEX (Temporal)
+    Missions?: { faction: string; missionType: string; difficulties: { type: string; deviation: string; risks: string[] }[] }[];
+    Variables?: string[];
+  }[];
   Sorties?: { _id: { $oid: string }; Expiry: WsDate }[];
-  Descents?: { Expiry: WsDate; Challenges?: unknown[] }[];
+  Descents?: { Activation: WsDate; Expiry: WsDate; Challenges?: { Index: number; Type: string; Challenge: string }[] }[];
   EndlessXpSchedule?: { Expiry: WsDate; CategoryChoices?: { Category: string; Choices: string[] }[] }[];
   KnownCalendarSeasons?: {
     Expiry: WsDate;
@@ -210,7 +217,7 @@ interface WorldState {
     Version: number;
     Days: { day: number; events: { type: string; challenge?: string; reward?: string; upgrade?: string }[] }[];
   }[];
-  SeasonInfo?: { ActiveChallenges?: { _id: { $oid: string }; Daily?: boolean; Expiry: WsDate; Challenge: string }[] };
+  SeasonInfo?: { AffiliationTag?: string; Expiry: WsDate; ActiveChallenges?: { _id: { $oid: string }; Daily?: boolean; Expiry: WsDate; Challenge: string }[] };
 }
 
 type WsReward = { countedItems?: { ItemType: string; ItemCount: number }[]; items?: string[]; credits?: number };
@@ -289,25 +296,61 @@ export async function getTimers(): Promise<Timers> {
   };
 }
 
-// This week's activities (the «Сейчас» weekly panel; the player's progress is in the inventory, InvWeek).
+// This week's activities (the «Неделя» tab; the player's progress is in the inventory, InvWeek).
+export interface Conquest {
+  missions: { faction: string; type: string; deviation: string; risks: string[]; hardRisks: string[] }[];
+  vars: string[]; // personal modifiers
+  until: number;
+}
 export interface Week {
-  archon: { id: string; boss: string; until: number } | null;
-  descent: { floors: number; until: number } | null;
+  archon: { id: string; boss: string; until: number; missions: { type: string; node: string }[] } | null;
+  descent: { floors: number; until: number; rooms: { type: string; ch: string }[] } | null;
+  lab: Conquest | null; // Deep Archimedea
+  hex: Conquest | null; // Temporal Archimedea
   circuit: { normal: string[]; hard: string[]; until: number } | null;
   calendar: { season: string; it: number; ver: number; until: number; days: { type: string; ids: string[] }[] } | null;
   nightwave: { id: string; key: string; daily: boolean; until: number }[];
+  nwSeason?: { tag: string; until: number } | null; // the season's syndicate (rank and standing in InvWeek.nwRank)
 }
 
 export async function getWeek(): Promise<Week> {
   const ws = await worldState();
   const lite = ws.LiteSorties?.[0];
-  const d = ws.Descents?.[0];
+  // The Descendia is scheduled weeks ahead: the one running now.
+  const now = Date.now();
+  const d = ws.Descents?.find((x) => ms(x.Activation) <= now && ms(x.Expiry) > now) ?? ws.Descents?.[0];
+  const conquest = (type: string): Conquest | null => {
+    const c = ws.Conquests?.find((x) => x.Type === type && ms(x.Expiry) > now);
+    return c
+      ? {
+          missions: (c.Missions ?? []).map((m) => ({
+            faction: m.faction,
+            type: m.missionType,
+            deviation: m.difficulties[0]?.deviation ?? "",
+            risks: m.difficulties.find((x) => x.type === "CD_NORMAL")?.risks ?? [],
+            hardRisks: m.difficulties.find((x) => x.type === "CD_HARD")?.risks ?? [],
+          })),
+          vars: c.Variables ?? [],
+          until: ms(c.Expiry),
+        }
+      : null;
+  };
   const ex = ws.EndlessXpSchedule?.[0];
   const cal = ws.KnownCalendarSeasons?.[0];
   const choices = (cat: string) => ex?.CategoryChoices?.find((c) => c.Category === cat)?.Choices ?? [];
   return {
-    archon: lite ? { id: lite._id.$oid, boss: lite.Boss, until: ms(lite.Expiry) } : null,
-    descent: d ? { floors: d.Challenges?.length ?? 0, until: ms(d.Expiry) } : null,
+    archon: lite
+      ? { id: lite._id.$oid, boss: lite.Boss, until: ms(lite.Expiry), missions: (lite.Missions ?? []).map((m) => ({ type: m.missionType, node: m.node })) }
+      : null,
+    descent: d
+      ? {
+          floors: d.Challenges?.length ?? 0,
+          until: ms(d.Expiry),
+          rooms: [...(d.Challenges ?? [])].sort((a, b) => a.Index - b.Index).map((c) => ({ type: c.Type, ch: c.Challenge })),
+        }
+      : null,
+    lab: conquest("CT_LAB"),
+    hex: conquest("CT_HEX"),
     circuit: ex ? { normal: choices("EXC_NORMAL"), hard: choices("EXC_HARD"), until: ms(ex.Expiry) } : null,
     calendar: cal
       ? {
@@ -324,6 +367,7 @@ export async function getWeek(): Promise<Week> {
     nightwave: (ws.SeasonInfo?.ActiveChallenges ?? [])
       .filter((c) => ms(c.Expiry) > Date.now())
       .map((c) => ({ id: c._id.$oid, key: c.Challenge.split("/").pop() ?? c.Challenge, daily: !!c.Daily, until: ms(c.Expiry) })),
+    nwSeason: ws.SeasonInfo?.AffiliationTag ? { tag: ws.SeasonInfo.AffiliationTag, until: ms(ws.SeasonInfo.Expiry) } : null,
   };
 }
 

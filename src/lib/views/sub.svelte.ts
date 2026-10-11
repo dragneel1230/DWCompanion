@@ -67,7 +67,7 @@ if (typeof window !== "undefined")
 
 // Links into the sections ("/trade?tab=orders&new=slug", "/relics?tab=journal") -> sub-tab state.
 // Returns the section, or null for any other link.
-export function followSection(href: string): "trade" | "relics" | "builds" | "ship" | null {
+export function followSection(href: string): "trade" | "relics" | "builds" | "ship" | "week" | null {
   const u = new URL(href, "http://x");
   const tab = u.searchParams.get("tab");
   if (u.pathname === "/trade") {
@@ -84,6 +84,7 @@ export function followSection(href: string): "trade" | "relics" | "builds" | "sh
     if (RELICS_SUBS.includes(tab as RelicsSub)) setRelics(tab as RelicsSub);
     return "relics";
   }
+  if (u.pathname === "/week") return "week";
   if (u.pathname === "/ship") {
     if (SHIP_SUBS.includes(tab as ShipSub)) setShip(tab as ShipSub);
     return "ship";

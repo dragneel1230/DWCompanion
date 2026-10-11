@@ -5,6 +5,8 @@
   import { getDb, iconUrl } from "$lib/db";
   import { totals, whereShort, buildTime, CRAFT_KIND_RU, type CraftDb } from "$lib/craft";
   import { pct, type DropsDb } from "$lib/drops";
+  import { orderSrc, srcText } from "$lib/farm";
+  import { heldCount } from "$lib/ownership.svelte";
 
   let { craft, drops, id, onresource, onpart, onitem }: {
     craft: CraftDb;
@@ -26,6 +28,11 @@
   const fmt = (n: number) => n.toLocaleString(locale());
 </script>
 
+<!-- Held now (inventory snapshot): green when it covers what the tree needs. -->
+{#snippet have(h: number | null, need: number)}
+  {#if h}<span class="have" class:enough={h >= need}>{t("ct.have", { v: fmt(h) })}</span>{/if}
+{/snippet}
+
 {#if item}
   <div class="facts">
     <span><b>{fmt(tot.credits)}</b> {t("ct.credits")}</span>
@@ -40,15 +47,18 @@
       <button class="row res" onclick={() => onresource?.(rid)} disabled={!onresource}>
         <img src={iconUrl(r.icon)} alt="" loading="lazy" />
         <span class="name">{r.name}<small>{whereShort(drops, rid) || t("ct.unknownSource")}</small></span>
+        {@render have(heldCount(rid), n)}
         <span class="count">{fmt(n)}</span>
       </button>
     {/each}
     {#each tot.other as [oid, n] (oid)}
       {@const o = nameOf(oid)}
       {@const prime = relicPart(oid)}
+      {@const src = craft.names[oid]?.src}
       <button class="row res" onclick={() => prime && onitem?.(prime)} disabled={!prime || !onitem}>
         {#if o?.icon}<img src={iconUrl(o.icon)} alt="" loading="lazy" />{/if}
-        <span class="name">{o?.name ?? oid.split("/").pop()}<small>{prime ? t("ct.fromRelics") : t("ct.notInTables")}</small></span>
+        <span class="name">{o?.name ?? oid.split("/").pop()}<small>{prime ? t("ct.fromRelics") : src?.length ? orderSrc(src).map(srcText).join(" · ") : t("ct.notInTables")}</small></span>
+        {@render have(heldCount(oid, prime && prime !== oid ? prime : null), n)}
         <span class="count">{fmt(n)}</span>
       </button>
     {/each}
@@ -139,6 +149,15 @@
   .res > img {
     width: 30px;
     height: 30px;
+  }
+  .have {
+    flex: none;
+    font-size: 12px;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .have.enough {
+    color: var(--good);
   }
   .count {
     flex: none;

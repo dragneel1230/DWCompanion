@@ -214,6 +214,19 @@ function goalParts(inv: InvData, goalIds: Set<string>): Set<string> {
   return out;
 }
 
+// Relics held, all refinements together: relic key -> count.
+export function relicsHeld(inv: InvData | null): Map<string, number> {
+  const db = getDb();
+  const out = new Map<string, number>();
+  for (const [id, n] of Object.entries(inv?.items ?? {})) {
+    if (!id.includes("/Projections/") || n <= 0) continue;
+    const m = id.split("/").pop()!.match(/^(.*?)(Bronze|Silver|Gold|Platinum)$/);
+    const key = m && db.projections[m[1]];
+    if (key) out.set(key, (out.get(key) ?? 0) + n);
+  }
+  return out;
+}
+
 export function relicStacks(inv: InvData, goalIds: Set<string>): RelicStack[] {
   const db = getDb();
   const need = goalParts(inv, goalIds);

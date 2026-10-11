@@ -44,8 +44,13 @@ export type Src =
   | { k: "market"; cr?: number; pl?: number }
   | { k: "lab"; lab: string }
   | { k: "quest"; name: string | null }
-  | { k: "syndicate"; name: string; rank: number; title?: string; standing: number; direct?: true }
-  | { k: "vendor"; place?: string; npc?: string; event?: true; direct?: true; cost: [string, number | string][]; syn?: [string, number, number] };
+  | { k: "syndicate"; name: string; rank: number; title?: string; standing: number; direct?: true; unlock?: Unlock }
+  | { k: "vendor"; place?: string; npc?: string; event?: true; direct?: true; cost: [string, number | string][]; syn?: [string, number, number] }
+  // A whole family's way, explained once (i18n "farm.sp.<key>"): Kuva Lich, Sister of Parvos, Coda weapons, Daily Tribute.
+  | { k: "special"; key: SpecialKey; a: Record<string, string | null> };
+export type SpecialKey = "kuva" | "tenet" | "coda" | "tribute";
+// What opens a Simaris re-purchase: a quest (DE's name), the Daily Tribute, Teshin's Cave, the Glassmaker.
+export type Unlock = { q?: string | null; k?: "tribute" | "cave" | "glassmaker" };
 
 // DE's own words for the farming tips (dict of the file's language).
 export type Terms = Record<

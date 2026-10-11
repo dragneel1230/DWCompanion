@@ -84,8 +84,18 @@ function abilityStats(uniqueName, LANG, deCost) {
     for (const n of abilityNames) if (r.includes(n)) r = r.split(n).join(`«${abilityRu.get(n)}»`);
     return r;
   };
+  // Newer infoboxes write the label inside the value ("15 EP Energy restore", "200 damage on sprout"): split it
+  // off, or the row shows a bare number. Wiki template leftovers ("(max attack range)|cardonly }") are cleaned.
+  const split = (x) => {
+    if (x.label) return x;
+    const m = x.v.match(/^([+-]?[\d.,]+(?:-[\d.,]+)?\s*(?:%\/s|%|s|m|x|EP|m\/s|\/s|°)?(?:\s*x\s*[\d.,]+\s*m)?)\s+([A-Za-z(].*)$/);
+    if (!m || /^x\s/.test(m[2])) return x;
+    const l = m[2].replace(/\|cardonly\s*\}?/g, "").replace(/class=icon/g, "").replace(/[()]/g, "").replace(/[\s.]+$/, "").trim();
+    return { ...x, v: m[1].replace(/\s*EP$/, "").trim(), label: l };
+  };
   // `le`: the wiki's English label, kept until caps are linked (finishStats).
-  const list = (xs) => xs.map((x) => ({ v: x.v, n: x.n, u: x.unit || undefined, l: label(x.label), le: x.label || undefined }));
+  const list = (xs) =>
+    xs.map(split).map((x) => ({ v: x.v, n: x.n, u: x.unit || undefined, l: label(x.label), le: x.label || undefined }));
   return {
     cost: deCost || w.energy?.n, // DE has 0 for a few (Spores): the wiki then
     str: list(w.strength),

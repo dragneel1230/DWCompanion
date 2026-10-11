@@ -1,9 +1,9 @@
 // "Где добыть": one index over everything a player farms (resources, warframes, weapons, companions,
 // components, prime parts) and short answers to "how do I get it". Data: drops.json, craft.json, db.json.
 import { getDb, itemName, normalize, searchList } from "$lib/db";
-import { t, num, labels } from "$lib/i18n/index.svelte";
+import { t, num, labels, type Key } from "$lib/i18n/index.svelte";
 import { rate, type DropsDb, type Src } from "$lib/drops";
-import type { CraftDb, CraftItem } from "$lib/craft";
+import { readyMade, type CraftDb, type CraftItem } from "$lib/craft";
 
 export type FarmKind = "resource" | "frame" | "weapon" | "companion" | "part" | "prime" | "other";
 
@@ -60,7 +60,7 @@ export function buildIndex(drops: DropsDb, craft: CraftDb): FarmEntry[] {
   for (const [id, c] of Object.entries(craft.items)) {
     if (c.kind === "resource") continue; // the resource's own entry
     if (c.kind === "part" && relicPart(id)) continue; // a prime part: its db item below
-    out.push({ kind: CRAFT_TO_FARM[c.kind] ?? "other", id, name: c.name, en: c.en, icon: c.icon, craft: true, keys: keys(c.ru, c.en) });
+    out.push({ kind: CRAFT_TO_FARM[c.kind] ?? "other", id, name: c.name, en: c.en, icon: c.icon, craft: !readyMade(c), keys: keys(c.ru, c.en) });
   }
   const db = getDb();
   for (const [id, it] of Object.entries(db.items)) {
@@ -82,7 +82,7 @@ const fmt = (n: number) => num(n);
 
 // Sources in the order a player would try them: Market, clan lab, quest, vendor, syndicate; Conclave (PvP) and
 // events last — Volt's "Conclave, rank Typhoon" is real but not where a newcomer should go.
-const SRC_RANK: Record<Src["k"], number> = { market: 0, lab: 1, quest: 2, vendor: 3, syndicate: 4 };
+const SRC_RANK: Record<Src["k"], number> = { special: -1, market: 0, lab: 1, quest: 2, vendor: 3, syndicate: 4 };
 const late = (s: Src) => (s.k === "vendor" && s.event) || (s.k === "syndicate" && /Conclave|Конклав/.test(s.name));
 export function orderSrc(list: Src[] | undefined): Src[] {
   return [...(list ?? [])].sort((a, b) => +late(a) - +late(b) || SRC_RANK[a.k] - SRC_RANK[b.k]);
@@ -91,23 +91,35 @@ export function orderSrc(list: Src[] | undefined): Src[] {
 // One source as a short line: "Рынок · 35 000 кр.", "Лаборатория Тэнно", "Квест «Сердце Деймоса»".
 export function srcText(s: Src): string {
   switch (s.k) {
+    case "special":
+      return t(`farm.sp.${s.key}` as Key, spArgs(s));
     case "market":
       return [t("farm.src.market"), s.cr ? t("ct.cr", { v: fmt(s.cr) }) : "", s.pl ? t("farm.pl", { v: s.pl }) : ""].filter(Boolean).join(" · ");
     case "lab":
       return t("farm.src.lab", { lab: s.lab });
     case "quest":
       return s.name ? t("farm.src.quest", { name: s.name }) : t("farm.src.questAny");
-    case "syndicate":
+    case "syndicate": {
       // Simaris has no ranks: standing only.
-      return s.title || s.rank
+      const head = s.title || s.rank
         ? t("farm.src.syndicate", { name: s.name, title: s.title ? `«${s.title}»` : String(s.rank), v: fmt(s.standing) })
         : t("farm.src.syndicateNoRank", { name: s.name, v: fmt(s.standing) });
+      const u = s.unlock;
+      const after = !u ? "" : u.q ? t("farm.unlock.quest", { q: u.q }) : u.k ? t(`farm.unlock.${u.k}` as Key) : "";
+      return after ? `${head} · ${after}` : head;
+    }
     case "vendor": {
       const who = [s.npc, s.place].filter(Boolean).join(", ");
       const head = s.event ? t("farm.src.eventVendor") : who ? t("farm.src.vendorAt", { who }) : t("farm.src.vendor");
       return [head, costText(s)].filter(Boolean).join(" · ");
     }
   }
+}
+
+const spArgs = (s: Extract<Src, { k: "special" }>) => Object.fromEntries(Object.entries(s.a).map(([k, v]) => [k, v ?? ""]));
+// The family's way in full: requirements, how to pick the weapon, what the reward is.
+export function srcLong(s: Src): string {
+  return s.k === "special" ? t(`farm.sp.${s.key}.long` as Key, spArgs(s)) : "";
 }
 
 export function costText(s: Extract<Src, { k: "vendor" }>): string {

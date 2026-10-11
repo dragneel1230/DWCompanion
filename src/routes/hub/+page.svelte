@@ -27,6 +27,7 @@
   import Time from "$lib/hub/Time.svelte";
   import GoalsView from "$lib/goals/GoalsView.svelte";
   import ShipView from "$lib/views/ShipView.svelte";
+  import WeekView from "$lib/views/WeekView.svelte";
   import { tabs, saveTabs, type HubTab } from "$lib/hub/tabState.svelte";
 
   document.documentElement.style.background = "transparent";
@@ -51,6 +52,7 @@
   const tab = $derived(tabs.tab);
   const TABS: { id: HubTab; label: Key }[] = [
     { id: "now", label: "nav.now" },
+    { id: "week", label: "nav.week" },
     { id: "goals", label: "nav.goals" },
     { id: "builds", label: "nav.builds" },
     { id: "relics", label: "nav.relics" },
@@ -236,6 +238,8 @@
           <div class="swap panel coll"><div class="body"><RelicsView compact /></div></div>
         {:else if tab === "trade"}
           <div class="swap panel coll"><div class="body"><TradeView bind:this={trade} compact onopen={openView} /></div></div>
+        {:else if tab === "week"}
+          <div class="swap panel coll"><div class="body"><WeekView compact /></div></div>
         {:else if tab === "ship"}
           <div class="swap panel coll"><div class="body"><ShipView compact /></div></div>
         {:else if tab === "collection"}

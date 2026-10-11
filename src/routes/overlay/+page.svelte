@@ -11,7 +11,7 @@
   import { matchCard, relicKey, squadRewards, type Candidate, type Match } from "$lib/rewards";
   import { client } from "$lib/clientLang.svelte";
   import { readOverlaySettings, type Priority } from "$lib/overlaySettings.svelte";
-  import { collNeed, loadCollCtx, type CollMode, type CollNeed } from "$lib/collection/need";
+  import { collNeed, loadCollCtx, partInfo, type CollMode, type CollNeed, type PartInfo } from "$lib/collection/need";
   import KioskLayer from "$lib/components/KioskLayer.svelte";
   import { needs, neededBy } from "$lib/goals/watch.svelte";
 
@@ -26,7 +26,14 @@
     rarity: Rarity | null;
     need: string[];
     coll: CollNeed | null;
+    info: PartInfo | null; // its set, how much of it is held, the item's state
+    forma: boolean; // the Forma blueprint
   };
+
+  const FORMA = "/Lotus/Types/Recipes/Components/FormaBlueprint";
+  // "Junk": nothing on offer sells for more than this (platinum, the day's price) and nothing is wanted by a goal or
+  // a set: then a Forma blueprint is the better pick (one Forma costs more than that in the market's bundles).
+  const JUNK = 5;
 
   document.documentElement.style.background = "transparent";
   document.body.style.background = "transparent";
@@ -73,7 +80,8 @@
     readSettings(); // may have changed in the main window
     needs.refresh();
     // Inventory / profile as of now (the main window refreshes them after missions).
-    const coll = priority === "collection" ? await loadCollCtx().catch(() => null) : null;
+    const ctx = await loadCollCtx().catch(() => null);
+    const coll = priority === "collection" ? ctx : null;
     const squad = s.relics.length ? s.relics : relics;
     const lang = s.lang ?? client.lang; // the client's language the cards were read in
     const pool = squadRewards(squad, lang);
@@ -90,6 +98,8 @@
         rarity: id ? rarityOf(id, squad) : null,
         need: neededBy(id),
         coll: id && coll ? collNeed(id, collMode, coll) : null,
+        info: id ? partInfo(id, ctx) : null,
+        forma: id === FORMA,
       };
     });
     // The relic journal keeps what was on offer (the log only has the player's own relic reward).
@@ -131,6 +141,13 @@
     });
     return bi;
   });
+  // All junk and a Forma on offer: the Forma.
+  const junk = $derived(
+    priority !== "ducats" &&
+      shown.some((s) => s.forma) &&
+      shown.every((s) => !s.match || s.forma || (!s.need.length && !s.coll && (s.price?.sell ?? 0) <= JUNK)),
+  );
+  const pick = $derived(junk ? shown.findIndex((s) => s.forma) : best);
 
   // Item name in the interface language, split into the part and what it belongs to:
   // "Протея Прайм: Система" (blueprint) -> "Система" under "Чертёж · Протея Прайм".
@@ -175,15 +192,15 @@
       {@const n = s.match ? nameParts(s.match.cand.item) : null}
       <div
         class="panel r-{s.rarity ?? 'none'}"
-        class:best={i === best}
+        class:best={i === pick}
         style:left="{s.card.x / dpr}px"
         style:top="calc(548px * var(--k))"
         style:width="{s.card.w / dpr}px"
         style:animation-delay="{i * 70}ms"
       >
-        {#if i === best}
-          <div class="ribbon" class:goal={s.need.length > 0} class:coll={!s.need.length && !!s.coll}>
-            {s.need.length ? t("overlay.forGoal") : s.coll ? t(collMode === "mr" ? "overlay.forMr" : "overlay.forSet") : t("overlay.best")}
+        {#if i === pick}
+          <div class="ribbon" class:goal={s.need.length > 0} class:coll={!s.need.length && !!s.coll} class:forma={junk}>
+            {junk ? t("overlay.takeForma") : s.need.length ? t("overlay.forGoal") : s.coll ? t(collMode === "mr" ? "overlay.forMr" : "overlay.forSet") : t("overlay.best")}
           </div>
         {/if}
         <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
@@ -223,12 +240,30 @@
           </div>
 
           {#if s.need.length}<div class="goal-line">⚑ {s.need.join(", ")}</div>{/if}
-          {#if s.coll}
-            <!-- Parts toward the next set counting this one; without the inventory only "not mastered" is known. -->
-            <div class="coll-line">
-              ◈ {s.coll.have < 0
-                ? t("overlay.setNotMastered", { set: s.coll.name })
-                : t("overlay.setHave", { set: s.coll.name, a: s.coll.have + 1, b: s.coll.total })}
+          {#if s.info}
+            {@const f = s.info}
+            <!-- The set, part by part: held (blueprints / parts + already built) of what one set takes. -->
+            <div class="set">
+              <div class="set-head">
+                <span class="set-name">{f.name}</span>
+                {#if f.full > 0}<span class="copies" title={t("overlay.copies")}>×{f.full}</span>{/if}
+                {#if f.mastered}<span class="st ok" title={t("overlay.mastered")}>✓</span>
+                {:else if f.owned}<span class="st own">{t("overlay.ownedShort")}</span>
+                {:else if f.mastered === false}<span class="st no">{t("overlay.notMasteredShort")}</span>{/if}
+              </div>
+              {#if f.next >= 0}
+                <ul class="plist">
+                  {#each f.parts as p (p.id)}
+                    {@const have = p.bp + p.built}
+                    <li class:me={p.id === s.match.cand.id} class:ok={have >= p.per} class:part={have > 0 && have < p.per}>
+                      <span class="pn">{p.name || t("overlay.bp")}</span>
+                      <span class="pc">
+                        {#if p.built}<i title={t("overlay.built")}>⚒{p.built}</i>{/if}{have}<small>/{p.per}</small>
+                      </span>
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
             </div>
           {/if}
 
@@ -240,6 +275,7 @@
             {/if}
             {#if s.rarity}<span class="rar">{RARITY_RU[s.rarity]}</span>{/if}
             {#if s.vaulted}<span class="vault">{t("tag.vault")}</span>{/if}
+            {#if junk && !s.forma}<span class="junk">{t("overlay.junk")}</span>{/if}
             {#if s.match.alt}<span class="doubt">{t("overlay.unsureOr", { name: itemName(s.match.alt.item) })}</span>
             {:else if s.match.score < 0.7}<span class="doubt">{t("overlay.unsure")}</span>{/if}
           </div>
@@ -389,15 +425,108 @@
   .ribbon.coll {
     background: linear-gradient(180deg, #b9d4ff, #6d93d6);
   }
-  .coll-line {
+  /* All junk on offer: take the Forma. */
+  .ribbon.forma {
+    background: linear-gradient(180deg, #f2d9a0, #c89a4c);
+  }
+  .set {
+    width: 100%;
+    margin-top: calc(5px * var(--k));
+    padding-top: calc(5px * var(--k));
+    border-top: 1px solid rgba(216, 183, 122, 0.14);
+  }
+  .set-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: calc(5px * var(--k));
     max-width: 100%;
-    margin-top: calc(4px * var(--k));
+  }
+  .set-name {
     font-size: calc(11px * var(--k));
-    color: #a9c6ff;
-    text-align: center;
+    color: var(--txt);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .st {
+    flex: none;
+    font-size: calc(10px * var(--k));
+  }
+  .st.ok {
+    color: #8fe0b2;
+  }
+  .st.own {
+    color: #b9d1ff;
+  }
+  .st.no {
+    color: #f0a45e;
+  }
+  .plist {
+    list-style: none;
+    margin: calc(3px * var(--k)) 0 0;
+    padding: 0;
+    font-size: calc(10.5px * var(--k));
+    line-height: 1.35;
+    text-align: left;
+  }
+  .plist li {
+    display: flex;
+    align-items: baseline;
+    gap: calc(6px * var(--k));
+    padding: 0 calc(4px * var(--k));
+    color: var(--dim);
+  }
+  .plist li.part {
+    color: #e6c060;
+  }
+  .plist li.ok {
+    color: #8fe0b2;
+  }
+  /* The part on this card. */
+  .plist li.me {
+    background: rgba(216, 183, 122, 0.14);
+    box-shadow: inset 2px 0 0 var(--gold);
+  }
+  .plist li.me .pn {
+    color: var(--txt);
+  }
+  .pn {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pc {
+    flex: none;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+  .pc small {
+    font-weight: 400;
+    opacity: 0.7;
+  }
+  .pc i {
+    margin-right: calc(4px * var(--k));
+    font-style: normal;
+    font-weight: 400;
+    opacity: 0.8;
+  }
+  .copies {
+    flex: none;
+    padding: 0 calc(5px * var(--k));
+    border-radius: calc(3px * var(--k));
+    background: rgba(143, 224, 178, 0.16);
+    color: #8fe0b2;
+    font-size: calc(11px * var(--k));
+    font-weight: 600;
+  }
+  .junk {
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: calc(10px * var(--k));
   }
   .goal-line {
     max-width: 100%;

@@ -10,6 +10,7 @@ import { journal } from "$lib/journal.svelte";
 import { missionState } from "$lib/missionState.svelte";
 import { DEFAULT_PREFS, type Prefs } from "$lib/inv/worth";
 import { shardsFromInv } from "$lib/shards";
+import { foldPairs } from "$lib/mastery";
 
 export interface InvData {
   at: number; // when the game synced it (LastInventorySync), ms
@@ -76,8 +77,15 @@ export interface InvWeek {
   // 1999 calendar: season, its iteration and version, last completed day index, upgrades picked this year.
   cal?: { season: string; it: number; ver: number; day: number; up: string[] };
   circuit: Record<string, { choices: string[]; earn: number; claim: number; until: number }>; // EXC_NORMAL / EXC_HARD
-  nw: string[]; // Nightwave challenge ids done (SeasonChallengeHistory)
+  nw: string[]; // Nightwave challenge ids given to the player (SeasonChallengeHistory; not "done")
+  nwProg?: Record<string, number>; // Nightwave challenge key -> progress (ChallengeProgress "Season…"). Absent before v0.2.3.
   incarnon: string[]; // weapons with an Incarnon Genesis installed (Features bit 512)
+  // Sortie / Archon hunt missions done: "<node>_<sortie id>" (CompletedSorties). Absent before 2026-10-09 (v0.2.3).
+  stages?: string[];
+  // Weekly NPC missions: tag -> last completion ms (PeriodicMissionCompletions: "GetClem", "TreasureHunt…").
+  periodic?: Record<string, number>;
+  // Nightwave seasons: syndicate tag -> [rank, standing] (Affiliations "RadioLegion…").
+  nwRank?: Record<string, [number, number]>;
 }
 
 type Raw = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -198,6 +206,7 @@ export function parseInventory(text: string): InvData {
   if (suit?.ItemType) current = { frame: suit.ItemType, cfg: Number(preset.s.mod) || 0 };
   const xp: Record<string, number> = {};
   for (const x of j.XPInfo ?? []) if (x?.ItemType) xp[x.ItemType] = x.XP ?? 0;
+  foldPairs(xp);
   const foundry: InvFoundry[] = (j.PendingRecipes ?? [])
     .filter((r: Raw) => r?.ItemType)
     .map((r: Raw) => ({ id: r.ItemType, done: dateMs(r.CompletionDate), oid: r.ItemId?.$oid ?? `${r.ItemType}:${dateMs(r.CompletionDate)}` }));
@@ -238,7 +247,23 @@ export function parseInventory(text: string): InvData {
         .map((e) => [e.Category, { choices: (e.Choices ?? []).filter((c: unknown) => typeof c === "string"), earn: Number(e.Earn) || 0, claim: Number(e.Claim) || 0, until: dateMs(e.Expiry) }]),
     ),
     nw: ((j.SeasonChallengeHistory ?? []) as Raw[]).map((c) => c?.id).filter((x): x is string => typeof x === "string"),
+    nwProg: Object.fromEntries(
+      ((j.ChallengeProgress ?? []) as Raw[])
+        .filter((c) => typeof c?.Name === "string" && c.Name.startsWith("Season"))
+        .map((c) => [c.Name, Number(c.Progress) || 0]),
+    ),
     incarnon: [...incarnon],
+    stages: ((j.CompletedSorties ?? []) as unknown[]).filter((x): x is string => typeof x === "string"),
+    periodic: Object.fromEntries(
+      ((j.PeriodicMissionCompletions ?? []) as Raw[])
+        .filter((p) => typeof p?.tag === "string" && /^(GetClem|TreasureHunt)/.test(p.tag))
+        .map((p) => [p.tag, dateMs(p.date)]),
+    ),
+    nwRank: Object.fromEntries(
+      ((j.Affiliations ?? []) as Raw[])
+        .filter((a) => typeof a?.Tag === "string" && a.Tag.startsWith("RadioLegion"))
+        .map((a) => [a.Tag, [Number(a.Title) || 0, Number(a.Standing) || 0]]),
+    ),
   };
   return {
     at: oidTime(j.LastInventorySync) || Date.now(),
@@ -531,16 +556,34 @@ export function startInventoryAuto() {
   missionState.start();
   let timer: ReturnType<typeof setTimeout> | undefined;
   let last = 0;
-  const run = () => {
+  let waiting = false; // a signal came while a mission was on: run when it ends
+  let retried = false;
+  const schedule = (ms: number) => {
+    clearTimeout(timer);
+    timer = setTimeout(run, Math.max(ms, last + MIN_GAP - Date.now()));
+  };
+  const run = async () => {
     timer = undefined;
     if (!inventory.auto || !inventory.ready) return;
-    if (missionState.value?.active) return; // back on the ship sends the signal again
+    if (missionState.value?.active) {
+      waiting = true;
+      return;
+    }
+    waiting = false;
     last = Date.now();
-    void inventory.refresh(true);
+    const ok = await inventory.refresh(true);
+    // One more try a gap later (the game may not have finished its own sync, the session may be fresh).
+    if (!ok && !retried) {
+      retried = true;
+      schedule(AFTER_SYNC);
+    } else retried = false;
   };
   listen("game-inventory-sync", () => {
     if (!inventory.auto || !inventory.ready) return;
-    clearTimeout(timer);
-    timer = setTimeout(run, Math.max(AFTER_SYNC, last + MIN_GAP - Date.now()));
+    schedule(AFTER_SYNC);
+  });
+  // The mission was still on when the signal came (the ship line and the state change race): run once it ends.
+  listen<{ active?: boolean }>("mission-state", (e) => {
+    if (waiting && !e.payload?.active && inventory.auto && inventory.ready) schedule(AFTER_SYNC);
   });
 }

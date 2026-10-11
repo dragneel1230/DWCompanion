@@ -213,6 +213,7 @@
           </div>
         {/each}
       </div>
+      {#each s.how.filter((h) => h.long) as h, i (i)}<p class="alt">{h.long}</p>{/each}
       {#if s.kind === "res"}<p class="alt">{t("goal.res.tip")}</p>{/if}
     {:else if s.kind === "item" && s.relics?.length}
       <p class="say">{t("goal.item.prime")}</p>

@@ -40,14 +40,14 @@ const GLUE = {
     bounty: "Заказ", lvl: "ур.", extra: "доп. награда", event: "событие", dark: "Тёмный сектор",
     mode: { caches: "Тайники", conclave: "Конклав", archwing: "Арчвинг", sharkwing: "Акулье крыло" },
     circuit: (n) => `Цепь, уровень ${n}`,
-    words: { "duviri circuit": "Цепь (Дувири)", "zariman ten zero": "Зариман", hard: "Стальной путь", normal: "Обычный", relay: "Реле", camp: "Лагерь Скитальца", chipper: "Чиппер", ascension: "режим «Вознесение»", arbitration: "Почести Арбитража" },
+    words: { "duviri circuit": "Цепь (Дувири)", "zariman ten zero": "Зариман", hard: "Стальной путь", normal: "Обычный", relay: "Реле", camp: "Лагерь Скитальца", chipper: "Чиппер", ascension: "режим «Вознесение»", arbitration: "Почести Арбитража", sortie: "Вылазка" },
     quest: (q) => `локация квеста «${q}»`,
   },
   en: {
     bounty: "Bounty", lvl: "lvl", extra: "extra reward", event: "event", dark: "Dark Sector",
     mode: { caches: "Caches", conclave: "Conclave", archwing: "Archwing", sharkwing: "Sharkwing" },
     circuit: (n) => `The Circuit, tier ${n}`,
-    words: { "duviri circuit": "The Circuit (Duviri)", "zariman ten zero": "Zariman", hard: "Steel Path", normal: "Normal", relay: "Relay", camp: "Drifter's Camp", chipper: "Chipper", ascension: "Ascension mode", arbitration: "Arbitration Honors" },
+    words: { "duviri circuit": "The Circuit (Duviri)", "zariman ten zero": "Zariman", hard: "Steel Path", normal: "Normal", relay: "Relay", camp: "Drifter's Camp", chipper: "Chipper", ascension: "Ascension mode", arbitration: "Arbitration Honors", sortie: "Sortie" },
     quest: (q) => `${q} quest area`,
   },
 };
@@ -431,7 +431,9 @@ for (const [id, e] of Object.entries(resources)) {
   // Resource-like items, plus anything a planet or a drop table gives (open-world resources etc.),
   // minus what is not a resource: captura scenes, Ayatan stars, Forma, adapters, eggs, syndicate tokens, fish.
   if (!RESOURCE_PARENTS.test(e.parentName) && !planets && !list.length) continue;
-  if (NOT_RESOURCE.test(e.parentName) || /Adapter$|^(Omni )?Forma$/i.test(en[e.name] ?? "")) continue;
+  // Adapters and Forma are no resources, but players look them up here too ("где взять эксилус-адаптер"),
+  // and nowhere else lists them: kept.
+  if (NOT_RESOURCE.test(e.parentName)) continue;
   if (!planets && !list.length && e.codexSecret) continue;
   // The game's description often ends with where to find it ("Местонахождение: ...") — the only source
   // for gathered things (plants, ore, fish) and quest/event items that no drop table lists.
@@ -574,9 +576,37 @@ const LAB = (bp) =>
   : /ClanTech\/Energy|Research\/Energy/.test(bp) ? "Dojo/ResearchLabCorpusName"
   : /Railjack|ShipFeature|Consumables|SolarRails|SpectreArmies/.test(bp) ? null
   : "Dojo/ResearchLabTennoName";
+// Ways DE's data has no word for, shared by a whole family (wiki: "Kuva Lich", "Sisters of Parvos", "Technocyte Coda",
+// "Daily Tribute"): the app explains each family once (i18n "farm.sp.<key>"); names in it are DE's.
+const questName = (en0) => named(Object.entries(keysExport).find(([k, q]) => /KeyChain$/.test(k) && en[q.name] === en0)?.[1].name);
+const SPECIAL_ARGS = {
+  kuva: { quest: questName("The War Within"), larv: named("/Lotus/Language/Enemies/KuvaLarvlingName"), rj: named("/Lotus/Language/CrewShip/Hull_RailJack") },
+  tenet: { q1: questName("The War Within"), q2: questName("Call of the Tempestarii"), crown: named("/Lotus/Language/Tokens/GreedTokenBlackName"), key: named("/Lotus/Language/Currency/GranumBucksName"), npc: named("/Lotus/Language/G1Quests/ErgoGlastName") },
+  coda: { quest: questName("The Hex"), cur: named("/Lotus/Language/1999Coda/CodaWeaponBucksName"), npc: named("/Lotus/Language/1999/MessengerEleanorName"), map: named("/Lotus/Language/1999/1999MapName") },
+  tribute: {},
+};
+function specialOf(id) {
+  const n = en[entryOf(id)?.name] ?? "";
+  const key = /^Kuva /.test(n) && weapons[id] ? "kuva" : /^Tenet /.test(n) && weapons[id] ? "tenet" : /^Coda /.test(n) && weapons[id] ? "coda"
+    : /\/Sundial/.test(id) ? "tribute" : null;
+  return key ? { k: "special", key, a: SPECIAL_ARGS[key] } : null;
+}
+// Cephalon Simaris sells these for 100 000 standing only once they're unlocked elsewhere (wiki "Cephalon Simaris",
+// offerings): the source line says what unlocks them.
+const SIMARIS_UNLOCK = [
+  [/\/Sundial/, { k: "tribute" }],
+  [/DaxDuviri(Katana|Hammer|Polearm|TwoHandedKatana)Weapon$/, { k: "cave" }],
+  [/TnTeshinGlaiveWep$|GrnQueenSceptreWeapon$/, { q: questName("The War Within") }],
+  [/StandardJetPack$|ArchMachineGun$|ArchSwordWeapon$/, { q: questName("The Archwing") }],
+  [/DuviriDualSwordsWeapon$/, { q: questName("The Duviri Paradox") }],
+  [/DrifterPistolPlayerWeapon$|DrifterTazerPlayerWep$/, { q: questName("The New War") }],
+  [/NWOrokinSword$/, { k: "glassmaker" }],
+  [/SheduHeavyWeapon$/, { q: questName("Erra") }],
+];
 function sourcesOf(itemId) {
   const bp = bpKey.get(itemId);
-  const out = [...(vendorOf.get(itemId) ?? []).map((v) => ({ k: "vendor", ...v })), ...(synOf.get(itemId) ?? []).map((v) => ({ k: "syndicate", ...v }))];
+  const sp = specialOf(itemId);
+  const out = [...(sp ? [sp] : []), ...(vendorOf.get(itemId) ?? []).map((v) => ({ k: "vendor", ...v })), ...(synOf.get(itemId) ?? []).map((v) => ({ k: "syndicate", ...v }))];
   if (!bp) return out.length ? out : undefined;
   const r = recipes[bp];
   if ((r.creditsCost || r.platinumCost) && !r.excludeFromMarket) out.push({ k: "market", cr: r.creditsCost, pl: r.platinumCost });
@@ -587,6 +617,8 @@ function sourcesOf(itemId) {
   if (questOf.has(bp)) out.push({ k: "quest", name: named(questOf.get(bp)) });
   for (const v of vendorOf.get(bp) ?? []) out.push({ k: "vendor", ...v });
   for (const v of synOf.get(bp) ?? []) out.push({ k: "syndicate", ...v });
+  const unlock = SIMARIS_UNLOCK.find(([re]) => re.test(itemId))?.[1];
+  if (unlock) for (const s of out) if (s.k === "syndicate" && s.standing === 100000 && s.name === named(syndicates.LibrarySyndicate?.name)) s.unlock = unlock;
   return out.length ? out : undefined;
 }
 
@@ -628,6 +660,15 @@ function addCraft(id, depth = 0) {
 for (const src of [frames, weapons, sentinels, gear]) {
   for (const [id, e] of Object.entries(src)) if (e.name && ru[e.name] && !e.codexSecret) addCraft(id);
 }
+// Sold ready-made, no recipe at all (syndicate weapons: Rakta, Vaykor…; Coda weapons at Eleanor): an entry with no
+// parts, so search, the collection and goals know where to get them.
+for (const src of [frames, weapons, sentinels]) {
+  for (const [id, e] of Object.entries(src)) {
+    if (craft[id] || !e.name || !ru[e.name] || e.codexSecret || /PetParts\//.test(id)) continue;
+    if (!vendorOf.get(id)?.some((v) => v.direct) && !synOf.get(id)?.some((v) => v.direct)) continue;
+    craft[id] = { ...nameOf(id), kind: KIND_OF(id), credits: 0, time: 0, num: 1, parts: [] };
+  }
+}
 // Resources built in the foundry (Fieldron, Detonite Injector, Mutagen Mass…): kind "resource",
 // shown on the resource's own page; elsewhere a resource stays a leaf of the tree.
 for (const id of Object.keys(res)) {
@@ -651,6 +692,11 @@ for (const id of Object.keys(craft)) {
   if (bp && /Prime/.test(bp)) craft[id].bp = bp;
   // Any other blueprint: the player's inventory lists blueprints by this id (Recipes).
   else if (bp) craft[id].r = bp;
+}
+// Other ingredients sold by a vendor or syndicate (Centaur's blade / aegis / handle at three syndicates).
+for (const id of Object.keys(names)) {
+  const v = [...(vendorOf.get(id) ?? []).map((x) => ({ k: "vendor", ...x })), ...(synOf.get(id) ?? []).map((x) => ({ k: "syndicate", ...x }))];
+  if (v.length) names[id].src = v;
 }
 // Plain resources some vendor sells (Railjack salvage, fish parts…): on the resource itself.
 for (const id of Object.keys(res)) {

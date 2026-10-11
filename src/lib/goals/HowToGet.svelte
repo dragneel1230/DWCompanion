@@ -43,7 +43,7 @@
         <div class="step">
           <span class="ic">{#if s.icon}<img src={iconUrl(s.icon)} alt="" loading="lazy" />{/if}</span>
           <span class="txt">
-            <b>{s.main ? t("coll.howMain") : short(s.name)}{#if s.count > 1}<i> ×{s.count}</i>{/if}</b>
+            <b>{s.main ? (s.direct ? t("farm.readyMade") : t("coll.howMain")) : short(s.name)}{#if s.count > 1}<i> ×{s.count}</i>{/if}</b>
             {#if s.kind === "relic"}
               <small>
                 {#if live.length}{live.slice(0, 3).map((r) => `${r.s} (${RARITY_RU[r.rarity].toLowerCase()})`).join(", ")}{live.length > 3 ? ` ${t("coll.andMore", { v: live.length - 3 })}` : ""}
@@ -51,6 +51,11 @@
               </small>
             {:else if s.how[0]}
               <small>{s.how[0].text}{s.how[0].sub ? ` · ${s.how[0].sub}` : ""}</small>
+              {#if s.how[0].long}
+                <!-- A family's way (Kuva Lich, Coda…): the explanation, then the other sources (vendor, Simaris). -->
+                {#each s.how.slice(1, 3) as h, i (i)}<small>{h.text}{h.sub ? ` · ${h.sub}` : ""}</small>{/each}
+                <small class="long">{s.how[0].long}</small>
+              {/if}
             {:else}
               <small class="unknown">{t("goal.hint.noSource")}</small>
             {/if}
@@ -135,6 +140,11 @@
   .txt small {
     display: block;
     font-size: 12px;
+    color: var(--text-dim);
+  }
+  .txt small.long {
+    margin-top: 4px;
+    line-height: 1.45;
     color: var(--text-dim);
   }
   .txt small.unknown {

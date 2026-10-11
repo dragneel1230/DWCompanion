@@ -21,6 +21,7 @@
   import { goals } from "$lib/goals/goals.svelte";
   import HowToGet from "$lib/goals/HowToGet.svelte";
   import { inventory } from "$lib/inventory.svelte";
+  import { relicsHeld } from "$lib/inv/worth";
   import type { Profile } from "$lib/profile.svelte";
 
   // `ongoal`: add / open the item in the guide. The app goes to /goals; the hub switches to its Goals tab.
@@ -301,10 +302,17 @@
     return a ? { k: "parts", a, b: parts.length } : null;
   }
   const openSet = $derived(open && db.sets[open.id] ? db.sets[open.id] : null);
+  // Relics to open for a part: the ones held (vaulted too: they still open), then the ones that drop now.
+  const held = $derived(relicsHeld(inventory.data));
   const partInfo = (pid: string) => {
     const it = db.items[pid];
     const active = it.relics.filter((r) => !db.relics[r.relic]?.vaulted);
-    return { it, active };
+    const mine = it.relics
+      .filter((r) => db.relics[r.relic] && held.get(r.relic))
+      .map((r) => ({ s: db.relics[r.relic].s, n: held.get(r.relic)!, vaulted: !!db.relics[r.relic].vaulted }))
+      .sort((a, b) => b.n - a.n);
+    const rest = active.filter((r) => !held.get(r.relic)).map((r) => db.relics[r.relic].s);
+    return { it, active, mine, rest };
   };
 
   const STATUS_RU = labels<Status>({ mastered: "coll.st.mastered", progress: "coll.st.progress", none: "coll.st.none" });
@@ -700,6 +708,7 @@
       </div>
       <div class="m-bar" class:done={r.status === "mastered"}><i style:width="{(r.rank / r.it.max) * 100}%"></i></div>
       <p class="small">{r.it.max > 30 ? t("coll.perRank40", { v: perRank(r.it.fl) }) : t("coll.perRank", { v: perRank(r.it.fl) })}</p>
+      {#if r.it.mod}<p class="small">{t(`coll.mod.${r.it.mod}` as Key)}</p>{/if}
 
       {#if openSet}
         <div class="section-title">{t("coll.setParts")}</div>
@@ -711,9 +720,12 @@
               <span class="name">
                 {count > 1 ? `${count} × ` : ""}{itemName(pi.it)}
                 <small>
-                  {#if pi.active.length}
-                    {pi.active.slice(0, 4).map((x) => db.relics[x.relic].s).join(", ")}{pi.active.length > 4 ? ` ${t("coll.andMore", { v: pi.active.length - 4 })}` : ""}
-                  {:else}{t("detail.onlyVault")}{/if}
+                  {#if pi.mine.length}
+                    {#each pi.mine.slice(0, 4) as m, i (m.s)}{i ? ", " : ""}<b class="mine" class:vaulted={m.vaulted} title={m.vaulted ? t("tag.inVault") : ""}>{m.s} ×{m.n}</b>{/each}{pi.rest.length ? " · " : ""}
+                  {/if}
+                  {#if pi.rest.length}
+                    {pi.rest.slice(0, pi.mine.length ? 2 : 4).join(", ")}{pi.rest.length > (pi.mine.length ? 2 : 4) ? ` ${t("coll.andMore", { v: pi.rest.length - (pi.mine.length ? 2 : 4) })}` : ""}
+                  {:else if !pi.mine.length}{t("detail.onlyVault")}{/if}
                 </small>
               </span>
               {#if inventory.count(pid)}<span class="have">{t("coll.inv.have", { v: inventory.count(pid) ?? 0 })}</span>{/if}
@@ -736,6 +748,13 @@
 {/if}
 
 <style>
+  small .mine {
+    font-weight: 500;
+    color: var(--good);
+  }
+  small .mine.vaulted {
+    color: var(--accent);
+  }
   .inv-tag {
     color: var(--accent);
     font-size: 11px;

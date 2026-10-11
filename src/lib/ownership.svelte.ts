@@ -3,7 +3,7 @@
 // null = unknown (no inventory snapshot / no profile, or not an item that levels).
 import { inventory, bestXp } from "$lib/inventory.svelte";
 import { profile } from "$lib/profile.svelte";
-import { loadMastery, rankOf, type MasteryDb } from "$lib/mastery";
+import { loadMastery, rankOf, PAIR_OF, type MasteryDb } from "$lib/mastery";
 
 let mdb = $state<MasteryDb | null>(null);
 let started = false;
@@ -15,11 +15,12 @@ function ensure() {
 }
 
 export function isOwned(id: string): boolean | null {
-  return inventory.data ? inventory.inArsenal(id) : null;
+  return inventory.data ? inventory.inArsenal(PAIR_OF[id] ?? id) : null;
 }
 
 export function isMastered(id: string): boolean | null {
   ensure();
+  id = PAIR_OF[id] ?? id;
   const it = mdb?.items[id];
   if (!it) return null;
   const xp = bestXp(profile.data?.xp[id], id);

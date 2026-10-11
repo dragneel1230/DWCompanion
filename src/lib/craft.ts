@@ -24,7 +24,7 @@ export interface CraftItem {
 
 export interface CraftDb {
   items: Record<string, CraftItem>;
-  names: Record<string, { ru: string; en: string; name: string; icon: string | null }>; // other ingredients
+  names: Record<string, { ru: string; en: string; name: string; icon: string | null; src?: Src[] }>; // other ingredients
   bpNames?: Record<string, [string, string | null, number]>; // blueprints of things outside the tree: recipe id -> result name, icon, build time (s)
 }
 
@@ -105,3 +105,6 @@ export function buildTime(s: number): string {
   if (s >= 3600) return t("unit.hours", { v: num(s / 3600, 1) });
   return t("unit.minutes", { v: Math.max(1, Math.round(s / 60)) });
 }
+
+// Sold ready-made, no recipe at all (syndicate weapons, Coda weapons): no blueprint, nothing to build.
+export const readyMade = (c: CraftItem) => !c.parts.length && !c.credits && !c.time && !c.r && !c.bp;

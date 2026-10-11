@@ -13,7 +13,7 @@
   import { owned } from "$lib/owned.svelte";
   import GearBoard from "$lib/components/GearBoard.svelte";
   import ShareButton from "$lib/components/ShareButton.svelte";
-  import { buildsSel, pickGear } from "./buildsSel.svelte";
+  import { buildsSel, pickBuild, pickGear } from "./buildsSel.svelte";
 
   let { kind }: { kind: GearTab } = $props();
 
@@ -53,6 +53,8 @@
     return list.find(([id]) => equipped[id] != null)?.[0] ?? list[0]?.[0] ?? "";
   });
   const gear = $derived(ctx && itemId ? ctx.items[itemId] : null);
+  // The warframes an exalted weapon / Venari belongs to: links back to their builds.
+  const owners = $derived(fdb && gear?.of ? gear.of.filter((f) => fdb!.frames[f]).map((f) => [f, fdb!.frames[f]] as const) : []);
   const game = $derived(ctx && itemId ? gameGearBuilds(ctx, itemId) : []);
   const mine = $derived(itemId ? gearBuilds.of(itemId) : []);
   const builds = $derived([...game, ...mine]);
@@ -136,6 +138,21 @@
             <a class="act" href="/gear?id={enc(itemId)}&new=1">+ {t("builds.new")}</a>
           </div>
         </header>
+
+        <!-- The other way of «Своё снаряжение» on the warframe: an exalted weapon / Venari -> its warframe. -->
+        {#if owners.length}
+          <div class="group">
+            <span class="glabel">{t("gb.owner")}</span>
+            <div class="chips">
+              {#each owners as [f, fr] (f)}
+                <button class="chip own" onclick={() => pickBuild(f)}>
+                  <img src={iconUrl(fr.icon)} alt="" />
+                  <span>{fr.name}</span>
+                </button>
+              {/each}
+            </div>
+          </div>
+        {/if}
 
         {#if builds.length}
           {#each [{ key: "game", label: t("builds.inGame"), items: game }, { key: "mine", label: t("builds.mine"), items: mine }].filter((x) => x.items.length) as grp (grp.key)}
@@ -391,6 +408,14 @@
     gap: 2px;
     font-size: 11px;
     color: var(--text-faint);
+  }
+  .chip.own {
+    padding-left: 5px;
+  }
+  .chip.own img {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
   }
   .chip small img {
     width: 12px;

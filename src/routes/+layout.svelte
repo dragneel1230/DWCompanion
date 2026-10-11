@@ -58,6 +58,7 @@
   // gear at the bottom. Global search is Ctrl+K (the button at the bottom); the app opens on «Сейчас».
   const NAV: { href: string; label: Key; icon: string }[] = [
     { href: "/now", label: "nav.now", icon: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4v5l3 2" },
+    { href: "/week", label: "nav.week", icon: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4M8 14h3v3H8z" },
     { href: "/goals", label: "nav.goals", icon: "M6 21V4M6 4h11l-2.5 4L17 12H6" },
     { href: "/frames", label: "nav.builds", icon: "M12 3 5 7v6c0 4 3 7 7 8 4-1 7-4 7-8V7l-7-4Zm0 5v8" },
     { href: "/relics", label: "nav.relics", icon: "M12 3 6 9l6 12 6-12-6-6ZM6 9h12" },

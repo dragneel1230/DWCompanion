@@ -321,7 +321,7 @@ function gameBuilds(db: FramesDb, frameId: string): [string, Build][] {
 }
 
 // Two-in-one warframes: the half that isn't an arsenal item of its own -> the one that is (owned, rank, XP).
-export const PAIR_OF: Record<string, string> = { "/Lotus/Powersuits/SiriusOrion/OrionSuit": "/Lotus/Powersuits/SiriusOrion/SiriusSuit" };
+export { PAIR_OF } from "$lib/mastery";
 
 // Mod drain at a rank (default max); a matching slot polarity halves it (rounded up), a mismatch adds 25%.
 // Auras give capacity instead: returned as a negative number, doubled in a matching aura slot.

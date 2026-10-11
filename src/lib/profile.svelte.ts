@@ -5,6 +5,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { fetch } from "@tauri-apps/plugin-http";
 import { t } from "$lib/i18n/index.svelte";
+import { foldPairs } from "$lib/mastery";
 
 export interface Profile {
   at: number;
@@ -217,7 +218,7 @@ class ProfileStore {
         account: this.account,
         name: cleanName(r.DisplayName ?? ""),
         mr: r.PlayerLevel ?? 0,
-        xp: Object.fromEntries(xpInfo.map((x) => [x.ItemType, x.XP])),
+        xp: foldPairs(Object.fromEntries(xpInfo.map((x) => [x.ItemType, x.XP]))),
         missions: (r.Missions ?? []).map((m: { Tag: string; Tier?: number }) => ({ tag: m.Tag, sp: m.Tier === 1 })),
         skills: r.PlayerSkills ?? {},
         created: Number(r.Created?.$date?.$numberLong) || undefined,

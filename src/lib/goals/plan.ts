@@ -4,7 +4,7 @@
 import { getDb, type Rarity } from "$lib/db";
 import { pct, type Drop, type DropsDb, type SourceKind, type Src } from "$lib/drops";
 import { totals, whereShort, type CraftDb, type CraftItem } from "$lib/craft";
-import { orderSrc, srcText } from "$lib/farm";
+import { orderSrc, srcLong, srcText } from "$lib/farm";
 import { num, t } from "$lib/i18n/index.svelte";
 
 // "bp": a blueprint from the Market / lab / quest / vendor / drop tables; "relic": a prime blueprint or
@@ -16,6 +16,7 @@ export interface How {
   icon: HowIcon;
   text: string;
   sub?: string;
+  long?: string; // the family's way in full (Kuva Lich, Sister, Coda, Daily Tribute)
 }
 
 export interface RelicRef {
@@ -84,7 +85,8 @@ const NOT_DROP = new Set<HowIcon>(["market", "lab", "quest", "syndicate", "vendo
 export function sourcesOf(c: { src?: Src[]; drops?: Drop[] }, drops: DropsDb, max = 3): How[] {
   const out: How[] = [];
   for (const s of orderSrc(c.src)) {
-    if (s.k === "market")
+    if (s.k === "special") out.push({ icon: "quest", text: srcText(s), long: srcLong(s) });
+    else if (s.k === "market")
       out.push({ icon: "market", text: s.cr ? t("goal.how.market", { v: num(s.cr) }) : t("goal.how.marketPl", { v: s.pl ?? 0 }) });
     else out.push({ icon: s.k, text: srcText(s) });
   }
@@ -136,7 +138,8 @@ function bpStep(key: string, id: string, c: CraftItem, drops: DropsDb, count: nu
     return { key, kind: "relic", id, name: c.name, icon: prime.icon ?? c.icon, count, how: [], relics: relicsOf(c.bp), reward: c.bp, slug: prime.slug, main, bpId: c.bp };
   }
   // Sold ready-made only (Ergo Glast's Dogmat weapons): "get it", and no foundry step.
-  const direct = !!c.src?.length && c.src.every((s) => "direct" in s && s.direct) && !c.drops?.length;
+  const sold = (c.src ?? []).filter((s) => s.k !== "special");
+  const direct = !!sold.length && sold.every((s) => "direct" in s && s.direct) && !c.drops?.length;
   return { key, kind: "bp", id, name: c.name, icon: c.icon, count, how: sourcesOf(c, drops), main, direct, bpId: c.bp ?? c.r };
 }
 
@@ -172,7 +175,7 @@ export function makePlan(craft: CraftDb, drops: DropsDb, id: string): Plan | nul
       bps.push({ key: `item:${pid}`, kind: "item", id: pid, name: cp.name, icon: cp.icon, count: n, how: src, relics: cp.bp ? relicsOf(cp.bp) : undefined });
     } else {
       const nm = craft.names[pid];
-      others.push({ key: `other:${pid}`, kind: "other", id: pid, name: nm?.name ?? pid.split("/").pop() ?? pid, icon: nm?.icon ?? null, count: n, how: [] });
+      others.push({ key: `other:${pid}`, kind: "other", id: pid, name: nm?.name ?? pid.split("/").pop() ?? pid, icon: nm?.icon ?? null, count: n, how: nm?.src ? sourcesOf(nm, drops) : [] });
     }
   }
 
@@ -184,7 +187,7 @@ export function makePlan(craft: CraftDb, drops: DropsDb, id: string): Plan | nul
   for (const [oid, n] of tot.other) {
     if (others.some((o) => o.id === oid) || d.items[oid] || craft.items[oid]) continue;
     const nm = craft.names[oid];
-    others.push({ key: `other:${oid}`, kind: "other", id: oid, name: nm?.name ?? oid.split("/").pop() ?? oid, icon: nm?.icon ?? null, count: n, how: [] });
+    others.push({ key: `other:${oid}`, kind: "other", id: oid, name: nm?.name ?? oid.split("/").pop() ?? oid, icon: nm?.icon ?? null, count: n, how: nm?.src ? sourcesOf(nm, drops) : [] });
   }
 
   if (!bps[0].direct)

@@ -7,7 +7,7 @@
   import { labels, locale, t, type Key } from "$lib/i18n/index.svelte";
   import { getDb, iconUrl, itemName } from "$lib/db";
   import { loadDrops, type DropsDb } from "$lib/drops";
-  import { loadCraft, type CraftDb } from "$lib/craft";
+  import { loadCraft, readyMade, type CraftDb } from "$lib/craft";
   import { buildIndex, findFarm, hintOf, parentsOf, popular, FARM_KIND, FARM_KINDS, FARM_KINDS_PL, type FarmEntry, type FarmKind } from "$lib/farm";
   import type { Mission } from "$lib/hub/hub";
   import FarmResource from "$lib/components/farm/FarmResource.svelte";
@@ -81,7 +81,7 @@
     }
     const c = craft.items[sel.id];
     const e = index.find((x) => x.id === sel.id && x.kind !== "resource");
-    return c ? { name: c.name, en: c.en, icon: c.icon, tag: e ? FARM_KIND[e.kind] : FARM_KIND.part, craft: true, craftAlso: false, rarity: undefined } : null;
+    return c ? { name: c.name, en: c.en, icon: c.icon, tag: e ? FARM_KIND[e.kind] : FARM_KIND.part, craft: !readyMade(c), craftAlso: false, rarity: undefined } : null;
   });
   // What the opened part goes into (a prime part blueprint: through the component it builds): a way back up.
   const up = $derived.by(() => {

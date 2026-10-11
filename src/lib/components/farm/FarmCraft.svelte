@@ -5,9 +5,10 @@
   import { t, num } from "$lib/i18n/index.svelte";
   import { getDb, iconUrl, RARITY_RU } from "$lib/db";
   import { pct, type DropsDb } from "$lib/drops";
-  import { totals, whereShort, buildTime, type CraftDb, type CraftItem } from "$lib/craft";
-  import { srcText, relicPart, orderSrc } from "$lib/farm";
+  import { totals, whereShort, buildTime, readyMade, type CraftDb, type CraftItem } from "$lib/craft";
+  import { srcText, srcLong, relicPart, orderSrc } from "$lib/farm";
   import CraftTree from "$lib/components/CraftTree.svelte";
+  import { heldCount } from "$lib/ownership.svelte";
 
   let {
     db,
@@ -19,6 +20,8 @@
   const c = $derived(craft.items[id]);
   const tot = $derived(totals(craft, db, id));
   const isPart = $derived(c.kind === "part");
+  // Sold ready-made, no recipe (syndicate and Coda weapons): no blueprint, no foundry.
+  const ready = $derived(readyMade(c));
   const wiki = (en: string) => `https://wiki.warframe.com/w/${encodeURIComponent(en.replace(/ /g, "_"))}`;
 
   // Relics that hold a prime blueprint, active first.
@@ -68,7 +71,7 @@
   <div class="step">
     <span class="n">1</span>
     <div>
-      <div class="lead">{isPart ? t("farm.partBp") : t("farm.mainBp")}</div>
+      <div class="lead">{ready ? t("farm.readyMade") : isPart ? t("farm.partBp") : t("farm.mainBp")}</div>
       {#if mainRelics.length}
         <div class="main"><b>{t("farm.fromRelics")}</b></div>
         <div class="relics">
@@ -79,6 +82,7 @@
       {/if}
       {#each orderSrc(c.src) as s, i (i)}
         <div class="main"><b>{srcText(s)}</b></div>
+        {#if s.k === "special"}<p class="why">{srcLong(s)}</p>{/if}
       {/each}
       {#if c.drops?.length && metAt}
         <div class="main"><b>{t("farm.goTo", { list: metAt.at.join(", ") })}</b><span>{metAt.mode}</span></div>
@@ -112,9 +116,10 @@
           {#each parts as p (p.pid)}
             {@const nm = p.cp?.name ?? getDb().items[p.pid]?.name ?? p.pid.split("/").pop()}
             {@const ic = p.cp?.icon ?? getDb().items[p.pid]?.icon ?? null}
+            {@const h = heldCount(p.pid, p.cp?.r ?? (p.prime !== p.pid ? p.prime : null))}
             <button onclick={() => (p.prime && !p.cp ? onopen("prime", p.prime) : onopen("craft", p.pid))}>
               {#if ic}<img src={iconUrl(ic)} alt="" loading="lazy" />{/if}
-              <span class="pn">{nm.split(": ").pop()}{#if p.n > 1}<i> ×{p.n}</i>{/if}</span>
+              <span class="pn">{nm.split(": ").pop()}{#if p.n > 1}<i> ×{p.n}</i>{/if}{#if h}<em class="have" class:enough={h >= p.n}> · {t("ct.have", { v: h })}</em>{/if}</span>
               <small>{partHint(p)}</small>
             </button>
           {/each}
@@ -143,7 +148,7 @@
     </div>
   {/if}
 
-  <div class="step">
+  {#if !ready}<div class="step">
     <span class="n">⚒</span>
     <div>
       <div class="lead">{t("farm.build")}</div>
@@ -152,14 +157,24 @@
         <span>{buildTime(tot.time)} {t("ct.inFoundry")}{tot.parts.length ? ` ${t("ct.partsBuild")}` : ""}</span>
       </div>
     </div>
-  </div>
+  </div>{/if}
 
 </div>
 
-<div class="section-title">{t("farm.fullTree")}</div>
-<CraftTree {craft} drops={db} {id} onresource={(x) => onopen("resource", x)} onpart={(x) => onopen("craft", x)} onitem={(x) => onopen("prime", x)} />
+{#if !ready}
+  <div class="section-title">{t("farm.fullTree")}</div>
+  <CraftTree {craft} drops={db} {id} onresource={(x) => onopen("resource", x)} onpart={(x) => onopen("craft", x)} onitem={(x) => onopen("prime", x)} />
+{/if}
 
 <style>
+  .have {
+    font-style: normal;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .have.enough {
+    color: var(--good);
+  }
   .grow {
     flex: 1;
     min-width: 0;

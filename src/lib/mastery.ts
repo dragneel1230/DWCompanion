@@ -5,7 +5,7 @@ import { dataUrl, labels, t } from "$lib/i18n/index.svelte";
 
 export type MasteryCat =
   | "warframe" | "primary" | "secondary" | "melee" | "companion" | "companionweapon"
-  | "archwing" | "archweapon" | "necramech" | "amp" | "other";
+  | "archwing" | "archweapon" | "necramech" | "amp" | "kdrive" | "other";
 
 export interface MItem {
   ru: string; // Russian name: recognition of the Russian client, search, whispers to RU players
@@ -17,12 +17,21 @@ export interface MItem {
   max: number; // 30 or 40
   mr?: number;
   prime?: boolean;
+  mod?: "prism" | "strike" | "chamber" | "board" | "model"; // modular: the part that carries the rank
 }
 
 export interface MasteryDb {
   builtAt: string;
   items: Record<string, MItem>;
   nodes: Record<string, { xp: number; j?: 1 }>;
+}
+
+// Two-in-one warframes: the secondary half (Orion) levels together with the pair but gives no mastery
+// (wiki "Sirius & Orion/Abilities"). Its affinity counts for the pair, its own id maps to the pair's.
+export const PAIR_OF: Record<string, string> = { "/Lotus/Powersuits/SiriusOrion/OrionSuit": "/Lotus/Powersuits/SiriusOrion/SiriusSuit" };
+export function foldPairs(xp: Record<string, number>): Record<string, number> {
+  for (const [half, main] of Object.entries(PAIR_OF)) if (xp[half] != null) xp[main] = Math.max(xp[main] ?? 0, xp[half]);
+  return xp;
 }
 
 let cache: Promise<MasteryDb> | null = null;
@@ -42,10 +51,11 @@ export const CAT_RU = labels<MasteryCat>({
   archweapon: "mastery.cat.archweapon",
   necramech: "mastery.cat.necramech",
   amp: "mastery.cat.amp",
+  kdrive: "mastery.cat.kdrive",
   other: "mastery.cat.other",
 });
 export const CAT_ORDER: MasteryCat[] = [
-  "warframe", "primary", "secondary", "melee", "companion", "companionweapon", "archwing", "archweapon", "necramech", "amp",
+  "warframe", "primary", "secondary", "melee", "companion", "companionweapon", "archwing", "archweapon", "necramech", "amp", "kdrive",
 ];
 
 export const rankOf = (xp: number, fl: boolean | undefined, max: number) =>

@@ -32,13 +32,32 @@ function category(file, x) {
   if (file === "Arch-Gun.json" || file === "Arch-Melee.json") return "archweapon";
   if (file === "Sentinels.json" || file === "Pets.json") return "companion";
   if (file === "SentinelWeapons.json") return "companionweapon";
-  if (pc === "OperatorAmps") return "amp";
+  if (pc === "OperatorAmps" || /\/OperatorAmplifiers\//.test(x.uniqueName)) return "amp";
+  if (/\/Hoverboard\//.test(x.uniqueName)) return "kdrive";
   if (file === "Primary.json") return "primary";
   if (file === "Secondary.json" || file === "Misc.json") return "secondary"; // Misc: kitgun chambers
   if (file === "Melee.json") return "melee";
   return "other";
 }
-const FRAME_LIKE = new Set(["warframe", "necramech", "archwing", "companion"]);
+const FRAME_LIKE = new Set(["warframe", "necramech", "archwing", "companion", "kdrive"]);
+// Modular gear levels by one part: the amp by its prism, the zaw by its strike, the kitgun by its chamber, the
+// K-Drive by its board, the MOA / hound by its model. WFCD marks amp prisms not masterable: they are added here
+// (the profile's XPInfo names the prism; wiki "Amp": "Amps give Mastery … based on the Prism").
+const MODULAR = (id) =>
+  /OperatorAmplifiers\/.*\/Barrel\/|SentTrainingAmplifier\/.*Barrel/.test(id) ? "prism"
+  : /ModularMelee/.test(id) ? "strike"
+  : /KitGun|SUModular/.test(id) ? "chamber"
+  : /Hoverboard/.test(id) ? "board"
+  : /MoaPetParts|ZanukaPetParts/.test(id) ? "model"
+  : undefined;
+const PRISM = /OperatorAmplifiers\/.*\/Barrel\/|SentTrainingAmplifier\/.*Barrel/;
+// Two-in-one warframes are one masterable item: both halves gain affinity together, but the secondary son (Orion)
+// gives no mastery (wiki "Sirius & Orion/Abilities"). WFCD still marks Orion masterable — it would sit in the list
+// as a second, "never levelled" frame. Its XP is folded into the pair at runtime (mastery.ts foldPairs).
+const HALVES = new Set(["/Lotus/Powersuits/SiriusOrion/OrionSuit"]);
+// Copies the game uses for something else (the Grimoire of the Doppelganger): WFCD marks them masterable, so the
+// list shows a second, never-levelled "Grimoire".
+const COPY = /Doppelganger/;
 
 const builtAt = new Date().toISOString();
 for (const [LANG, D] of Object.entries({ ru, en })) {
@@ -48,7 +67,7 @@ const FILES = ["Warframes.json", "Primary.json", "Secondary.json", "Melee.json",
   "Arch-Melee.json", "Sentinels.json", "Pets.json", "SentinelWeapons.json", "Misc.json"];
 for (const file of FILES) {
   for (const x of wf(file)) {
-    if (!x.masterable || items[x.uniqueName]) continue;
+    if (!(x.masterable || PRISM.test(x.uniqueName)) || items[x.uniqueName] || HALVES.has(x.uniqueName) || COPY.test(x.uniqueName)) continue;
     const n = named[x.uniqueName];
     const cat = category(file, x);
     items[x.uniqueName] = {
@@ -61,6 +80,7 @@ for (const file of FILES) {
       max: x.maxLevelCap ?? (cat === "necramech" ? 40 : 30), // WFCD has no cap for necramechs (they go to 40)
       mr: x.masteryReq || undefined,
       prime: x.isPrime || undefined,
+      mod: MODULAR(x.uniqueName),
     };
   }
 }
