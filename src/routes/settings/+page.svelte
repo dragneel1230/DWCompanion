@@ -47,6 +47,46 @@
     e.currentTarget.value = "";
     if (file && inventory.import(await file.text())) invNote = t("inv.updated");
   }
+  function exportFile() {
+    const text = inventory.exportText();
+    if (!text) return;
+    const date = new Date(inventory.data!.at).toISOString().slice(0, 10);
+    const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `dwcompanion-inventory-${date}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    invNote = t("inv.exported");
+  }
+
+  const RAW_EXPORT_COOLDOWN = 60_000;
+  let rawBusy = $state(false);
+  let rawLocked = $state(false);
+  let rawNote = $state("");
+  let rawTimer: ReturnType<typeof setTimeout> | undefined;
+  async function exportRawInventory() {
+    if (rawBusy || rawLocked || inventory.busy) return;
+    rawBusy = true;
+    rawLocked = true;
+    rawNote = t("inv.rawReading");
+    clearTimeout(rawTimer);
+    rawTimer = setTimeout(() => (rawLocked = false), RAW_EXPORT_COOLDOWN);
+    const text = await inventory.rawText();
+    rawBusy = false;
+    if (!text) {
+      rawNote = inventory.error ? fromRust(inventory.error) : t("inv.rawUnavailable");
+      return;
+    }
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `dwcompanion-inventory-raw-${stamp}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    rawNote = t("inv.rawExported");
+  }
 
   // ---------- hub hotkey: click the field, press the combination
   let recording = $state(false);
@@ -69,7 +109,10 @@
   let lines = $state<Line[]>([]);
   let demoError = $state("");
   const un: Promise<UnlistenFn>[] = DEV ? [listen<Line>("bench-line", (e) => (lines = [e.payload, ...lines].slice(0, 100)))] : [];
-  onDestroy(() => un.forEach((u) => u.then((f) => f())));
+  onDestroy(() => {
+    un.forEach((u) => u.then((f) => f()));
+    clearTimeout(rawTimer);
+  });
   const time = (t: number) => new Date(t).toLocaleTimeString(locale()) + "." + String(t % 1000).padStart(3, "0");
 
   function demo() {
@@ -218,6 +261,7 @@
   </div>
   <div class="links">
     <label class="file">{t("inv.import")}<input type="file" accept=".json,application/json" onchange={pickFile} /></label>
+    <button onclick={exportFile} disabled={!inventory.data}>{t("inv.export")}</button>
     {#if inventory.risk}
       <button onclick={disconnect}>{t("inv.remove")}</button>
     {:else}
@@ -227,7 +271,7 @@
       <button onclick={() => confirm(t("inv.forgetAsk")) && inventory.clear()}>{t("inv.forget")}</button>
     {/if}
   </div>
-  {#if invNote}<p class="note">{invNote}</p>{/if}
+  <p class="note" role="status">{invNote}</p>
   <InvAsk bind:open={asking} ondone={() => (invNote = t("inv.installed"))} />
 
   {#if DEV}
@@ -238,7 +282,11 @@
         <button onclick={demo}>{t("settings.demo")}</button>
         <button onclick={() => invoke("bench_test")}>{t("settings.testCapture")}</button>
         <button onclick={() => invoke("bench_open_dir")}>{t("settings.sessionDir")}</button>
+        <button onclick={exportRawInventory} disabled={rawBusy || rawLocked || inventory.busy || !inventory.ready} aria-describedby="raw-inventory-note">
+          {rawBusy ? t("inv.rawReading") : t("inv.rawExport")}
+        </button>
       </div>
+      <p id="raw-inventory-note" class="note" role="status">{rawNote}</p>
       {#if demoError}<p class="err">{fromRust(demoError)}</p>{/if}
       <div class="log">
         {#each lines as l}

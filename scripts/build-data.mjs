@@ -8,6 +8,8 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 // The package's "exports" map hides the raw JSON files, so read them from disk.
 const PE_DIR = "node_modules/warframe-public-export-plus";
 const pe = (f) => JSON.parse(readFileSync(`${PE_DIR}/${f}`, "utf8"));
+const WFCD_DIR = "node_modules/@wfcd/items/data/json";
+const wf = (f) => JSON.parse(readFileSync(`${WFCD_DIR}/${f}`, "utf8"));
 
 const en = pe("dict.en.json");
 const ru = pe("dict.ru.json");
@@ -19,11 +21,17 @@ const recipes = pe("ExportRecipes.json");
 const regions = pe("ExportRegions.json");
 const missionTypes = pe("ExportMissionTypes.json");
 const factions = pe("ExportFactions.json");
+const wfcdRu = wf("i18n/ru.json");
+const wfcdComponents = wf("Components.json");
+const wfcdPrimes = ["Warframes.json", "Primary.json", "Secondary.json", "Melee.json"]
+  .flatMap(wf)
+  .filter((x) => x.isPrime && x.uniqueName && x.components?.length);
 
 // Icons: DE's own CDN when ExportImages has a content hash (better quality), else the bare game
 // path, which the app loads from browse.wf.
 const images = pe("ExportImages.json");
 const img = (path) => {
+  if (/^https?:\/\//.test(path ?? "")) return path;
   const hash = path && images[path]?.contentHash;
   return hash ? `https://content.warframe.com/PublicExport${path}!${hash.replace(/\+/g, "%2B")}` : (path ?? null);
 };
@@ -36,6 +44,58 @@ for (const f of [
   "ExportUpgrades.json", "ExportArcanes.json", "ExportCustoms.json", "ExportGear.json",
   "ExportKeys.json", "ExportDrones.json", "ExportRailjackWeapons.json",
 ]) Object.assign(named, pe(f));
+
+// WFCD refreshes from DE sooner than Public Export Plus after a game update. Fill only prime items that
+// the latter does not know yet, using WFCD's DE ids, recipes and localized strings. This keeps a newly
+// released set complete while the packaged public export catches up; existing export data always wins.
+const wfcdComponent = new Map(wfcdComponents.map((x) => [x.uniqueName, x]));
+const wfcdSeeded = [];
+const wfcdKey = (id) => `/DWC/WFCD/${id}/Name`;
+const wfcdIcon = (name) => name ? `https://cdn.warframestat.us/img/${name}` : null;
+for (const x of wfcdPrimes) {
+  if (named[x.uniqueName]) continue;
+  const parentKey = wfcdKey(x.uniqueName);
+  en[parentKey] = x.name;
+  ru[parentKey] = wfcdRu[x.uniqueName]?.name ?? x.name;
+  named[x.uniqueName] = { name: parentKey, icon: wfcdIcon(x.imageName), productCategory: x.productCategory };
+
+  const parts = [];
+  for (const c of x.components) {
+    const wc = wfcdComponent.get(c.uniqueName);
+    if (!wc?.tradable) continue;
+    const blueprint = /Component$/.test(c.uniqueName) ? c.uniqueName.replace(/Component$/, "Blueprint") : c.uniqueName;
+    const partEn = wc.name === "Blueprint" ? x.name : `${x.name} ${wc.name}`;
+    const localized = wfcdRu[c.uniqueName]?.name;
+    const partRu = wc.name === "Blueprint" ? ru[parentKey] : `${ru[parentKey]}: ${localized ?? wc.name}`;
+    const partKey = wfcdKey(c.uniqueName);
+    en[partKey] = partEn;
+    ru[partKey] = partRu;
+    named[c.uniqueName] = {
+      name: partKey,
+      icon: wfcdIcon(wc.imageName),
+      primeSellingPrice: wc.ducats ?? wc.primeSellingPrice,
+    };
+    recipes[blueprint] ??= {
+      resultType: c.uniqueName,
+      primeSellingPrice: wc.ducats ?? wc.primeSellingPrice,
+      ingredients: [],
+    };
+    parts.push({ blueprint, component: c.uniqueName, count: c.itemCount ?? 1 });
+  }
+  const main = parts.find((p) => p.blueprint === p.component);
+  if (!main) continue;
+  recipes[main.blueprint] = {
+    resultType: x.uniqueName,
+    buildPrice: x.buildPrice ?? 0,
+    buildTime: x.buildTime ?? 0,
+    num: x.buildQuantity ?? 1,
+    primeSellingPrice: wfcdComponent.get(main.component)?.ducats,
+    ingredients: x.components
+      .filter((c) => c.uniqueName !== main.component)
+      .map((c) => ({ ItemType: c.uniqueName, ItemCount: c.itemCount ?? 1 })),
+  };
+  wfcdSeeded.push({ item: x, parts });
+}
 
 // Some dictionary entries are ALL CAPS (UI labels); bring them to sentence case.
 const unshout = (s) => (s && s === s.toUpperCase() ? s[0] + s.slice(1).toLowerCase() : s);
@@ -253,6 +313,28 @@ for (const w of wfmItems) {
   };
   for (const p of parts) items[p].set = w.gameRef;
   items[mainBp].main = true;
+}
+
+// A just-released prime may not have a complete market record yet. Its DE/WFCD recipe is still enough
+// to show the set and every relic part; market fields appear automatically on a later data refresh.
+for (const { item, parts: seededParts } of wfcdSeeded) {
+  if (sets[item.uniqueName]) continue;
+  const parts = seededParts.map((p) => p.blueprint).filter((id) => items[id]);
+  if (!parts.length) continue;
+  const market = wfmByRef.get(item.uniqueName)
+    ?? wfmItems.find((x) => x.tags?.includes("set") && x.i18n?.en?.name === `${item.name} Set`);
+  sets[item.uniqueName] = {
+    en: item.name,
+    ru: wfcdRu[item.uniqueName]?.name ?? item.name,
+    key: wfcdKey(item.uniqueName),
+    icon: wfcdIcon(item.imageName),
+    slug: market?.slug,
+    mname: market?.i18n?.en?.name,
+    parts,
+  };
+  for (const p of parts) items[p].set = item.uniqueName;
+  const main = seededParts.find((p) => p.blueprint === p.component)?.blueprint;
+  if (main && items[main]) items[main].main = true;
 }
 
 // ---- World state: official worldState.php uses raw keys (SolNode126, MT_RESCUE, VoidT2), names per language.

@@ -43,8 +43,8 @@ importers:
         specifier: ^2
         version: 2.12.0
       '@wfcd/items':
-        specifier: ^1.1276.7
-        version: 1.1276.7(warframe-worldstate-data@3.16.10)
+        specifier: ^1.1276.19
+        version: 1.1276.19(warframe-worldstate-data@3.16.10)
       svelte:
         specifier: ^5.56.3
         version: 5.57.1
@@ -58,8 +58,8 @@ importers:
         specifier: ^8.0.16
         version: 8.3.1
       warframe-public-export-plus:
-        specifier: ^0.6.11
-        version: 0.6.11
+        specifier: ^0.6.12
+        version: 0.6.12
 
 packages:
 
@@ -327,8 +327,8 @@ packages:
   '@types/estree@1.0.9':
     resolution: {integrity: sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==}
 
-  '@wfcd/items@1.1276.7':
-    resolution: {integrity: sha512-fuiiWXbAxgQDyA/tHCA/cvO8ctTs3hu3SEqACOg1hAH0U/5fbucSptaJoGdXaXDvdM7QGuIIogYvhY8OpD9RSg==}
+  '@wfcd/items@1.1276.19':
+    resolution: {integrity: sha512-4afJzIZFw7CM5aedafqtPhWn3v2rb8yydllKmxERnO39DYzhqwg8Rbk2JgN2X7AGtUj0I0+aRC30FZ3kPvufig==}
     peerDependencies:
       warframe-worldstate-data: ^3.0.0
 
@@ -611,8 +611,8 @@ packages:
       vite:
         optional: true
 
-  warframe-public-export-plus@0.6.11:
-    resolution: {integrity: sha512-xL/veIZkpTpH+Cn/3Tp/SO3POI53DxMvfZtPlfgiABdXebUqKodcPBwogLhrbaUPv57wPnHxJDybaZrx0JYD9Q==}
+  warframe-public-export-plus@0.6.12:
+    resolution: {integrity: sha512-qmFNMwGfcbCs1Guli/DZ3l5BBNXTCgH+7Khxk7rBK1bCXAuLLG51GFRTEPxju5k6aDdVOzr9eshTSce/xJh5rw==}
 
   warframe-worldstate-data@3.16.10:
     resolution: {integrity: sha512-90Zok6LI4ZX3aWe7hk20tjXSijRutqeZHCfTUHWl2cW+mw/mqzhj6yhwK9LsZ0DFdIHcOAYslNWnlwJXR8DjiA==}
@@ -811,7 +811,7 @@ snapshots:
 
   '@types/estree@1.0.9': {}
 
-  '@wfcd/items@1.1276.7(warframe-worldstate-data@3.16.10)':
+  '@wfcd/items@1.1276.19(warframe-worldstate-data@3.16.10)':
     dependencies:
       warframe-worldstate-data: 3.16.10
 
@@ -1024,7 +1024,7 @@ snapshots:
     optionalDependencies:
       vite: 8.3.1
 
-  warframe-public-export-plus@0.6.11: {}
+  warframe-public-export-plus@0.6.12: {}
 
   warframe-worldstate-data@3.16.10: {}
 

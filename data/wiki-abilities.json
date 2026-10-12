@@ -1,5 +1,5 @@
 {
- "fetchedAt": "2026-10-09T09:45:54.838Z",
+ "fetchedAt": "2026-10-12T15:03:49.373Z",
  "abilities": {
   "/Lotus/Powersuits/Ninja/Abilities/GlaiveAbility": {
    "title": "Shuriken",
@@ -7850,8 +7850,8 @@
    ],
    "duration": [
     {
-     "v": "10 s storm duration",
-     "n": 10,
+     "v": "15 s storm duration",
+     "n": 15,
      "unit": "s",
      "label": ""
     }
@@ -7872,8 +7872,8 @@
      "label": ""
     },
     {
-     "v": "7 Cold status on landing",
-     "n": 7,
+     "v": "6 Cold status on landing",
+     "n": 6,
      "unit": "",
      "label": ""
     },
@@ -7961,8 +7961,8 @@
      "label": ""
     },
     {
-     "v": "2.5% Ice Cost Per Swing",
-     "n": 2.5,
+     "v": "2% Ice Cost Per Unmarked Slash",
+     "n": 2,
      "unit": "%",
      "label": ""
     },
@@ -10410,6 +10410,9 @@
      "unit": "",
      "label": "limit of active caches"
     }
+   ],
+   "helminth": [
+    "However, infused Dispensary's duration is reduced to 5 / 7.5 / 10 / 12.5 seconds."
    ]
   },
   "/Lotus/Powersuits/Odalisk/Abilities/OdaliskAnchorAbility": {

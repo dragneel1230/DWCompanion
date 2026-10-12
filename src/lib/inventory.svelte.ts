@@ -97,6 +97,9 @@ const AUTO_KEY = "dwc.invAuto";
 const PREFS_KEY = "dwc.invPrefs";
 const LOG_KEY = "dwc.invLog";
 const LOG_MAX = 40;
+const EXPORT_FORMAT = "dwcompanion-inventory";
+const EXPORT_VERSION = 1;
+const RAW_FETCH_GAP = 60_000;
 
 // Everything the arsenal holds as separate items (not counted stacks).
 const ARSENAL = [
@@ -285,6 +288,30 @@ export function parseInventory(text: string): InvData {
   };
 }
 
+function isInvData(v: unknown): v is InvData {
+  if (!v || typeof v !== "object") return false;
+  const d = v as Partial<InvData>;
+  return typeof d.at === "number"
+    && typeof d.got === "number"
+    && !!d.mods && typeof d.mods === "object"
+    && !!d.items && typeof d.items === "object"
+    && Array.isArray(d.arsenal)
+    && !!d.xp && typeof d.xp === "object"
+    && typeof d.credits === "number"
+    && typeof d.plat === "number"
+    && typeof d.ducats === "number";
+}
+
+function parseImport(text: string): InvData {
+  const value = JSON.parse(text) as unknown;
+  if (value && typeof value === "object" && (value as Record<string, unknown>).format === EXPORT_FORMAT) {
+    const file = value as { version?: unknown; snapshot?: unknown };
+    if (file.version !== EXPORT_VERSION || !isInvData(file.snapshot)) throw new Error("not-inventory");
+    return file.snapshot;
+  }
+  return parseInventory(text);
+}
+
 function load(): InvData | null {
   try {
     return JSON.parse(localStorage.getItem(KEY) ?? "null");
@@ -392,6 +419,8 @@ class Inventory {
   auto = $state(localStorage.getItem(AUTO_KEY) === "1"); // refresh after missions
   prefs = $state<Prefs>({ ...DEFAULT_PREFS, ...readJson<Partial<Prefs>>(PREFS_KEY, {}) });
   log = $state<InvChange[]>(readJson<InvChange[]>(LOG_KEY, []));
+  #raw: string | null = null;
+  #rawFetchAt = 0;
   busy = $state(false);
   error = $state(""); // rust.* key or "inv.notInventory"
   #arsenal = $derived(new Set(this.data?.arsenal ?? []));
@@ -446,6 +475,7 @@ class Inventory {
     write(RISK_KEY, v ? "1" : "0");
     if (!v) {
       this.setAuto(false);
+      this.#raw = null;
       invoke("inv_session_clear").catch(() => {}); // drop the cached game session
     }
   }
@@ -471,6 +501,7 @@ class Inventory {
     try {
       const text = await invoke<string>("inv_session_fetch");
       const ok = this.#keep(text, auto);
+      if (ok) this.#raw = text;
       // «Коллекция» takes the account id from the same session when the log hasn't shown it yet.
       if (ok) import("$lib/profile.svelte").then((m) => m.profile.inventoryRead()).catch(() => {});
       return ok;
@@ -485,11 +516,50 @@ class Inventory {
   // An inventory.json the player picked.
   import(text: string): boolean {
     this.error = "";
-    return this.#keep(text, false);
+    try {
+      return this.#store(parseImport(text), false);
+    } catch {
+      this.error = "inv.notInventory";
+      return false;
+    }
+  }
+
+  // Human-readable backup that this app can import without the original DE response.
+  exportText(): string | null {
+    if (!this.data) return null;
+    return JSON.stringify({
+      format: EXPORT_FORMAT,
+      version: EXPORT_VERSION,
+      exportedAt: new Date().toISOString(),
+      snapshot: this.data,
+    }, null, 2) + "\n";
+  }
+
+  // Exact inventory.php response for local debugging. Kept only in memory and rate-limited independently
+  // from the UI so an accidental repeated action cannot spam DE.
+  async rawText(): Promise<string | null> {
+    if (this.#raw) return JSON.stringify(JSON.parse(this.#raw), null, 2) + "\n";
+    if (!this.ready || this.busy || Date.now() - this.#rawFetchAt < RAW_FETCH_GAP) return null;
+    this.#rawFetchAt = Date.now();
+    this.busy = true;
+    this.error = "";
+    try {
+      const text = await invoke<string>("inv_session_fetch");
+      const parsed = JSON.parse(text) as { Suits?: unknown; MiscItems?: unknown };
+      if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.Suits) || !Array.isArray(parsed.MiscItems)) throw new Error("not-inventory");
+      this.#raw = text;
+      return JSON.stringify(parsed, null, 2) + "\n";
+    } catch (e) {
+      this.error = String(e);
+      return null;
+    } finally {
+      this.busy = false;
+    }
   }
 
   clear() {
     this.data = null;
+    this.#raw = null;
     try {
       localStorage.removeItem(KEY);
     } catch {
@@ -505,6 +575,10 @@ class Inventory {
       this.error = "inv.notInventory";
       return false;
     }
+    return this.#store(d, auto);
+  }
+
+  #store(d: InvData, auto: boolean): boolean {
     const prev = this.data;
     this.data = d;
     write(KEY, d);

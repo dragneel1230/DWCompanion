@@ -11,6 +11,7 @@ const wf = (f) => JSON.parse(readFileSync(`node_modules/@wfcd/items/data/json/${
 
 const en = pe("dict.en.json");
 const ru = pe("dict.ru.json");
+const wfcdRu = wf("i18n/ru.json");
 const images = pe("ExportImages.json");
 const regions = pe("ExportRegions.json");
 const img = (path) => {
@@ -71,9 +72,9 @@ for (const file of FILES) {
     const n = named[x.uniqueName];
     const cat = category(file, x);
     items[x.uniqueName] = {
-      ru: clean(unshout(n?.name && ru[n.name])) || clean(x.name),
+      ru: clean(unshout(n?.name && ru[n.name])) || clean(wfcdRu[x.uniqueName]?.name) || clean(x.name),
       en: clean((n?.name && en[n.name]) || x.name),
-      name: clean(unshout(n?.name && D[n.name])) || clean(x.name),
+      name: clean(unshout(n?.name && D[n.name])) || (LANG === "ru" ? clean(wfcdRu[x.uniqueName]?.name) : null) || clean(x.name),
       icon: img(n?.icon) ?? (x.imageName ? `https://cdn.warframestat.us/img/${x.imageName}` : null),
       cat,
       fl: FRAME_LIKE.has(cat) || undefined,
