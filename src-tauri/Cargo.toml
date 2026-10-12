@@ -1,6 +1,6 @@
 [package]
 name = "dwc"
-version = "0.2.3"
+version = "0.2.4"
 description = "Dragneel's Warframe Companion"
 authors = ["Dragneel"]
 license = "MIT"
