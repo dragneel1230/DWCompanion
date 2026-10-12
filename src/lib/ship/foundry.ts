@@ -4,6 +4,7 @@ import { iconUrl } from "$lib/db";
 import { describe, type InvCtx } from "$lib/inv/ctx";
 import type { CraftKind } from "$lib/craft";
 import type { InvData } from "$lib/inventory.svelte";
+import type { MasteryDb } from "$lib/mastery";
 
 export interface Building {
   oid: string;
@@ -51,10 +52,11 @@ export function building(c: InvCtx, inv: InvData): Building[] {
 // is missing.
 export function buildables(c: InvCtx, inv: InvData): Buildable[] {
   const arsenal = new Set(inv.arsenal);
+  const pending = new Set((inv.foundry ?? []).map((f) => f.id));
   const have = (id: string) => (inv.items[id] ?? 0) + (arsenal.has(id) ? 1 : 0);
   const out: Buildable[] = [];
   for (const [recipe, copies] of Object.entries(inv.items)) {
-    if (copies <= 0) continue;
+    if (copies <= 0 || pending.has(recipe)) continue;
     const item = c.bpOf.get(recipe);
     const ci = item ? c.craft.items[item] : undefined;
     if (!item || !ci) continue;
@@ -99,13 +101,16 @@ export function partParents(c: InvCtx): Map<string, string[]> {
   return out;
 }
 
-export function worth(c: InvCtx, inv: InvData, b: Buildable, goalIds: Set<string>, parents: Map<string, string[]>): Worth {
+export function worth(c: InvCtx, mastery: MasteryDb, inv: InvData, b: Buildable, goalIds: Set<string>, parents: Map<string, string[]>): Worth {
   const arsenal = new Set(inv.arsenal);
   const ranked = (id: string) => (inv.xp[id] ?? 0) > 0;
   const ps = parents.get(b.item) ?? [];
   // A shared ingredient (Forma, Orokin Cell parts…) belongs to no one piece of gear.
   if (ps.length > 3) return { v: "misc" };
   if (GEAR_KINDS.has(b.kind)) {
+    // Modular support parts are classified as weapons by DE too, but only the ranked part
+    // (prism, strike, chamber, board or model) belongs in the mastery-oriented lists.
+    if (!mastery.items[b.item]) return { v: "misc" };
     if (goalIds.has(b.item)) return { v: "goal" };
     if (arsenal.has(b.item)) return { v: "have" };
     return { v: ranked(b.item) ? "mastered" : "new" };
@@ -114,7 +119,7 @@ export function worth(c: InvCtx, inv: InvData, b: Buildable, goalIds: Set<string
   const info = (p: string): Worth => ({ v: "part", for: p, forName: c.craft.items[p].name, forIcon: iconUrl(c.craft.items[p].icon) });
   const goal = ps.find((p) => goalIds.has(p));
   if (goal) return { ...info(goal), v: "goal" };
-  const open = ps.filter((p) => !arsenal.has(p));
+  const open = ps.filter((p) => mastery.items[p] && !arsenal.has(p));
   if (!open.length) return ps[0] ? { ...info(ps[0]), v: "have" } : { v: "misc" };
   const p = open.find((x) => !ranked(x)) ?? open[0];
   const need = c.craft.items[p].parts.find(([id]) => id === b.item)?.[1] ?? 1;

@@ -5,15 +5,20 @@ import { inventory } from "$lib/inventory.svelte";
 import { goals } from "$lib/goals/goals.svelte";
 import { iconUrl } from "$lib/db";
 import type { CraftKind } from "$lib/craft";
+import { loadMastery, type MasteryDb } from "$lib/mastery";
 import { building, buildables, partParents, worth, USEFUL, type Buildable, type Building, type Worth } from "./foundry";
 
 let ctx = $state<InvCtx | null>(null);
+let mastery = $state<MasteryDb | null>(null);
 let asked = false;
 export function shipCtx(): InvCtx | null {
   if (!asked) {
     asked = true;
-    loadInvCtx()
-      .then((c) => (ctx = c))
+    Promise.all([loadInvCtx(), loadMastery()])
+      .then(([c, m]) => {
+        ctx = c;
+        mastery = m;
+      })
       .catch(() => (asked = false));
   }
   return ctx;
@@ -51,10 +56,10 @@ let parentsOf: { c: InvCtx; m: Map<string, string[]> } | null = null;
 export function shipWorth(): ShipFoundry {
   const c = shipCtx();
   const inv = inventory.data;
-  if (!c || !inv) return { ...EMPTY, ctx: c };
+  if (!c || !mastery || !inv) return { ...EMPTY, ctx: c };
   if (parentsOf?.c !== c) parentsOf = { c, m: partParents(c) };
   const goalIds = new Set(goals.list.map((g) => g.id));
-  const judged = buildables(c, inv).map((b) => ({ b, w: worth(c, inv, b, goalIds, parentsOf!.m) }));
+  const judged = buildables(c, inv).map((b) => ({ b, w: worth(c, mastery!, inv, b, goalIds, parentsOf!.m) }));
   const ready = judged.filter((x) => !x.b.missing.length);
   const useful = (w: Worth) => USEFUL.includes(w.v);
   const m = new Map<string, Group>();

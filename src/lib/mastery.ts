@@ -5,7 +5,7 @@ import { dataUrl, labels, t } from "$lib/i18n/index.svelte";
 
 export type MasteryCat =
   | "warframe" | "primary" | "secondary" | "melee" | "companion" | "companionweapon"
-  | "archwing" | "archweapon" | "necramech" | "amp" | "kdrive" | "other";
+  | "archwing" | "archweapon" | "necramech" | "amp" | "kdrive" | "zaw" | "kitgun" | "modularcompanion" | "other";
 
 export interface MItem {
   ru: string; // Russian name: recognition of the Russian client, search, whispers to RU players
@@ -17,7 +17,7 @@ export interface MItem {
   max: number; // 30 or 40
   mr?: number;
   prime?: boolean;
-  mod?: "prism" | "strike" | "chamber" | "board" | "model"; // modular: the part that carries the rank
+  mod?: "prism" | "strike" | "chamber" | "board" | "model" | "breed"; // modular: the part that carries the rank
 }
 
 export interface MasteryDb {
@@ -52,10 +52,14 @@ export const CAT_RU = labels<MasteryCat>({
   necramech: "mastery.cat.necramech",
   amp: "mastery.cat.amp",
   kdrive: "mastery.cat.kdrive",
+  zaw: "mastery.cat.zaw",
+  kitgun: "mastery.cat.kitgun",
+  modularcompanion: "mastery.cat.modularcompanion",
   other: "mastery.cat.other",
 });
 export const CAT_ORDER: MasteryCat[] = [
-  "warframe", "primary", "secondary", "melee", "companion", "companionweapon", "archwing", "archweapon", "necramech", "amp", "kdrive",
+  "warframe", "primary", "secondary", "melee", "companion", "companionweapon", "archwing", "archweapon", "necramech",
+  "amp", "kdrive", "zaw", "kitgun", "modularcompanion",
 ];
 
 export const rankOf = (xp: number, fl: boolean | undefined, max: number) =>

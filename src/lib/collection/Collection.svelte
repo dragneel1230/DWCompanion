@@ -58,7 +58,7 @@
   const sum = $derived(mdb && pdata ? summarize(mdb, pdata) : null);
 
   // Arsenal facts of a ranked item: forma and reactor / catalyst, or that it left the arsenal (sold, fed to Helminth).
-  const FRAMEISH = new Set(["warframe", "archwing", "necramech", "companion"]);
+  const FRAMEISH = new Set(["warframe", "archwing", "necramech", "companion", "modularcompanion"]);
   function gearOf(id: string, cat: string): { text: string; gone: boolean } | null {
     if (!inventory.inArsenal(id)) return { text: t("fact.gone"), gone: true };
     const g = inventory.gearOf(id);
@@ -715,20 +715,28 @@
         <div class="rows">
           {#each setParts(openSet) as { id: pid, count } (pid)}
             {@const pi = partInfo(pid)}
+            {@const owned = inventory.count(pid) ?? 0}
             <button class="row" onclick={() => onopen("item", pid)}>
               <img src={iconUrl(pi.it.icon)} alt="" loading="lazy" />
               <span class="name">
                 {count > 1 ? `${count} × ` : ""}{itemName(pi.it)}
                 <small>
-                  {#if pi.mine.length}
-                    {#each pi.mine.slice(0, 4) as m, i (m.s)}{i ? ", " : ""}<b class="mine" class:vaulted={m.vaulted} title={m.vaulted ? t("tag.inVault") : ""}>{m.s} ×{m.n}</b>{/each}{pi.rest.length ? " · " : ""}
-                  {/if}
-                  {#if pi.rest.length}
-                    {pi.rest.slice(0, pi.mine.length ? 2 : 4).join(", ")}{pi.rest.length > (pi.mine.length ? 2 : 4) ? ` ${t("coll.andMore", { v: pi.rest.length - (pi.mine.length ? 2 : 4) })}` : ""}
-                  {:else if !pi.mine.length}{t("detail.onlyVault")}{/if}
+                  {#if pi.active.length}
+                    {pi.active.slice(0, 4).map((x) => db.relics[x.relic].s).join(", ")}{pi.active.length > 4 ? ` ${t("coll.andMore", { v: pi.active.length - 4 })}` : ""}
+                  {:else}{t("detail.onlyVault")}{/if}
                 </small>
+                {#if !owned}
+                  <span class="owned-relics">
+                    {#if pi.mine.length}
+                      <span>{t("coll.inv.relics")}</span>
+                      {#each pi.mine as m (m.s)}<b class:vaulted={m.vaulted} title={m.vaulted ? t("tag.inVault") : ""}>{m.s} ×{m.n}</b>{/each}
+                    {:else}
+                      <span>{t("coll.inv.noRelics")}</span>
+                    {/if}
+                  </span>
+                {/if}
               </span>
-              {#if inventory.count(pid)}<span class="have">{t("coll.inv.have", { v: inventory.count(pid) ?? 0 })}</span>{/if}
+              {#if owned}<span class="have">{t("coll.inv.have", { v: owned })}</span>{/if}
               <span class="num"><Plat slug={pi.it.slug} /></span>
             </button>
           {/each}
@@ -748,11 +756,29 @@
 {/if}
 
 <style>
-  small .mine {
-    font-weight: 500;
-    color: var(--good);
+  .owned-relics {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
   }
-  small .mine.vaulted {
+  .owned-relics > span {
+    flex: none;
+    color: var(--text-faint);
+    font-size: 11px;
+  }
+  .owned-relics b {
+    flex: none;
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: rgba(111, 207, 151, 0.1);
+    color: var(--good);
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .owned-relics b.vaulted {
+    background: var(--accent-soft);
     color: var(--accent);
   }
   .inv-tag {

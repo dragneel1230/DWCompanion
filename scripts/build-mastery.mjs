@@ -40,18 +40,19 @@ function category(file, x) {
   if (file === "Melee.json") return "melee";
   return "other";
 }
-const FRAME_LIKE = new Set(["warframe", "necramech", "archwing", "companion", "kdrive"]);
+const FRAME_LIKE = new Set(["warframe", "necramech", "archwing", "companion", "modularcompanion", "kdrive"]);
 // Modular gear levels by one part: the amp by its prism, the zaw by its strike, the kitgun by its chamber, the
-// K-Drive by its board, the MOA / hound by its model. WFCD marks amp prisms not masterable: they are added here
-// (the profile's XPInfo names the prism; wiki "Amp": "Amps give Mastery … based on the Prism").
+// K-Drive by its board, the MOA / hound by its model. Some are not marked masterable by WFCD, so the ranked
+// parts are added explicitly (the profile's XPInfo names that part).
 const MODULAR = (id) =>
-  /OperatorAmplifiers\/.*\/Barrel\/|SentTrainingAmplifier\/.*Barrel/.test(id) ? "prism"
-  : /ModularMelee/.test(id) ? "strike"
-  : /KitGun|SUModular/.test(id) ? "chamber"
-  : /Hoverboard/.test(id) ? "board"
-  : /MoaPetParts|ZanukaPetParts/.test(id) ? "model"
+  /PvPVariant/.test(id) ? undefined
+  : /OperatorAmplifiers\/.*\/Barrel\/|SentTrainingAmplifier\/.*Barrel/.test(id) ? "prism"
+  : /ModularMelee[^/]*\/Tips?\//.test(id) ? "strike"
+  : /InfKitGun\/Barrels\/|SUModular[^/]*\/Barrel\//.test(id) ? "chamber"
+  : /Hoverboard\/.*Deck/.test(id) ? "board"
+  : /MoaPetParts\/MoaPetHead|ZanukaPetParts\/ZanukaPetPartHead/.test(id) ? "model"
+  : /CreaturePets\/.*(?:InfestedCatbrow|PredatorKubrow)PetPowerSuit/.test(id) ? "breed"
   : undefined;
-const PRISM = /OperatorAmplifiers\/.*\/Barrel\/|SentTrainingAmplifier\/.*Barrel/;
 // Two-in-one warframes are one masterable item: both halves gain affinity together, but the secondary son (Orion)
 // gives no mastery (wiki "Sirius & Orion/Abilities"). WFCD still marks Orion masterable — it would sit in the list
 // as a second, "never levelled" frame. Its XP is folded into the pair at runtime (mastery.ts foldPairs).
@@ -68,9 +69,13 @@ const FILES = ["Warframes.json", "Primary.json", "Secondary.json", "Melee.json",
   "Arch-Melee.json", "Sentinels.json", "Pets.json", "SentinelWeapons.json", "Misc.json"];
 for (const file of FILES) {
   for (const x of wf(file)) {
-    if (!(x.masterable || PRISM.test(x.uniqueName)) || items[x.uniqueName] || HALVES.has(x.uniqueName) || COPY.test(x.uniqueName)) continue;
+    const modular = MODULAR(x.uniqueName);
+    if (!(x.masterable || modular) || items[x.uniqueName] || HALVES.has(x.uniqueName) || COPY.test(x.uniqueName)) continue;
     const n = named[x.uniqueName];
-    const cat = category(file, x);
+    const cat = modular === "strike" ? "zaw"
+      : modular === "chamber" ? "kitgun"
+      : modular === "model" || modular === "breed" ? "modularcompanion"
+      : category(file, x);
     items[x.uniqueName] = {
       ru: clean(unshout(n?.name && ru[n.name])) || clean(wfcdRu[x.uniqueName]?.name) || clean(x.name),
       en: clean((n?.name && en[n.name]) || x.name),
@@ -81,7 +86,7 @@ for (const file of FILES) {
       max: x.maxLevelCap ?? (cat === "necramech" ? 40 : 30), // WFCD has no cap for necramechs (they go to 40)
       mr: x.masteryReq || undefined,
       prime: x.isPrime || undefined,
-      mod: MODULAR(x.uniqueName),
+      mod: modular,
     };
   }
 }

@@ -4,13 +4,16 @@
   import { t } from "$lib/i18n/index.svelte";
   import { getDb, RARITY_RU } from "$lib/db";
   import type { CraftDb } from "$lib/craft";
+  import { inventory } from "$lib/inventory.svelte";
+  import { relicsHeld } from "$lib/inv/worth";
 
   let { craft, id, onopen }: { craft: CraftDb; id: string; onopen: (kind: "resource" | "craft" | "prime", id: string) => void } = $props();
 
   const d = getDb();
+  const heldRelics = $derived(relicsHeld(inventory.data));
   const it = $derived(d.items[id]);
   const relics = $derived(
-    it.relics.map((x) => ({ ...x, r: d.relics[x.relic] })).filter((x) => x.r).sort((a, b) => +a.r.vaulted - +b.r.vaulted),
+    it.relics.map((x) => ({ ...x, r: d.relics[x.relic], held: heldRelics.get(x.relic) ?? 0 })).filter((x) => x.r).sort((a, b) => +a.r.vaulted - +b.r.vaulted),
   );
   const live = $derived(relics.filter((x) => !x.r.vaulted));
 </script>
@@ -25,7 +28,7 @@
       <p class="why">{live.length ? t("farm.primeHow") : t("farm.primeVaulted")}</p>
       <div class="relics">
         {#each relics as x (x.relic)}
-          <a href="/relic?id={encodeURIComponent(x.relic)}" class:vaulted={x.r.vaulted}>{x.r.s} <small>{RARITY_RU[x.rarity]}{x.r.vaulted ? ` · ${t("farm.vaultedShort")}` : ""}</small></a>
+          <a href="/relic?id={encodeURIComponent(x.relic)}" class:vaulted={x.r.vaulted}>{x.r.s} <small>{RARITY_RU[x.rarity]}{x.r.vaulted ? ` · ${t("farm.vaultedShort")}` : ""}</small>{#if x.held}<em title={t("inv.relics.have")}>×{x.held}</em>{/if}</a>
         {/each}
       </div>
     </div>
@@ -57,6 +60,12 @@
   }
   .relics small {
     color: var(--text-faint);
+  }
+  .relics em {
+    margin-left: 6px;
+    color: var(--good);
+    font-style: normal;
+    font-weight: 600;
   }
   .link {
     color: var(--accent);

@@ -9,6 +9,8 @@
   import { srcText, srcLong, relicPart, orderSrc } from "$lib/farm";
   import CraftTree from "$lib/components/CraftTree.svelte";
   import { heldCount } from "$lib/ownership.svelte";
+  import { inventory } from "$lib/inventory.svelte";
+  import { relicsHeld } from "$lib/inv/worth";
 
   let {
     db,
@@ -22,6 +24,7 @@
   const isPart = $derived(c.kind === "part");
   // Sold ready-made, no recipe (syndicate and Coda weapons): no blueprint, no foundry.
   const ready = $derived(readyMade(c));
+  const heldRelics = $derived(relicsHeld(inventory.data));
   const wiki = (en: string) => `https://wiki.warframe.com/w/${encodeURIComponent(en.replace(/ /g, "_"))}`;
 
   // Relics that hold a prime blueprint, active first.
@@ -29,7 +32,7 @@
     if (!itemId) return [];
     const d = getDb();
     return (d.items[itemId]?.relics ?? [])
-      .map((x) => ({ ...x, r: d.relics[x.relic] }))
+      .map((x) => ({ ...x, r: d.relics[x.relic], held: heldRelics.get(x.relic) ?? 0 }))
       .filter((x) => x.r)
       .sort((a, b) => +a.r.vaulted - +b.r.vaulted);
   }
@@ -76,7 +79,7 @@
         <div class="main"><b>{t("farm.fromRelics")}</b></div>
         <div class="relics">
           {#each mainRelics.slice(0, 8) as x (x.relic)}
-            <a href="/relic?id={encodeURIComponent(x.relic)}" class:vaulted={x.r.vaulted}>{x.r.s} <small>{RARITY_RU[x.rarity]}{x.r.vaulted ? ` · ${t("farm.vaultedShort")}` : ""}</small></a>
+            <a href="/relic?id={encodeURIComponent(x.relic)}" class:vaulted={x.r.vaulted}>{x.r.s} <small>{RARITY_RU[x.rarity]}{x.r.vaulted ? ` · ${t("farm.vaultedShort")}` : ""}</small>{#if x.held}<em title={t("inv.relics.have")}>×{x.held}</em>{/if}</a>
           {/each}
         </div>
       {/if}
@@ -199,6 +202,12 @@
   }
   .relics small {
     color: var(--text-faint);
+  }
+  .relics em {
+    margin-left: 6px;
+    color: var(--good);
+    font-style: normal;
+    font-weight: 600;
   }
   .parts,
   .res {
