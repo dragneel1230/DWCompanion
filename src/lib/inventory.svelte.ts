@@ -71,7 +71,9 @@ export interface InvHelminth {
 // a field shows up only once the player did the activity at least once).
 export interface InvWeek {
   netra?: [number, number]; // Netracells done in the period, when the period resets (ms)
-  descent: Record<string, [number, number]>; // DM_COH_NORMAL / DM_COH_HARD -> [floor claimed, expires ms]
+  // DM_COH_NORMAL / DM_COH_HARD -> [floor claimed, expires ms, rewards by floor]. The third field is
+  // absent in snapshots made before 2026-10-12. A reward is [floor, [[store item, count], ...]].
+  descent: Record<string, [number, number, [number, [string, number][]][]?]>;
   archon: string[]; // SortieId of the last Archon hunt rewarded
   sortie: string[]; // the same for the Sortie
   // 1999 calendar: season, its iteration and version, last completed day index, upgrades picked this year.
@@ -232,7 +234,25 @@ export function parseInventory(text: string): InvData {
   const cp = j.CalendarProgress as Raw | undefined;
   const week: InvWeek = {
     netra: j.EntratiVaultCountResetDate ? [Number(j.EntratiVaultCountLastPeriod) || 0, dateMs(j.EntratiVaultCountResetDate)] : undefined,
-    descent: Object.fromEntries(((j.DescentRewards ?? []) as Raw[]).filter((d) => d?.Category).map((d) => [d.Category, [Number(d.FloorClaimed) || 0, dateMs(d.Expiry)]])),
+    descent: Object.fromEntries(
+      ((j.DescentRewards ?? []) as Raw[])
+        .filter((d) => d?.Category)
+        .map((d) => [
+          d.Category,
+          [
+            Number(d.FloorClaimed) || 0,
+            dateMs(d.Expiry),
+            ((d.PendingRewards ?? []) as Raw[])
+              .map((r): [number, [string, number][]] => [
+                Number(r.FloorCheckpoint) || 0,
+                ((r.Rewards ?? []) as Raw[])
+                  .filter((x) => typeof x?.StoreItem === "string")
+                  .map((x) => [x.StoreItem, Number(x.ItemCount) || 1]),
+              ])
+              .filter(([floor, rewards]) => floor > 0 && rewards.length > 0),
+          ],
+        ]),
+    ),
     archon: sortieIds(j.LastLiteSortieReward),
     sortie: sortieIds(j.LastSortieReward),
     cal: cp?.SeasonProgress

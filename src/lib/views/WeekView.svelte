@@ -14,8 +14,9 @@
   import { refreshWorld, world } from "$lib/hub/worldData.svelte";
   import Rewards from "$lib/week/Rewards.svelte";
   import {
-    loadWeekly, netraLeft, descentFloor, archonDone, archonStage, calendarDay, nightwaveDone, nightwaveProgress, periodicDone, teshinOffer,
-    circuitFrame, circuitIncarnon, rewardName, rewardIcon, untag, weekEnd, NETRA_MAX, type WeeklyDb,
+    loadWeekly, netraLeft, descentFloor, descentRewards, descentReward, archonDone, archonStage, calendarDay, nightwaveDone,
+    nightwaveProgress, periodicDone, teshinOffer, circuitFrame, circuitIncarnon, rewardName, rewardIcon, untag, weekEnd, NETRA_MAX,
+    type WeeklyDb,
   } from "$lib/weekly";
   import type { Conquest } from "$lib/api";
 
@@ -47,6 +48,8 @@
   const floors = $derived(w?.descent?.floors ?? 0);
   const dNormal = $derived(known ? descentFloor(inv, "DM_COH_NORMAL", now) : null);
   const dHard = $derived(known ? descentFloor(inv, "DM_COH_HARD", now) : null);
+  const dNormalRewards = $derived(new Map(descentRewards(inv, "DM_COH_NORMAL", now)));
+  const dHardRewards = $derived(new Map(descentRewards(inv, "DM_COH_HARD", now)));
   const archon = $derived(w ? archonDone(inv, w) : null);
   const shard = $derived(w?.archon && wdb ? wdb.archons[w.archon.boss] : null);
   const stages = $derived((w?.archon?.missions ?? []).map((m) => ({ ...m, done: w ? archonStage(inv, w, m.node) : null })));
@@ -125,6 +128,11 @@
     return { name: DT_MT[x.type] ? missionName(DT_MT[x.type]) : "", icon: null, boss: false };
   };
   const rooms = $derived((w?.descent?.rooms ?? []).map((x, i) => ({ n: i + 1, ...room(x) })));
+  const descentItems = (items: [string, number][]) =>
+    items.map(([id, count]) => {
+      const [name, icon, multiplier] = descentReward(wdb, id);
+      return { name, icon, count: count * multiplier };
+    });
 
   const calText = (type: string, ids: string[]) => {
     if (type === "CET_CHALLENGE") return wdb?.cal[ids[0]] ?? ids[0].split("/").pop();
@@ -152,6 +160,71 @@
 
 {#snippet mark(done: boolean | null)}
   {#if done === true}<span class="st ok" title={t("week.done")}>✓</span>{:else if done === false}<span class="st no" title={t("week.notDone")}></span>{/if}
+{/snippet}
+
+{#snippet descentRoute(label: string, progress: number | null, rewards: Map<number, [string, number][]>) }
+  <div class="descent-mode">
+    <div class="descent-mode-head">
+      <b>{label}</b>
+      <span>{progress ?? "—"}/{floors}</span>
+    </div>
+    <div class="descent-scroll">
+      <div class="descent-route">
+        <div class="floors">
+          {#each rooms as f (f.n)}
+            {@const floorReward = f.n === floors ? rewards.get(f.n) : undefined}
+            {@const promoted = floorReward ? descentItems(floorReward) : []}
+            {@const promotedItem = promoted.length === 1 && promoted[0].icon ? promoted[0] : null}
+            {@const promotedClaimed = !!promotedItem && progress != null && f.n <= progress}
+            <div
+              class="fl"
+              class:boss={f.boss}
+              class:done={progress != null && f.n <= progress}
+              class:prize={rewards.has(f.n)}
+              title="{t('week.floor', { n: f.n })}{f.name ? ` · ${f.name}` : ''}{promotedItem ? ` · ${promotedItem.name}${promotedItem.count > 1 ? ` ×${num(promotedItem.count)}` : ''}` : ''}"
+            >
+              {#if promotedItem}<img src={iconUrl(promotedItem.icon!)} alt="" />{:else if f.icon}<img src={iconUrl(f.icon)} alt="" />{:else}<span>{f.n}</span>{/if}
+              {#if promotedClaimed}<i class="floor-claimed" aria-hidden="true">✓</i>{/if}
+              {#if f.boss}<small>{f.name}</small>{/if}
+            </div>
+          {/each}
+        </div>
+        {#if rewards.size}
+          <div class="descent-rewards">
+            {#each rooms as f (f.n)}
+              {@const raw = rewards.get(f.n)}
+              {#if raw}
+                {@const items = descentItems(raw)}
+                {@const claimed = progress != null && f.n <= progress}
+                {@const title = items.map((x) => `${x.name}${x.count > 1 ? ` ×${num(x.count)}` : ""}`).join(", ")}
+                {@const promoted = f.n === floors && items.length === 1 && !!items[0].icon}
+                <div
+                  class="descent-reward"
+                  class:claimed
+                  class:edge={f.n >= floors - 1}
+                  class:promoted
+                  style:grid-column={f.n}
+                  role="group"
+                  aria-label="{t('week.floor', { n: f.n })}: {title}{claimed ? `, ${t('week.received')}` : ''}"
+                  title={title}
+                >
+                  {#if !promoted}
+                    <div class="descent-reward-icons">
+                      {#each items as item}
+                        {#if item.icon}<img src={iconUrl(item.icon)} alt="" />{:else}<span class="reward-dot">◆</span>{/if}
+                      {/each}
+                      {#if claimed}<span class="claimed-mark" aria-hidden="true">✓</span>{/if}
+                    </div>
+                  {/if}
+                  <small>{title}</small>
+                </div>
+              {/if}
+            {/each}
+          </div>
+        {/if}
+      </div>
+    </div>
+  </div>
 {/snippet}
 
 {#snippet conquest(id: "lab" | "hex", q: Conquest, tier: number, setTier: (n: number) => void)}
@@ -315,49 +388,13 @@
         <section class="card wide" data-card="descent">
           <header>
             <h2>{T("descent", "week.descent")}</h2>
-            <span class="sub">
-              {t("week.descentNormal")} <b>{dNormal ?? "—"}/{floors}</b> · {t("week.sp")} <b>{dHard ?? "—"}/{floors}</b>
-            </span>
           </header>
-          <div class="floors">
-            {#each rooms as f (f.n)}
-              <div
-                class="fl"
-                class:boss={f.boss}
-                class:n={dNormal != null && f.n <= dNormal}
-                class:h={dHard != null && f.n <= dHard}
-                class:prize={f.n === 6 || f.n === 13 || f.n === 20}
-                title="{t('week.floor', { n: f.n })}{f.name ? ` · ${f.name}` : ''}"
-              >
-                {#if f.icon}<img src={iconUrl(f.icon)} alt="" />{:else}<span>{f.n}</span>{/if}
-                {#if f.boss}<small>{f.name}</small>{/if}
-              </div>
-            {/each}
+          <div class="descent-modes">
+            {@render descentRoute(t("week.descentNormal"), dNormal, dNormalRewards)}
+            {@render descentRoute(t("week.sp"), dHard, dHardRewards)}
           </div>
-          <p class="legend">
-            <span><i class="lg n"></i>{t("week.descentNormal")}</span>
-            <span><i class="lg h"></i>{t("week.sp")}</span>
-            <span><i class="lg prize"></i>{t("week.descentPrize")}</span>
-          </p>
-          {#if wdb}
-            <div class="cols">
-              <div>
-                <span class="lbl">{t("week.dArc")}</span>
-                <Rewards list={wdb.rw.descent.arc} show={9} />
-              </div>
-              <div>
-                <span class="lbl">{t("week.dTri")}</span>
-                <Rewards list={wdb.rw.descent.triSp} show={5} hint={t("week.dTriHint")} />
-              </div>
-              <div>
-                <span class="lbl">{t("week.dBoss", { name: wdb.cq.title.roatheName ?? "" })}</span>
-                <Rewards list={wdb.rw.descent.boss} show={8} />
-              </div>
-              <div>
-                <span class="lbl">{t("week.dFloors")}</span>
-                <Rewards list={[...wdb.rw.descent.rare, ...wdb.rw.descent.unc]} show={7} />
-              </div>
-            </div>
+          {#if !dNormalRewards.size && !dHardRewards.size}
+            <p class="hint">{t("week.descentRewardsNeedInv")}</p>
           {/if}
         </section>
       {/if}
@@ -738,6 +775,7 @@
   }
   .card.wide {
     column-span: all;
+    margin-top: 16px;
   }
   .card header {
     display: flex;
@@ -754,9 +792,6 @@
     font-size: 12.5px;
     color: var(--text-faint);
     font-variant-numeric: tabular-nums;
-  }
-  .sub b {
-    color: var(--text);
   }
   .lbl {
     display: block;
@@ -1001,7 +1036,41 @@
     font-size: 12px;
   }
 
-  /* Descendia: 21 floors; the inner fill = normal, the outer ring = Steel Path. */
+  /* Descendia: one 21-floor route per mode, with this week's inventory rewards under their floors. */
+  .descent-modes {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .descent-mode {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+  .descent-mode + .descent-mode {
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+  }
+  .descent-mode-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--text-dim);
+    font-size: 12.5px;
+  }
+  .descent-mode-head b {
+    color: var(--text);
+    font-size: 13.5px;
+    font-weight: 600;
+  }
+  .descent-scroll {
+    min-width: 0;
+    padding-top: 3px;
+  }
+  .descent-route {
+    min-width: 0;
+  }
   .floors {
     display: grid;
     grid-template-columns: repeat(21, minmax(0, 1fr));
@@ -1013,11 +1082,6 @@
     flex-direction: column;
     align-items: center;
     gap: 3px;
-  }
-  @media (max-width: 1100px) {
-    .floors {
-      grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
-    }
   }
   .fl > span,
   .fl > img {
@@ -1038,14 +1102,14 @@
     color: var(--accent);
     box-shadow: 0 0 0 2px rgba(201, 166, 107, 0.45);
   }
-  .fl.n > span,
-  .fl.n > img {
+  .fl.prize > img {
+    box-shadow: 0 0 0 2px rgba(201, 166, 107, 0.45);
+  }
+  .fl.done > span,
+  .fl.done > img {
     background: rgba(201, 166, 107, 0.2);
     color: var(--text);
-  }
-  .fl.h > span,
-  .fl.h > img {
-    box-shadow: 0 0 0 2px var(--good), 0 0 8px rgba(111, 207, 151, 0.35);
+    box-shadow: 0 0 0 2px rgba(201, 166, 107, 0.7);
   }
   .fl small {
     max-width: 64px;
@@ -1054,37 +1118,103 @@
     text-align: center;
     color: var(--text-faint);
   }
-  .legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px;
-    margin: 0;
-    font-size: 12px;
-    color: var(--text-faint);
-  }
-  .legend span {
-    display: inline-flex;
-    align-items: center;
+  .descent-rewards {
+    display: grid;
+    grid-template-columns: repeat(21, minmax(0, 1fr));
+    min-height: 67px;
+    margin-top: 9px;
     gap: 6px;
   }
-  .lg {
-    width: 12px;
-    height: 12px;
+  .descent-reward {
+    position: relative;
+    justify-self: center;
+    width: 92px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: var(--text-dim);
+    text-align: center;
+  }
+  .descent-reward.edge {
+    width: 74px;
+  }
+  .descent-reward.promoted small {
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
+  }
+  .descent-reward-icons {
+    position: relative;
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+  }
+  .descent-reward-icons > img,
+  .reward-dot {
+    width: 30px;
+    height: 30px;
+    object-fit: contain;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    font-size: 17px;
+  }
+  .descent-reward small {
+    width: 100%;
+    font-size: 10.5px;
+    line-height: 1.2;
+    display: -webkit-box;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .descent-reward.claimed {
+    color: var(--good);
+  }
+  .descent-reward.claimed .descent-reward-icons > img,
+  .descent-reward.claimed .reward-dot {
+    opacity: 0.55;
+  }
+  .claimed-mark {
+    position: absolute;
+    right: -7px;
+    top: -5px;
+    width: 17px;
+    height: 17px;
     border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #07130c;
+    background: var(--good);
+    box-shadow: 0 0 0 2px var(--bg);
+    font-size: 11px;
+    font-weight: 800;
   }
-  .lg.n {
-    background: rgba(201, 166, 107, 0.45);
-  }
-  .lg.h {
-    box-shadow: 0 0 0 2px var(--good);
-  }
-  .lg.prize {
-    box-shadow: 0 0 0 2px rgba(201, 166, 107, 0.6);
-  }
-  .cols {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 14px 22px;
+  .floor-claimed {
+    position: absolute;
+    top: -7px;
+    left: calc(50% + 9px);
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #07130c;
+    background: var(--good);
+    box-shadow: 0 0 0 2px var(--bg);
+    font-size: 11px;
+    font-style: normal;
+    font-weight: 800;
   }
 
   /* Circuit */

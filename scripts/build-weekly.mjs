@@ -117,6 +117,7 @@ const DESCENT = {
   unc: "The Descendia: Uncommon Rewards (Steel Path)",
   com: "The Descendia: Common Rewards (Steel Path)",
 };
+const descentPaths = new Set();
 function dropTable(dict, title) {
   const at = html.indexOf(`<th colspan="2">${title}</th>`);
   if (at < 0) return [];
@@ -127,6 +128,7 @@ function dropTable(dict, title) {
       const m = raw.match(/^(?:([\d,]+)X |\d+ Day )?(.+)$/);
       const n = m[1] ? Number(m[1].replace(/,/g, "")) : 1;
       const path = enIndex.get(m[2].toLowerCase());
+      if (path) descentPaths.add(path);
       const it = path && itemOf(dict, path);
       return it ? [it[0], it[1], n * it[2], Number(p) / 100] : null;
     })
@@ -244,12 +246,25 @@ for (const [lang, dict] of Object.entries(DICTS)) {
     hex: DECKS.hex.map((d) => deck(dict, d)),
     descent: Object.fromEntries(Object.entries(DESCENT).map(([k, title]) => [k, dropTable(dict, title)])),
   };
+  const drew = {};
+  const descentNamed = new Set([
+    ...descentPaths,
+    ...Object.keys(all).filter((id) => id.includes("/FusionBundles/") || id.includes("/Boosters/")),
+  ]);
+  for (const id of descentNamed) {
+    const it = itemOf(dict, id);
+    if (it) drew[id] = it;
+  }
+  // Credits are a pickup StoreItem and therefore have no Public Export item record, but their name is in DE's dictionary.
+  const credits = "/Lotus/StoreItems/Types/PickUps/Credits/10000Credits";
+  const creditsName = tr(dict, "/Lotus/Language/Items/10000CreditsName");
+  if (creditsName) drew[credits] = [unshout(creditsName), null, 1];
   const teshin = { epoch: TESHIN_EPOCH, items: TESHIN.map(([p, n]) => {
     const [name, icon, mul] = itemOf(dict, p) ?? [p.split("/").pop(), null, 1];
     return [name, icon, n * mul];
   }) };
   const cq = conquest(dict, ORACLE[lang]);
-  const out = { nw, cal, rew, rewi, archons, inc: incOut, rw, cq, teshin };
+  const out = { nw, cal, rew, rewi, drew, archons, inc: incOut, rw, cq, teshin };
   mkdirSync(`static/data/${lang}`, { recursive: true });
   writeFileSync(`static/data/${lang}/weekly.json`, JSON.stringify(out));
   console.log(

@@ -16,6 +16,7 @@ export interface WeeklyDb {
   cal: Record<string, string>; // calendar challenge path -> text
   rew: Record<string, string>; // reward store item -> name
   rewi: Record<string, string>; // reward store item -> icon
+  drew?: Record<string, [string, string | null, number]>; // Descendia reward -> name, icon, count multiplier
   archons: Record<string, [string, string | null, ShardColor, string]>; // SORTIE_BOSS_* -> shard name, icon, color, archon
   inc: Record<string, [string, string | null, string, string[]]>; // Circuit choice -> adapter name, icon, adapter id, weapons
   rw: {
@@ -65,6 +66,12 @@ export function descentFloor(inv: InvData | null, cat: "DM_COH_NORMAL" | "DM_COH
   if (!inv?.week) return null;
   const d = inv.week.descent[cat];
   return d && live(d[1], now) ? d[0] : 0;
+}
+
+export type DescentReward = [number, [string, number][]];
+export function descentRewards(inv: InvData | null, cat: "DM_COH_NORMAL" | "DM_COH_HARD", now: number): DescentReward[] {
+  const d = inv?.week?.descent[cat];
+  return d && live(d[1], now) ? (d[2] ?? []) : [];
 }
 
 export const archonDone = (inv: InvData | null, w: Week) => (inv?.week && w.archon ? inv.week.archon.includes(w.archon.id) : null);
@@ -136,6 +143,17 @@ export function circuitIncarnon(wdb: WeeklyDb | null, inv: InvData | null, choic
 export const rewardName = (wdb: WeeklyDb | null, id: string) =>
   wdb?.rew[id] ?? wdb?.rew[id.replace("/Lotus/StoreItems/", "/Lotus/")] ?? id.split("/").pop()!.replace(/([a-z])([A-Z])/g, "$1 $2");
 export const rewardIcon = (wdb: WeeklyDb | null, id: string) => wdb?.rewi[id] ?? wdb?.rewi[id.replace("/Lotus/StoreItems/", "/Lotus/")] ?? null;
+
+const rewardTail = (id: string) => id.split("/").pop() ?? id;
+export function descentReward(wdb: WeeklyDb | null, id: string): [string, string | null, number] {
+  const box = wdb?.drew;
+  if (box) {
+    const normalized = id.replace("/StoreItems/", "/");
+    const key = box[id] ? id : box[normalized] ? normalized : Object.keys(box).find((k) => rewardTail(k) === rewardTail(id));
+    if (key) return box[key];
+  }
+  return [rewardName(wdb, id), rewardIcon(wdb, id), 1];
+}
 
 // "ChannelDrain" -> "Channel Drain": a modifier DE's strings don't name.
 export const untag = (s: string) => s.replace(/^NC_/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
