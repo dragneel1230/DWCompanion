@@ -16,6 +16,10 @@ export interface InvData {
   at: number; // when the game synced it (LastInventorySync), ms
   got: number; // when it reached the app
   mods: Record<string, [number, number]>; // mod / arcane id -> [copies, best rank]
+  // Unranked copies (RawUpgrades): what dissolving and Quick Select take. Absent before v0.2.7.
+  rawMods?: Record<string, number>;
+  // Unveiled and challenge rivens (Upgrades /Randomized/), the fingerprint as DE keeps it. Absent before v0.2.7.
+  rivens?: InvRiven[];
   items: Record<string, number>; // resources, parts, blueprints, relics, consumables -> count
   arsenal: string[]; // warframes, weapons, companions… in the arsenal now
   // Per arsenal item (best copy): forma used (Polarized), reactor / catalyst installed (Features bit 1).
@@ -37,6 +41,11 @@ export interface InvData {
   helminth?: InvHelminth;
   // Weekly activities (the «Сейчас» weekly panel). Absent before 2026-10-09.
   week?: InvWeek;
+  // Star chart nodes done (Missions): tag -> 1, or 2 when done on the Steel Path too (Tier 1). Absent before v0.2.7.
+  nodes?: Record<string, 1 | 2>;
+  // Quests the player has (QuestKeys): key chain -> [stages reached (Progress), completed ms or 0]. A quest that is
+  // not here was never given. Absent before v0.2.7.
+  quests?: Record<string, [number, number]>;
   credits: number;
   plat: number;
   ducats: number;
@@ -50,6 +59,21 @@ export interface InvLoadout {
   cfg: { n?: string; m: ([string, number] | null)[]; h?: [string, number] }[]; // index = config; mod / arcane id + rank; Helminth ability + replaced slot
   // Archon shards (5 sockets, ids as in shards.ts). Absent in snapshots taken before 2026-10-07.
   shards?: (string | null)[];
+}
+
+// A riven's UpgradeFingerprint: weapon (`compat`), MR (`lvlReq`), rank (`lvl`), cycles (`rerolls`), polarity and rolls
+// (Value: 0..0x3FFFFFFF over the 90–110 % range); a veiled one has only its `challenge`.
+export interface InvRiven {
+  id: string; // ItemId
+  type: string; // LotusRifleRandomModRare…
+  compat?: string;
+  mr?: number;
+  lvl: number;
+  rr: number;
+  pol?: string;
+  buffs: [string, number][];
+  curses: [string, number][];
+  ch?: { type: string; done: number; need: number; comp?: string };
 }
 
 export interface InvFoundry {
@@ -152,7 +176,11 @@ export function parseInventory(text: string): InvData {
     m[0] += n;
     m[1] = Math.max(m[1], rank);
   };
-  for (const u of j.RawUpgrades ?? []) if (u?.ItemType) addMod(u.ItemType, u.ItemCount ?? 1, 0);
+  const rawMods: Record<string, number> = {};
+  for (const u of j.RawUpgrades ?? []) if (u?.ItemType) {
+    addMod(u.ItemType, u.ItemCount ?? 1, 0);
+    rawMods[u.ItemType] = (rawMods[u.ItemType] ?? 0) + (u.ItemCount ?? 1);
+  }
   for (const u of j.Upgrades ?? []) if (u?.ItemType) addMod(u.ItemType, 1, rankOf(u.UpgradeFingerprint));
   const items: Record<string, number> = {};
   for (const k of STACKS) for (const x of j[k] ?? []) if (x?.ItemType) items[x.ItemType] = (items[x.ItemType] ?? 0) + (x.ItemCount ?? 1);
@@ -292,6 +320,34 @@ export function parseInventory(text: string): InvData {
     at: oidTime(j.LastInventorySync) || Date.now(),
     got: Date.now(),
     mods,
+    rawMods,
+    rivens: ((j.Upgrades ?? []) as Raw[]).flatMap((u): InvRiven[] => {
+      const m = typeof u?.ItemType === "string" ? /\/Randomized\/([^/]+)$/.exec(u.ItemType) : null;
+      if (!m) return [];
+      let fp: Raw;
+      try {
+        fp = typeof u.UpgradeFingerprint === "string" ? JSON.parse(u.UpgradeFingerprint) : (u.UpgradeFingerprint ?? {});
+      } catch {
+        return [];
+      }
+      const rolls = (xs: unknown): [string, number][] =>
+        Array.isArray(xs) ? xs.filter((x: Raw) => typeof x?.Tag === "string").map((x: Raw) => [x.Tag, Number(x.Value) || 0]) : [];
+      const c = fp.challenge;
+      return [{
+        id: u.ItemId?.$oid ?? "",
+        type: m[1],
+        compat: typeof fp.compat === "string" ? fp.compat : undefined,
+        mr: Number(fp.lvlReq) || undefined,
+        lvl: Number(fp.lvl) || 0,
+        rr: Number(fp.rerolls) || 0,
+        pol: typeof fp.pol === "string" ? fp.pol : undefined,
+        buffs: rolls(fp.buffs),
+        curses: rolls(fp.curses),
+        ch: c && typeof c.Type === "string"
+          ? { type: c.Type, done: Number(c.Progress) || 0, need: Number(c.Required) || 0, comp: typeof c.Complication === "string" ? c.Complication : undefined }
+          : undefined,
+      }];
+    }),
     items,
     arsenal: [...arsenal],
     gear,
@@ -302,6 +358,14 @@ export function parseInventory(text: string): InvData {
     foundry,
     helminth,
     week,
+    nodes: Object.fromEntries(
+      ((j.Missions ?? []) as Raw[]).filter((m) => typeof m?.Tag === "string" && m.Completes > 0).map((m) => [m.Tag, m.Tier === 1 ? 2 : 1]),
+    ),
+    quests: Object.fromEntries(
+      ((j.QuestKeys ?? []) as Raw[])
+        .filter((q) => typeof q?.ItemType === "string")
+        .map((q) => [q.ItemType, [Array.isArray(q.Progress) ? q.Progress.length : 0, q.Completed ? dateMs(q.CompletionDate) || 1 : 0]]),
+    ),
     credits: j.RegularCredits ?? 0,
     plat: (j.PremiumCredits ?? 0) + (j.PremiumCreditsFree ?? 0),
     ducats: j.PrimeTokens ?? 0,

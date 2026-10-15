@@ -13,6 +13,8 @@
   import InvLog from "$lib/inv/InvLog.svelte";
   import Market from "$lib/hub/Market.svelte";
   import Orders from "$lib/trade/Orders.svelte";
+  import Deals from "$lib/trade/Deals.svelte";
+  import Rivens from "$lib/trade/Rivens.svelte";
   import { subs, setTrade, type TradeSub } from "./sub.svelte";
 
   let { compact = false, onopen }: { compact?: boolean; onopen: (v: View) => void } = $props();
@@ -25,6 +27,8 @@
     { id: "sell", label: "inv.tab.sell", inv: true },
     { id: "sets", label: "inv.tab.sets", inv: true },
     { id: "market", label: "hub.tab.market" },
+    { id: "deals", label: "deals.tab" },
+    { id: "rivens", label: "riven.tab", inv: true },
     { id: "orders", label: "hub.tab.orders" },
     { id: "log", label: "inv.tab.log", inv: true },
   ];
@@ -82,6 +86,10 @@
 
   {#if sub === "market"}
     <div class="market-wrap"><Market bind:this={market} {onopen} /></div>
+  {:else if sub === "deals"}
+    <div class="market-wrap"><Deals {onopen} /></div>
+  {:else if sub === "rivens"}
+    <Rivens />
   {:else if sub === "orders"}
     {#key initial}
       <Orders bind:this={orders} {compact} initial={initial ?? null} />

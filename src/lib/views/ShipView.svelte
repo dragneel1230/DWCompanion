@@ -7,6 +7,7 @@
   import InvBar from "$lib/inv/InvBar.svelte";
   import Foundry from "$lib/ship/Foundry.svelte";
   import Helminth from "$lib/ship/Helminth.svelte";
+  import Endo from "$lib/ship/Endo.svelte";
   import { rankOf, MAX_RANK } from "$lib/ship/helminth";
   import { shipWorth } from "$lib/ship/shipWorth.svelte";
   import { subs, setShip, type ShipSub } from "./sub.svelte";
@@ -17,6 +18,7 @@
   const SUBS: { id: ShipSub; label: Key }[] = [
     { id: "foundry", label: "ship.foundry" },
     { id: "helminth", label: "ship.helminth" },
+    { id: "endo", label: "endo.tab" },
   ];
 
   let now = $state(Date.now());
@@ -108,6 +110,8 @@
 
   {#if subs.ship === "helminth"}
     <Helminth {compact} />
+  {:else if subs.ship === "endo"}
+    <Endo {compact} />
   {:else}
     <Foundry {compact} />
   {/if}

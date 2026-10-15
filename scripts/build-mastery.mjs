@@ -22,6 +22,8 @@ const named = {};
 for (const f of ["ExportWarframes.json", "ExportWeapons.json", "ExportSentinels.json"]) Object.assign(named, pe(f));
 // DE's names carry tags: "<ARCHWING> Odonata" -> "Odonata".
 const clean = (s) => s?.replace(/<[^>]+>\s*/g, "").trim();
+// Junctions are shouted too, but each word is a name: "УЗЕЛ МЕРКУРИЯ" -> "Узел Меркурия".
+const words = (s) => s?.toLowerCase().replace(/(^|\s)(\p{L})/gu, (_, a, c) => a + c.toUpperCase());
 const unshout = (s) => (s && s === s.toUpperCase() && /[a-zа-я]/i.test(s) ? s[0] + s.slice(1).toLowerCase() : s);
 
 // Category by source file / product category. "Frame-like" items give 200 mastery per rank and need
@@ -95,17 +97,63 @@ for (const file of FILES) {
 // DE's ExportRegions gives every junction masteryExp 0, but each junction grants 1000 mastery
 // (wiki "Mastery Rank": "Each Junction completed grants 1,000 Mastery"), so junctions use that.
 const JUNCTION_XP = 1000;
+// Each node also carries its planet (`p`, DE's systemIndex), name and mission type for the «Звёздная карта» list.
 const nodes = {};
+const systems = {};
 for (const [tag, r] of Object.entries(regions)) {
-  if (r.missionType === "MT_JUNCTION") nodes[tag] = { xp: r.masteryExp || JUNCTION_XP, j: 1 };
-  else if (r.masteryExp) nodes[tag] = { xp: r.masteryExp };
+  const isJ = r.missionType === "MT_JUNCTION";
+  if (!isJ && !r.masteryExp) continue;
+  nodes[tag] = { xp: r.masteryExp || JUNCTION_XP, ...(isJ ? { j: 1 } : {}), p: r.systemIndex, n: clean((isJ ? words : unshout)(D[r.name] ?? en[r.name] ?? tag)), m: clean(unshout(D[r.missionName] ?? en[r.missionName] ?? "")) };
+  systems[r.systemIndex] ??= clean(D[r.systemName] ?? en[r.systemName] ?? String(r.systemIndex));
+}
+
+// Quests: DE's key chains (ExportKeys: name, description, stages, rewards). DE gives no quest order: the order
+// and what unlocks what are the wiki's ("Quest", Quest Progression, ordered as in the Codex), by English name.
+const QUEST_MAIN = ["Vor's Prize", "The Teacher", "Vox Solaris", "Once Awake", "Heart of Deimos", "The Archwing",
+  "The Duviri Paradox", "Natah", "The Second Dream", "The War Within", "Rising Tide", "Chains of Harrow",
+  "Apostasy Prologue", "The Sacrifice", "Chimera Prologue", "Erra", "The New War", "Whispers in the Walls", "The Lotus Eaters"];
+const QUEST_AFTER = {
+  "The Waverider": "Vox Solaris", "Stolen Dreams": "The Archwing", "The New Strange": "Stolen Dreams",
+  "Octavia's Anthem": "The Second Dream", "The Silver Grove": "The Second Dream", "The Glast Gambit": "The War Within",
+  "Angels of the Zariman": "The New War", "Veilbreaker": "The New War", "Jade Shadows": "The New War",
+  "Jade Shadows: Constellations": "Jade Shadows", "The Hex": "The Lotus Eaters", "The Old Peace": "The Lotus Eaters",
+};
+const recipes = pe("ExportRecipes.json");
+const keys = pe("ExportKeys.json");
+const byEn = {};
+for (const [id, k] of Object.entries(keys)) if (/KeyChain$/.test(id) && !k.excludeFromCodex && en[k.name]) byEn[clean(en[k.name])] = id;
+// A reward as a name: the next quest, a blueprint (its result) or an item. Unnamed ones are left out.
+const rewardOf = (r) => {
+  const id = r.itemType.replace("/StoreItems/", "/");
+  if (keys[id]) return { q: id };
+  const res = recipes[id]?.resultType;
+  const x = named[res ?? id];
+  return x && D[x.name] ? { name: clean(unshout(D[x.name])), ...(res ? { bp: 1 } : {}) } : null;
+};
+const quests = [];
+const order = [...QUEST_MAIN, ...Object.keys(QUEST_AFTER), ...Object.keys(byEn).filter((n) => !QUEST_MAIN.includes(n) && !QUEST_AFTER[n])];
+for (const enName of order) {
+  const id = byEn[enName];
+  if (!id) { console.warn(`  quest not in ExportKeys: ${enName}`); continue; }
+  const k = keys[id];
+  const rw = (k.rewards ?? []).map(rewardOf).filter(Boolean);
+  quests.push({
+    id,
+    name: clean(unshout(D[k.name] ?? en[k.name])),
+    d: clean(D[k.description] ?? en[k.description] ?? "") || undefined,
+    icon: img(k.icon),
+    st: (k.chainStages ?? []).length,
+    g: QUEST_MAIN.includes(enName) ? "main" : QUEST_AFTER[enName] ? "branch" : "side",
+    after: QUEST_AFTER[enName] ? byEn[QUEST_AFTER[enName]] : undefined,
+    rw: rw.length ? rw : undefined,
+  });
 }
 
 mkdirSync(`static/data/${LANG}`, { recursive: true });
-writeFileSync(`static/data/${LANG}/mastery.json`, JSON.stringify({ builtAt, items, nodes }));
+writeFileSync(`static/data/${LANG}/mastery.json`, JSON.stringify({ builtAt, items, nodes, systems, quests }));
 const by = {};
 for (const it of Object.values(items)) by[it.cat] = (by[it.cat] ?? 0) + 1;
-console.log(`${LANG} mastery: ${Object.keys(items).length} items ${JSON.stringify(by)}, ${Object.keys(nodes).length} nodes`);
+console.log(`${LANG} mastery: ${Object.keys(items).length} items ${JSON.stringify(by)}, ${Object.keys(nodes).length} nodes, ${quests.length} quests`);
 
 // ---- account.json: names for the rest of the public profile (lazy: Syndicates / Stats sub-tabs).
 // Syndicates with a daily standing limit, their ranks; ability and enemy names for the stats;

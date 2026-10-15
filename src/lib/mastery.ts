@@ -23,7 +23,23 @@ export interface MItem {
 export interface MasteryDb {
   builtAt: string;
   items: Record<string, MItem>;
-  nodes: Record<string, { xp: number; j?: 1 }>;
+  // Planet (DE's systemIndex), name and mission type: absent in files built before v0.2.7.
+  nodes: Record<string, { xp: number; j?: 1; p?: number; n?: string; m?: string }>;
+  systems?: Record<string, string>; // systemIndex -> planet name
+  quests?: Quest[];
+}
+
+// A quest (DE's key chain). Order and `after` (the quest that opens it) are the wiki's; `g`: main story, a branch
+// of it, or a side / warframe quest. Rewards: the next quest (`q`) or a named item (`bp`: its blueprint).
+export interface Quest {
+  id: string;
+  name: string;
+  d?: string;
+  icon: string | null;
+  st: number;
+  g: "main" | "branch" | "side";
+  after?: string;
+  rw?: ({ q: string } | { name: string; bp?: 1 })[];
 }
 
 // Two-in-one warframes: the secondary half (Orion) levels together with the pair but gives no mastery
@@ -119,12 +135,13 @@ export function summarize(db: MasteryDb, p: Profile) {
     if (n.j) chart.junctionsAll++;
     else chart.normalAll++;
   }
+  // One entry per node: Tier 1 (sp) means done on the Steel Path as well, which gives its mastery again.
   for (const m of p.missions) {
     const n = db.nodes[m.tag];
     if (!n) continue;
-    chart.xp += n.xp;
+    chart.xp += m.sp ? 2 * n.xp : n.xp;
+    n.j ? chart.junctions++ : chart.normal++;
     if (m.sp) n.j ? chart.spJ++ : chart.sp++;
-    else n.j ? chart.junctions++ : chart.normal++;
   }
 
   const lvl = (keys: string[]) => keys.reduce((s, k) => s + Math.min(10, p.skills[k] ?? 0), 0);
@@ -182,7 +199,7 @@ export function mrPlan(db: MasteryDb, p: Profile, sum: ReturnType<typeof summari
     if (r.status !== "progress" || !r.left || skip?.(r)) continue;
     cands.push({ xp: r.left, min: Math.max(5, (60 * (r.it.max ** 2 - r.rank ** 2)) / 900), row: r });
   }
-  const done = new Set(p.missions.filter((m) => !m.sp).map((m) => m.tag));
+  const done = new Set(p.missions.map((m) => m.tag));
   const spDone = new Set(p.missions.filter((m) => m.sp).map((m) => m.tag));
   for (const [tag, n] of Object.entries(db.nodes)) {
     if (!n.xp || n.j) continue;

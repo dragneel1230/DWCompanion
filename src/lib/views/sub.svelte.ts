@@ -3,13 +3,13 @@ import { GEAR_KINDS, type GearTab } from "$lib/gear";
 
 // Sub-tabs of the sections shared by the app and the hub ("Торговля", "Реликвии"): one remembered choice
 // for both windows (localStorage is shared), so the hub opens where the app was left and back.
-export type TradeSub = "sell" | "sets" | "market" | "orders" | "log";
+export type TradeSub = "sell" | "sets" | "market" | "deals" | "rivens" | "orders" | "log";
 export type RelicsSub = "mine" | "farm" | "journal";
-export type ShipSub = "foundry" | "helminth";
+export type ShipSub = "foundry" | "helminth" | "endo";
 
-export const TRADE_SUBS: TradeSub[] = ["sell", "sets", "market", "orders", "log"];
+export const TRADE_SUBS: TradeSub[] = ["sell", "sets", "market", "deals", "rivens", "orders", "log"];
 export const RELICS_SUBS: RelicsSub[] = ["mine", "farm", "journal"];
-export const SHIP_SUBS: ShipSub[] = ["foundry", "helminth"];
+export const SHIP_SUBS: ShipSub[] = ["foundry", "helminth", "endo"];
 
 // A new order asked for by a link: item, side, and (from the sell list) how many and at what rank.
 export type NewOrderAsk = { slug: string; type?: "sell" | "buy"; qty?: number; rank?: number };

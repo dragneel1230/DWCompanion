@@ -226,7 +226,7 @@ export function buildsFor(db: FramesDb, frameId: string): [string, Build][] {
 }
 
 const GAME_PREFIX = "game:";
-const AP_POLARITY: Record<string, Polarity> = {
+export const AP_POLARITY: Record<string, Polarity> = {
   AP_ATTACK: "madurai",
   AP_DEFENSE: "vazarin",
   AP_TACTIC: "naramon",

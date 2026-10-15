@@ -12,6 +12,8 @@
   import OwnBadges from "$lib/components/OwnBadges.svelte";
   import CollSyndicates from "./CollSyndicates.svelte";
   import CollStats from "./CollStats.svelte";
+  import CollChart from "./CollChart.svelte";
+  import CollQuests from "./CollQuests.svelte";
   import { record, readHistory, type History } from "./history";
   import { skip, skipped, skipCount, toggleCat, toggleId, toggleSp } from "./skip.svelte";
   import { goto } from "$app/navigation";
@@ -52,7 +54,11 @@
     if (!p || !inv) return p;
     const xp = { ...p.xp };
     for (const [id, v] of Object.entries(inv.xp)) if (v > (xp[id] ?? -1)) xp[id] = v;
-    return { ...p, xp, at: Math.max(p.at, inv.at) };
+    // Star chart nodes too: a node done (or done on the Steel Path) in either source counts.
+    const nodes = new Map(p.missions.map((m) => [m.tag, m.sp]));
+    for (const [tag, v] of Object.entries(inv.nodes ?? {})) nodes.set(tag, nodes.get(tag) || v === 2);
+    const missions = [...nodes].map(([tag, sp]) => ({ tag, sp }));
+    return { ...p, xp, missions, at: Math.max(p.at, inv.at) };
   }
   const pdata = $derived(withInventory(profile.data));
   const sum = $derived(mdb && pdata ? summarize(mdb, pdata) : null);
@@ -67,10 +73,12 @@
   }
 
   // ---------- sub-tabs (remembered; shared by the app and the hub)
-  type Sub = "overview" | "items" | "syndicates" | "stats";
+  type Sub = "overview" | "items" | "chart" | "quests" | "syndicates" | "stats";
   const SUBS: { id: Sub; label: Key }[] = [
     { id: "overview", label: "hub.tab.overview" },
     { id: "items", label: "coll.sub.items" },
+    { id: "chart", label: "coll.starChart" },
+    { id: "quests", label: "coll.sub.quests" },
     { id: "syndicates", label: "coll.sub.syndicates" },
     { id: "stats", label: "coll.sub.stats" },
   ];
@@ -79,7 +87,7 @@
   function readSub(): Sub {
     try {
       const v = localStorage.getItem(SUB_KEY);
-      return v === "items" || v === "syndicates" || v === "stats" ? v : "overview";
+      return SUBS.some((s) => s.id === v) ? (v as Sub) : "overview";
     } catch {
       return "overview";
     }
@@ -193,8 +201,8 @@
     return list.filter((r) => !skipped(r)).sort((a, b) => b.left - a.left).slice(0, compact ? 8 : 12) as (Row & { price?: number })[];
   });
   const chartLeft = $derived.by(() => {
-    if (!sum || !mdb || !profile.data) return null;
-    const done = new Set(profile.data.missions.filter((m) => m.sp).map((m) => m.tag));
+    if (!sum || !mdb || !pdata) return null;
+    const done = new Set(pdata.missions.filter((m) => m.sp).map((m) => m.tag));
     let xp = 0;
     let n = 0;
     for (const [tag, node] of Object.entries(mdb.nodes)) if (!done.has(tag) && node.xp) (xp += node.xp), n++;
@@ -678,6 +686,10 @@
         <button class="more" onclick={() => (shown += 120)}>{t("coll.showMore", { a: Math.min(120, grid.length - shown), b: grid.length - shown })}</button>
       {/if}
     </section>
+    {:else if sub === "chart" && mdb && pdata}
+      <CollChart p={pdata} {mdb} />
+    {:else if sub === "quests" && mdb}
+      <CollQuests {mdb} />
     {:else if sub === "syndicates"}
       <CollSyndicates p={profile.data} />
     {:else if mdb}
@@ -1462,6 +1474,7 @@
   /* Sub-tabs under the header. */
   .subs {
     display: flex;
+    flex-wrap: wrap;
     gap: 4px;
     padding: 4px;
     border-radius: 12px;
