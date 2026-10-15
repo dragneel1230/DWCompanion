@@ -2,7 +2,7 @@
   // Settings (the gear at the bottom of the menu): notifications (NotifySettings), hub hotkey, reward overlay, ducat kiosk, inventory
   // (what to keep, warframe-api-helper). Debug tools (EE.log lines, screen recording) only in development builds.
   import { fromRust, locale, t, type Key } from "$lib/i18n/index.svelte";
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { listen, type UnlistenFn } from "@tauri-apps/api/event";
   import { overlaySettings, type Priority } from "$lib/overlaySettings.svelte";
@@ -17,6 +17,38 @@
   import NotifySettings from "$lib/notify/NotifySettings.svelte";
 
   const s = $derived(overlaySettings.value);
+
+  type Autostart = { enabled: boolean; gamePath: string };
+  let autostart = $state<Autostart>({ enabled: false, gamePath: "" });
+  let autostartBusy = $state(true);
+  let autostartReady = $state(false);
+  let autostartError = $state("");
+  let autostartNote = $state("");
+  onMount(async () => {
+    try {
+      autostart = await invoke<Autostart>("autostart_status");
+      autostartReady = true;
+    } catch (e) {
+      autostartError = String(e);
+    } finally {
+      autostartBusy = false;
+    }
+  });
+  async function setAutostart(e: Event & { currentTarget: HTMLInputElement }) {
+    const enabled = e.currentTarget.checked;
+    e.currentTarget.checked = autostart.enabled;
+    autostartBusy = true;
+    autostartError = "";
+    autostartNote = "";
+    try {
+      autostart = await invoke<Autostart>("autostart_set", { enabled, title: t("settings.autostartPick") });
+      autostartNote = t(enabled ? "settings.autostartOn" : "settings.autostartOff");
+    } catch (error) {
+      autostartError = String(error);
+    } finally {
+      autostartBusy = false;
+    }
+  }
 
   const PRIORITIES: { id: Priority; label: Key; hint: Key; soon?: boolean }[] = [
     { id: "platinum", label: "market.col.plat", hint: "settings.prio.platHint" },
@@ -127,6 +159,16 @@
   <h1>{t("nav.settings")}</h1>
 
   <div class="section-title first">{t("settings.app")}</div>
+  <label class="row switch">
+    <span>
+      <b>{t("settings.autostart")}</b>
+      <small id="autostart-hint">{t("settings.autostartHint")}</small>
+      <small id="autostart-result" class="autostart-result" class:err={!!autostartError} role="status">{autostartBusy ? t("settings.autostartBusy") : autostartError ? fromRust(autostartError) : autostartNote}</small>
+      {#if autostart.enabled}<small class="autostart-path">{autostart.gamePath}</small>{/if}
+    </span>
+    <input type="checkbox" checked={autostart.enabled} disabled={autostartBusy || !autostartReady}
+      aria-describedby="autostart-hint autostart-result" aria-invalid={!!autostartError} onchange={setAutostart} />
+  </label>
   <label class="row switch">
     <span>
       <b>{t("settings.tray")}</b>
@@ -332,7 +374,7 @@
     font-weight: 600;
     margin: 0 0 16px;
   }
-  .switch {
+  .row.switch {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -343,6 +385,8 @@
     cursor: pointer;
   }
   .switch span {
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 3px;
@@ -407,9 +451,20 @@
     color: var(--text);
   }
   .switch input {
+    flex: none;
     width: 18px;
     height: 18px;
     accent-color: var(--accent);
+  }
+  .autostart-result:empty {
+    display: none;
+  }
+  .autostart-result,
+  .autostart-path {
+    overflow-wrap: anywhere;
+  }
+  .switch .autostart-result.err {
+    color: var(--warn);
   }
   .choices {
     display: grid;

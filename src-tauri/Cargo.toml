@@ -28,7 +28,7 @@ tauri-plugin-http = "~2.7"
 tauri-plugin-clipboard-manager = "2"
 windows-capture = "2.0.1"
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png"] }
-windows = { version = "0.62.2", features = ["Media_Ocr", "Globalization", "Graphics_Imaging", "Storage_Streams", "Foundation", "Foundation_Collections", "Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi", "Win32_System_WinRT", "Win32_Security_Credentials", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Diagnostics_Debug", "Win32_System_Memory", "Win32_System_Threading"] }
+windows = { version = "0.62.2", features = ["Media_Ocr", "Globalization", "Graphics_Imaging", "Storage_Streams", "Foundation", "Foundation_Collections", "Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi", "Win32_System_WinRT", "Win32_Security_Credentials", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Diagnostics_Debug", "Win32_System_Memory", "Win32_System_Threading", "Win32_Security_Authorization", "Win32_System_Com", "Win32_System_SystemInformation", "Win32_System_TaskScheduler", "Win32_System_Variant", "Win32_System_Ole", "Win32_System_Registry", "Win32_UI_Shell", "Win32_UI_Shell_Common"] }
 tauri-plugin-global-shortcut = "2"
 base64 = "0.22"
 tokio-tungstenite = { version = "0.30.0", default-features = false, features = ["connect", "rustls-tls-webpki-roots"] }

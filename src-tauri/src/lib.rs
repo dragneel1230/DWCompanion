@@ -1,4 +1,8 @@
 mod app_prefs;
+mod autostart;
+mod autostart_task;
+
+pub use autostart::cli as autostart_cli;
 mod bench;
 mod cred;
 mod hub;
@@ -71,6 +75,8 @@ pub fn run() {
             hub::hub_set_shortcut,
             hub::hub_set_enabled,
             app_prefs::app_set_prefs,
+            autostart::autostart_status,
+            autostart::autostart_set,
             hub::hub_open_in_app,
             hub::hub_painted,
             hub::hub_bench,

@@ -253,7 +253,7 @@
   .row + .row {
     margin-top: 8px;
   }
-  .switch {
+  .row.switch {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -264,6 +264,8 @@
     cursor: pointer;
   }
   .switch span {
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 3px;
