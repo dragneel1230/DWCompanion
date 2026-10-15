@@ -278,7 +278,7 @@
         {#if head.slug && head.trade}
           <div class="market">
             {#key head.slug}
-              <MarketPanel slug={head.slug} item={head.trade} {maxRank} />
+              <MarketPanel slug={head.slug} item={head.trade} {maxRank} arcane={!!arcane} />
             {/key}
           </div>
         {/if}

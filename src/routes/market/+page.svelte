@@ -48,7 +48,7 @@
     </section>
 
     {#if item.slug}
-      <MarketPanel slug={item.slug} item={{ en: item.mname ?? item.en, ru: item.ru }} maxRank={item.max} />
+      <MarketPanel slug={item.slug} item={{ en: item.mname ?? item.en, ru: item.ru }} maxRank={item.max} arcane={!!arcane} />
     {:else}
       <p class="muted">{t("marketpage.notSold")}</p>
     {/if}

@@ -8,7 +8,7 @@ import type { InvData } from "$lib/inventory.svelte";
 import type { FramesDb } from "$lib/frames";
 import type { ShardColor } from "$lib/shards";
 
-export type Reward = [string, string | null, number, number]; // name, icon, count, chance 0..1
+export type Reward = [string, string | null, number, number, string?]; // name, icon, count, chance 0..1, item id
 type Named = [string | null, string | null]; // name, description
 
 export interface WeeklyDb {
@@ -16,7 +16,8 @@ export interface WeeklyDb {
   cal: Record<string, string>; // calendar challenge path -> text
   rew: Record<string, string>; // reward store item -> name
   rewi: Record<string, string>; // reward store item -> icon
-  drew?: Record<string, [string, string | null, number]>; // Descendia reward -> name, icon, count multiplier
+  rewr?: Record<string, string>; // calendar blueprint -> the item it builds
+  drew?: Record<string, [string, string | null, number, string?]>; // Descendia reward -> name, icon, count multiplier, item id
   archons: Record<string, [string, string | null, ShardColor, string]>; // SORTIE_BOSS_* -> shard name, icon, color, archon
   inc: Record<string, [string, string | null, string, string[]]>; // Circuit choice -> adapter name, icon, adapter id, weapons
   rw: {
@@ -35,7 +36,7 @@ export interface WeeklyDb {
     fac: Record<string, string>;
     title: Record<string, string | null>;
   };
-  teshin: { epoch: number; items: [string, string | null, number][] }; // 8-week rotation from `epoch` (a Monday)
+  teshin: { epoch: number; items: [string, string | null, number, string?][] }; // 8-week rotation from `epoch` (a Monday)
 }
 
 let cache: Promise<WeeklyDb> | null = null;
@@ -136,7 +137,7 @@ export function circuitIncarnon(wdb: WeeklyDb | null, inv: InvData | null, choic
   const [name, icon, adapter, fits] = x;
   const installed = inv?.week ? fits.some((w) => inv.week!.incarnon.includes(w)) : null;
   const held = inv ? (inv.items[adapter] ?? 0) > 0 : null;
-  return { name, icon, installed, held };
+  return { name, icon, installed, held, weapon: fits[0] as string | undefined };
 }
 
 // A calendar reward / upgrade id as the name lookup keeps it.
@@ -145,7 +146,7 @@ export const rewardName = (wdb: WeeklyDb | null, id: string) =>
 export const rewardIcon = (wdb: WeeklyDb | null, id: string) => wdb?.rewi[id] ?? wdb?.rewi[id.replace("/Lotus/StoreItems/", "/Lotus/")] ?? null;
 
 const rewardTail = (id: string) => id.split("/").pop() ?? id;
-export function descentReward(wdb: WeeklyDb | null, id: string): [string, string | null, number] {
+export function descentReward(wdb: WeeklyDb | null, id: string): [string, string | null, number, string?] {
   const box = wdb?.drew;
   if (box) {
     const normalized = id.replace("/StoreItems/", "/");

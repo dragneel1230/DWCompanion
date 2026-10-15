@@ -64,25 +64,26 @@ for (const f of ["ExportResources", "ExportUpgrades", "ExportArcanes", "ExportRe
   for (const [k, v] of Object.entries(pe(`${f}.json`))) all[k] ??= v;
 const entryOf = (path) => all[path] ?? all[path.replace("/StoreItems/", "/")];
 // A blueprint is named after what it builds: DE's "|ITEM| Blueprint" / "ЧЕРТЁЖ: |ITEM|". An Endo bundle counts its
-// Endo (fusionPoints each): [name, icon, multiplier].
+// Endo (fusionPoints each): [name, icon, multiplier, item id]. The id is what the app links to: a blueprint's
+// result, else the item itself (without "/StoreItems/").
 function itemOf(dict, path) {
   const e = entryOf(path);
   if (!e) return null;
   if (e.resultType) {
     const r = entryOf(e.resultType);
     const n = r?.name && tr(dict, r.name);
-    return n ? [unshout(tr(dict, "/Lotus/Language/Items/BlueprintAndItem") ?? "|ITEM|").replace(/\|ITEM\|/i, unshout(n)), img(r.icon ?? e.icon), 1] : null;
+    return n ? [unshout(tr(dict, "/Lotus/Language/Items/BlueprintAndItem") ?? "|ITEM|").replace(/\|ITEM\|/i, unshout(n)), img(r.icon ?? e.icon), 1, e.resultType] : null;
   }
   const n = e.name && tr(dict, e.name);
-  return n ? [unshout(n), img(e.icon), e.fusionPoints ?? 1] : null;
+  return n ? [unshout(n), img(e.icon), e.fusionPoints ?? 1, all[path] ? path : path.replace("/StoreItems/", "/")] : null;
 }
 const REW = pe("ExportRewards.json");
-// A reward deck -> [name, icon, count, chance], likeliest first. Items the export can't name are left out.
+// A reward deck -> [name, icon, count, chance, item id], likeliest first. Items the export can't name are left out.
 function deck(dict, id) {
   return (REW[id]?.[0] ?? [])
     .map((x) => {
       const it = itemOf(dict, x.type);
-      return it ? [it[0], it[1], (x.itemCount ?? 1) * it[2], x.probability] : null;
+      return it ? [it[0], it[1], (x.itemCount ?? 1) * it[2], x.probability, it[3]] : null;
     })
     .filter(Boolean)
     .sort((a, b) => b[3] - a[3]);
@@ -130,7 +131,7 @@ function dropTable(dict, title) {
       const path = enIndex.get(m[2].toLowerCase());
       if (path) descentPaths.add(path);
       const it = path && itemOf(dict, path);
-      return it ? [it[0], it[1], n * it[2], Number(p) / 100] : null;
+      return it ? [it[0], it[1], n * it[2], Number(p) / 100, it[3]] : null;
     })
     .filter(Boolean)
     .sort((a, b) => b[3] - a[3]);
@@ -222,6 +223,7 @@ for (const [lang, dict] of Object.entries(DICTS)) {
     if (id.includes("/Calendar1999/")) cal[id] = fill(tr(dict, c.description) ?? tr(dict, c.name), c.requiredCount);
   const rew = {};
   const rewi = {}; // calendar reward -> icon
+  const rewr = {}; // calendar blueprint -> what it builds (the app links to it)
   for (const [id, x] of Object.entries(named)) if (x?.name && (id.includes("Calendar") || resources[id] || id.includes("FusionBundles"))) {
     // A blueprint DE left untranslated ("Weapon Utility Unlocker Blueprint"): named after what it builds, below.
     const n = dict[x.name] || !id.includes("/Recipes/") ? tr(dict, x.name) : null;
@@ -231,7 +233,7 @@ for (const [lang, dict] of Object.entries(DICTS)) {
   // Calendar blueprints (Exilus adapters etc.) are recipes: named after what they build.
   for (const id of Object.keys(all)) if (id.includes("/Recipes/Components/") && !rew[id]) {
     const it = itemOf(dict, id);
-    if (it) (rew[id] = it[0]), it[1] && (rewi[id] = it[1]);
+    if (it) (rew[id] = it[0]), it[1] && (rewi[id] = it[1]), (rewr[id] = it[3]);
   }
   const archons = {};
   for (const [boss, a] of Object.entries(ARCHONS)) {
@@ -260,11 +262,11 @@ for (const [lang, dict] of Object.entries(DICTS)) {
   const creditsName = tr(dict, "/Lotus/Language/Items/10000CreditsName");
   if (creditsName) drew[credits] = [unshout(creditsName), null, 1];
   const teshin = { epoch: TESHIN_EPOCH, items: TESHIN.map(([p, n]) => {
-    const [name, icon, mul] = itemOf(dict, p) ?? [p.split("/").pop(), null, 1];
-    return [name, icon, n * mul];
+    const [name, icon, mul, id] = itemOf(dict, p) ?? [p.split("/").pop(), null, 1, p];
+    return [name, icon, n * mul, id];
   }) };
   const cq = conquest(dict, ORACLE[lang]);
-  const out = { nw, cal, rew, rewi, drew, archons, inc: incOut, rw, cq, teshin };
+  const out = { nw, cal, rew, rewi, rewr, drew, archons, inc: incOut, rw, cq, teshin };
   mkdirSync(`static/data/${lang}`, { recursive: true });
   writeFileSync(`static/data/${lang}/weekly.json`, JSON.stringify(out));
   console.log(

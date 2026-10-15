@@ -280,6 +280,11 @@
 
   // ---------- item card
   let open = $state<Row | null>(null);
+  // In the hub the tab's panel has its own backdrop (a containing block for fixed children): the details would
+  // sit under the hub's search bar. Lifted to the hub's root they cover (and blur) the whole layer.
+  function lift(node: HTMLElement) {
+    node.parentElement?.closest(".hub")?.appendChild(node);
+  }
   // The guide's data (where blueprints and parts come from): loaded with the first card opened.
   let gd = $state<{ drops: DropsDb; craft: CraftDb } | null>(null);
   $effect(() => {
@@ -685,7 +690,7 @@
 
 {#if open}
   {@const r = open}
-  <div class="shade" role="presentation" onclick={(e) => e.target === e.currentTarget && (open = null)}>
+  <div class="shade" use:lift role="presentation" onclick={(e) => e.target === e.currentTarget && (open = null)}>
     <div class="modal">
       <button class="x" onclick={() => (open = null)}>×</button>
       <div class="m-top">

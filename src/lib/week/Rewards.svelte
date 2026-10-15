@@ -1,9 +1,11 @@
 <script lang="ts">
   // A reward table of a weekly activity: icon, name, amount, chance as a thin bar. Shows the likeliest few,
   // the rest behind «ещё N». Rows are DE's (ExportRewards / official drop tables), already sorted.
+  // A row with an app page links to it.
   import { num, t } from "$lib/i18n/index.svelte";
-  import { iconUrl } from "$lib/db";
+  import { pageOf } from "$lib/itemRef.svelte";
   import type { Reward } from "$lib/weekly";
+  import ItemThumb from "$lib/components/ItemThumb.svelte";
 
   let { list, show = 6, hint = "" }: { list: Reward[]; show?: number; hint?: string } = $props();
 
@@ -19,12 +21,13 @@
   <div class="rw">
     {#if hint}<p class="hint">{hint}</p>{/if}
     {#each rows as r, i (i)}
-      <div class="r" class:prize={prize(r[0])}>
-        {#if r[1]}<img src={iconUrl(r[1])} alt="" loading="lazy" />{:else}<i class="noimg"></i>{/if}
+      {@const href = pageOf(r[4])}
+      <svelte:element this={href ? "a" : "div"} {href} class="r" class:link={!!href} class:prize={prize(r[0])}>
+        <ItemThumb id={r[4]} icon={r[1]} name={r[0]} />
         <span class="n">{r[0]}{#if r[2] > 1}<small> ×{num(r[2])}</small>{/if}</span>
         <span class="bar"><i style:width="{(r[3] / top) * 100}%"></i></span>
         <span class="p">{pct(r[3])}%</span>
-      </div>
+      </svelte:element>
     {/each}
     {#if list.length > show}
       <button class="more" onclick={() => (all = !all)}>{all ? t("week.less") : t("week.more", { n: list.length - show })}</button>
@@ -46,7 +49,7 @@
   }
   .r {
     display: grid;
-    grid-template-columns: 26px minmax(0, 1fr) 40px 42px;
+    grid-template-columns: 48px minmax(0, 1fr) 40px 42px;
     align-items: center;
     gap: 10px;
     padding: 4px 6px;
@@ -56,11 +59,13 @@
   .r:hover {
     background: var(--surface);
   }
-  img,
-  .noimg {
-    width: 26px;
-    height: 26px;
-    object-fit: contain;
+  .r.link {
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .r.link:hover .n {
+    color: var(--accent);
   }
   .n {
     min-width: 0;

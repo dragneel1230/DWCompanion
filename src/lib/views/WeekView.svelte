@@ -13,6 +13,8 @@
   import InvBar from "$lib/inv/InvBar.svelte";
   import { refreshWorld, world } from "$lib/hub/worldData.svelte";
   import Rewards from "$lib/week/Rewards.svelte";
+  import ItemThumb from "$lib/components/ItemThumb.svelte";
+  import { pageOf } from "$lib/itemRef.svelte";
   import {
     loadWeekly, netraLeft, descentFloor, descentRewards, descentReward, archonDone, archonStage, calendarDay, nightwaveDone,
     nightwaveProgress, periodicDone, teshinOffer, circuitFrame, circuitIncarnon, rewardName, rewardIcon, untag, weekEnd, NETRA_MAX,
@@ -130,8 +132,8 @@
   const rooms = $derived((w?.descent?.rooms ?? []).map((x, i) => ({ n: i + 1, ...room(x) })));
   const descentItems = (items: [string, number][]) =>
     items.map(([id, count]) => {
-      const [name, icon, multiplier] = descentReward(wdb, id);
-      return { name, icon, count: count * multiplier };
+      const [name, icon, multiplier, ref] = descentReward(wdb, id);
+      return { name, icon, count: count * multiplier, id: ref ?? id };
     });
 
   const calText = (type: string, ids: string[]) => {
@@ -211,7 +213,10 @@
                   {#if !promoted}
                     <div class="descent-reward-icons">
                       {#each items as item}
-                        {#if item.icon}<img src={iconUrl(item.icon)} alt="" />{:else}<span class="reward-dot">◆</span>{/if}
+                        {@const href = pageOf(item.id)}
+                        {#if item.icon}
+                          <svelte:element this={href ? "a" : "span"} {href} class="ic" title={item.name}><ItemThumb id={item.id} icon={item.icon} name={item.name} w={30} size={30} /></svelte:element>
+                        {:else}<span class="reward-dot">◆</span>{/if}
                       {/each}
                       {#if claimed}<span class="claimed-mark" aria-hidden="true">✓</span>{/if}
                     </div>
@@ -409,11 +414,11 @@
             <span class="lbl">{t("week.circuitFrames")}</span>
             <div class="tiles">
               {#each frames as { c: ch, f } (ch)}
-                <div class="tile" class:miss={f?.owned === false}>
+                <svelte:element this={f ? "a" : "div"} href={f ? pageOf(f.id) : undefined} class="tile" class:miss={f?.owned === false}>
                   {#if f?.icon}<img src={iconUrl(f.icon)} alt="" />{/if}
                   <span>{f?.name ?? ch}</span>
                   {#if f?.owned}<OwnBadges owned mastered={null} size={16} />{:else if f?.owned === false}<small class="need">{t("week.needIt")}</small>{/if}
-                </div>
+                </svelte:element>
               {/each}
             </div>
           {/if}
@@ -421,7 +426,10 @@
             <span class="lbl">{t("week.circuitInc")}</span>
             <div class="tiles">
               {#each incs as { c: ch, x } (ch)}
-                <div
+                {@const href = pageOf(x?.weapon)}
+                <svelte:element
+                  this={href ? "a" : "div"}
+                  {href}
                   class="tile"
                   class:miss={x?.installed === false && !x?.held}
                   title={x?.installed ? t("week.incInstalled") : x?.held ? t("week.incHeld") : x?.installed === false ? t("week.incNone") : ""}
@@ -429,7 +437,7 @@
                   {#if x?.icon}<img src={iconUrl(x.icon)} alt="" />{/if}
                   <span>{x ? x.name.replace(/^[^:]+:\s*/, "") : ch}</span>
                   {#if x?.installed}<OwnBadges owned mastered={null} size={16} />{:else if x?.held}<small class="held">{t("week.incHeldShort")}</small>{:else if x?.installed === false}<small class="need">{t("week.needIt")}</small>{/if}
-                </div>
+                </svelte:element>
               {/each}
             </div>
           {/if}
@@ -452,7 +460,9 @@
                   <span class="txt icons">
                     {#each d.ids as id, k (id)}
                       {#if k}<i class="or">{t("week.or")}</i>{/if}
-                      <span class="ri">{#if rewardIcon(wdb, id)}<img src={iconUrl(rewardIcon(wdb, id))} alt="" />{/if}{rewardName(wdb, id)}</span>
+                      {@const ref = wdb?.rewr?.[id] ?? id}
+                      {@const href = pageOf(ref)}
+                      <svelte:element this={href ? "a" : "span"} {href} class="ri">{#if rewardIcon(wdb, id)}<ItemThumb id={ref} icon={rewardIcon(wdb, id)} name={rewardName(wdb, id)} w={22} size={22} />{/if}{rewardName(wdb, id)}</svelte:element>
                     {/each}
                   </span>
                 {:else}
@@ -499,13 +509,13 @@
         {#if teshin.length}
           <div class="teshin">
             <span class="lbl">{t("week.teshin", { name: wdb?.cq.title.teshin ?? "" })}</span>
-            <div class="offer">
-              {#if teshin[0][1]}<img src={iconUrl(teshin[0][1])} alt="" />{/if}
+            <svelte:element this={pageOf(teshin[0][3]) ? "a" : "div"} href={pageOf(teshin[0][3])} class="offer">
+              {#if teshin[0][1]}<ItemThumb id={teshin[0][3]} icon={teshin[0][1]} name={teshin[0][0]} w={72} size={44} />{/if}
               <div>
                 <b>{teshin[0][0]}{#if teshin[0][2] > 1} ×{num(teshin[0][2])}{/if}</b>
                 <small>{t("week.teshinNext")}: {teshin.slice(1).map((x) => `${x[0]}${x[2] > 1 ? ` ×${num(x[2])}` : ""}`).join(" → ")}</small>
               </div>
-            </div>
+            </svelte:element>
           </div>
         {/if}
         <div class="list">
@@ -1231,6 +1241,18 @@
     width: 30px;
     height: 30px;
     object-fit: contain;
+  }
+  /* Items with an app page: plain links (a card in the hub, hub.ts viewOf). */
+  a.tile:hover,
+  a.ri:hover,
+  a.offer:hover b {
+    color: var(--accent);
+  }
+  a.ic {
+    display: inline-flex;
+  }
+  a.ic:hover {
+    filter: brightness(1.2);
   }
   .tile.miss {
     color: var(--text-dim);

@@ -6,8 +6,16 @@
   import { getOrders, type Order, type UserStatus } from "$lib/api";
   import { whisper, copyText, type TradeItem } from "$lib/whisper";
   import Cur from "./Cur.svelte";
+  import ArcaneFusion from "./ArcaneFusion.svelte";
 
-  let { slug, item, maxRank = 0, unranked = false }: { slug: string; item: TradeItem; maxRank?: number; unranked?: boolean } = $props();
+  // arcane: show which way to its max rank is cheapest (ready, or lower ranks fused with rank 0 copies).
+  let {
+    slug,
+    item,
+    maxRank = 0,
+    unranked = false,
+    arcane = false,
+  }: { slug: string; item: TradeItem; maxRank?: number; unranked?: boolean; arcane?: boolean } = $props();
 
   type Side = "sell" | "buy";
   type StatusFilter = "ingame" | "online" | "all";
@@ -166,6 +174,8 @@
       <b class="small">{t("mp.sellersBuyers", { s: summary.sellers, b: summary.buyers })}</b>
     </div>
   </div>
+
+  {#if arcane && !loading && !error}<ArcaneFusion {list} {maxRank} {subtypeOk} />{/if}
 
   <div class="controls">
     <div class="seg big">

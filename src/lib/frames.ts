@@ -73,7 +73,7 @@ export interface Mod {
   icon: string | null;
   pol: Polarity;
   rarity: ModRarity;
-  fr?: "Galvanized" | "Amalgam"; // own frame (static/modframe), else by rarity
+  fr?: "Galvanized" | "Amalgam" | "Riven"; // own frame (static/modframe), else by rarity
   drain: number;
   max: number;
   stats: string;

@@ -46,6 +46,8 @@
   const mismatch = $derived(!!mod && !!slotPol && !match && !mod.aura && !mod.stance);
   const ranks = $derived(Math.min(mod?.max ?? 0, 10));
   const active = $derived(Math.min(r, 10));
+  // A veiled riven (a reward, not a rolled mod): no drain, polarity or ranks, a riven backdrop (DE has no image for it).
+  const riven = $derived(frame === "Riven");
   const kindIcon = $derived(label === "aura" ? "/modframe/SilverAura.png" : label === "exilus" ? "/modframe/GoldExilus.png" : null);
 </script>
 
@@ -66,21 +68,25 @@
       onmouseleave={() => onhover?.(null)}
     >
       <div class="native">
-        <div class="bg" style:background-image="url(/modframe/{frame}Background.png)"></div>
+        <div class="bg" class:riven style:background-image={riven ? undefined : `url(/modframe/${frame}Background.png)`}></div>
         <div class="art" style:background-image="url({iconUrl(mod.icon)})"></div>
         <div class="shade"></div>
         <img class="top" src="/modframe/{frame}FrameTop.png" alt="" />
         <img class="bottom" src="/modframe/{frame}FrameBottom.png" alt="" />
         {#if kindIcon}<img class="kind" src={kindIcon} alt={label} title={label} />{/if}
-        <div class="tab" class:match class:mismatch style:background-image="url(/modframe/{frame}TopRightBacker.png)">
-          <span>{mod.aura || mod.stance ? `+${-cost}` : cost}</span>
-          <PolIcon pol={mod.pol} size={17} />
-        </div>
+        {#if !riven}
+          <div class="tab" class:match class:mismatch style:background-image="url(/modframe/{frame}TopRightBacker.png)">
+            <span>{mod.aura || mod.stance ? `+${-cost}` : cost}</span>
+            <PolIcon pol={mod.pol} size={17} />
+          </div>
+        {/if}
         <div class="name">{mod.name}</div>
-        <div class="stars">
-          {#each { length: ranks } as _, i}<img class:off={i >= active} src="/modframe/RankSlotActive.png" alt="" />{/each}
-        </div>
-        <img class="line" src="/modframe/RankCompleteLine.png" alt="" />
+        {#if !riven}
+          <div class="stars">
+            {#each { length: ranks } as _, i}<img class:off={i >= active} src="/modframe/RankSlotActive.png" alt="" />{/each}
+          </div>
+          <img class="line" src="/modframe/RankCompleteLine.png" alt="" />
+        {/if}
         {#if owned}<div class="own" title={t("card.owned")}>✓</div>{/if}
       </div>
     </svelte:element>
@@ -142,6 +148,9 @@
   .bg {
     background-size: cover;
     background-position: center;
+  }
+  .bg.riven {
+    background: radial-gradient(ellipse at 50% 30%, #4a2a6e, #1c1030 70%);
   }
   /* Mod art over the rarity background, slightly see-through like the in-game collapsed card. */
   .art {
