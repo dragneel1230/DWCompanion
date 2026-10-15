@@ -1,6 +1,6 @@
 {
   "name": "dwcompanion",
-  "version": "0.2.6",
+  "version": "0.3.0",
   "description": "Dragneel's Warframe Companion",
   "type": "module",
   "scripts": {
