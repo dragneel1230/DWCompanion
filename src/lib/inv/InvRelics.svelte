@@ -1,6 +1,7 @@
 <script lang="ts">
   // "Реликвии": the player's relics with the average platinum one opening gives (solo by refinement,
   // and a radiant 4-player radshare), and what the relic itself fetches on the market (asks / bids).
+  import { keep, recall } from "$lib/remember.svelte";
   import { iconUrl } from "$lib/db";
   import { num, t, type Key } from "$lib/i18n/index.svelte";
   import { REFINE_RU, type Refine } from "$lib/relicValue";
@@ -14,9 +15,11 @@
   const ERA_NAME = $derived<Record<string, string>>(Object.fromEntries(stacks.map((s) => [s.relic.era, s.relic.s.split(" ")[0]])));
   const REF: Refine[] = ["intact", "exceptional", "flawless", "radiant"];
   type Sort = "value" | "count" | "ev";
-  let era = $state("all");
-  let vaultedOnly = $state(false);
-  let sort = $state<Sort>("value");
+  const saved = recall("dwc.myRelics", { era: "all", vaultedOnly: false, sort: "value" as Sort });
+  let era = $state(saved.era);
+  let vaultedOnly = $state(saved.vaultedOnly);
+  let sort = $state<Sort>(saved.sort);
+  keep("dwc.myRelics", () => ({ era, vaultedOnly, sort }));
   const SORTS: { id: Sort; label: Key }[] = [
     { id: "value", label: "inv.relics.byValue" },
     { id: "ev", label: "inv.relics.byEv" },

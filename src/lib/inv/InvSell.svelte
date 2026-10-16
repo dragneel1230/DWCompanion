@@ -1,12 +1,14 @@
 <script lang="ts">
   // "Продать": everything tradeable the player owns, spare copies first. Price = yesterday's deals,
   // speed = deals a day; "Выставить" opens a ready sell order on the trade desk.
-  import { normalize, iconUrl } from "$lib/db";
+  import { keep, recall } from "$lib/remember.svelte";
+  import { getDb, normalize, iconUrl } from "$lib/db";
   import { num, t, type Key } from "$lib/i18n/index.svelte";
   import Cur from "$lib/components/Cur.svelte";
   import ModCard from "$lib/components/ModCard.svelte";
   import ArcaneCard from "$lib/components/ArcaneCard.svelte";
   import Price from "./Price.svelte";
+  import OwnBadges from "$lib/components/OwnBadges.svelte";
   import { pageOfSlug } from "$lib/itemPage";
   import { forDucats, realValue, sellable, DUCATS_PER_PLAT, WEEK, type TradeKind, type TradeRow } from "./worth";
 
@@ -14,9 +16,11 @@
 
   type Kind = "all" | TradeKind;
   type Sort = "total" | "price" | "speed" | "ducats";
-  let kind = $state<Kind>("all");
-  let sort = $state<Sort>("total");
-  let spareOnly = $state(true);
+  const saved = recall("dwc.sell", { kind: "all" as Kind, sort: "total" as Sort, spareOnly: true });
+  let kind = $state<Kind>(saved.kind);
+  let sort = $state<Sort>(saved.sort);
+  let spareOnly = $state(saved.spareOnly);
+  keep("dwc.sell", () => ({ kind, sort, spareOnly }));
   let query = $state("");
   let shown = $state(80);
 
@@ -89,6 +93,10 @@
         <small>
           {t(`inv.kind.${r.kind}`)}
           {#if r.kind !== "part" && r.rank > 0} · {t("inv.rank", { r: r.rank })}{/if}
+          {#if r.done && r.setId}
+            {@const set = getDb().sets[r.setId]?.name ?? ""}
+            · <span class="done" title={t(r.done === "owned" ? "inv.doneOwnedHint" : "inv.doneMasteredHint", { n: set })}>{t("inv.done")}<OwnBadges id={r.setId} size={14} /></span>
+          {/if}
           {#if r.keep && r.kept} · <span class="kept">{t(KEPT[r.kept], { n: r.keep })}</span>{/if}
           {#if forDucats(r)} · <span class="tobaro" title={t("inv.toBaroHint", { v: DUCATS_PER_PLAT })}>{t("inv.toBaro")}</span>{/if}
         </small>
@@ -186,6 +194,13 @@
   }
   .kept {
     color: var(--accent);
+  }
+  .done {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    vertical-align: middle;
+    color: var(--good);
   }
   .tobaro {
     color: var(--ducat);

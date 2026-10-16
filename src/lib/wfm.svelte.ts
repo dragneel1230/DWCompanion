@@ -40,6 +40,7 @@ export interface WfmItem {
   thumb: string;
   maxRank: number;
   subtypes: string[];
+  bulk: boolean; // traded in packs: warframe.market wants perTrade on the order
 }
 type Row = [string, string, string, number, string[] | 0, 0 | 1];
 
@@ -59,9 +60,9 @@ export function loadWfmItems(): Promise<Map<string, WfmItem>> {
       // A set and its blueprint can share a name in DE's dictionary ("Эш Прайм"): sets say so.
       const setName = (slug: string, name: string) => (slug.endsWith("_set") && !/set|набор/i.test(name) ? t("trade.setName", { n: name }) : name);
       return new Map(
-        Object.entries(all).map(([id, [slug, name, thumb, maxRank, subtypes]]) => [
+        Object.entries(all).map(([id, [slug, name, thumb, maxRank, subtypes, bulk]]) => [
           id,
-          { id, slug, name: setName(slug, own.get(slug) ?? name), thumb: thumb ? `https://warframe.market/static/assets/${thumb}` : "", maxRank, subtypes: subtypes || [] },
+          { id, slug, name: setName(slug, own.get(slug) ?? name), thumb: thumb ? `https://warframe.market/static/assets/${thumb}` : "", maxRank, subtypes: subtypes || [], bulk: !!bulk },
         ]),
       );
     });

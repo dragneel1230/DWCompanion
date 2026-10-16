@@ -1,6 +1,7 @@
 <script lang="ts">
   // "Что фармить": relics that drop now (DE's drop tables) by the average platinum of one opening
   // (yesterday's deals), with the most valuable reward and where the relic drops. Goal relics are marked.
+  import { keep, recall } from "$lib/remember.svelte";
   import { getDb, iconUrl, itemName } from "$lib/db";
   import { t, type Key } from "$lib/i18n/index.svelte";
   import { rate, type DropsDb } from "$lib/drops";
@@ -11,8 +12,10 @@
   let { relics, drops }: { relics: FarmRelic[]; drops: DropsDb } = $props();
 
   type Mode = "ev" | "radiant" | "squad";
-  let mode = $state<Mode>("ev");
-  let goalOnly = $state(false);
+  const saved = recall("dwc.relicFarm", { mode: "ev" as Mode, goalOnly: false });
+  let mode = $state<Mode>(saved.mode);
+  let goalOnly = $state(saved.goalOnly);
+  keep("dwc.relicFarm", () => ({ mode, goalOnly }));
   const MODES: { id: Mode; label: Key }[] = [
     { id: "ev", label: "inv.farm.intact" },
     { id: "radiant", label: "inv.farm.radiant" },

@@ -3,6 +3,7 @@
   // (or sorted by platinum / ducats / resale value); mods drawn in their game frames. Right: the picked
   // item — big card or icon, what it is, Baro's price against the market, mastery it still gives
   // (public profile), stats of a mod, live warframe.market orders with whispers.
+  import { keep, recall } from "$lib/remember.svelte";
   import { labels, num, t, type Key } from "$lib/i18n/index.svelte";
   import { getDb, iconUrl } from "$lib/db";
   import { left } from "$lib/cycles";
@@ -54,8 +55,10 @@
 
   type Group = "m" | "w" | "c" | "o";
   type Sort = "kind" | "plat" | "ducats" | "value";
-  let filter = $state<Group | "all">("all");
-  let sort = $state<Sort>("kind");
+  const saved = recall("dwc.baro", { filter: "all" as Group | "all", sort: "kind" as Sort });
+  let filter = $state<Group | "all">(saved.filter);
+  let sort = $state<Sort>(saved.sort);
+  keep("dwc.baro", () => ({ filter, sort }));
   let picked = $state<string | null>(null);
   // Orders are fetched only on request: browsing the list must not fire a warframe.market request per click.
   let orders = $state<string | null>(null);

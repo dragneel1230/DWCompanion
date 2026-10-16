@@ -1,6 +1,7 @@
 <script lang="ts">
   // "Наборы": prime sets the player holds parts of. Whole sets: sell as a set or by parts (what pays
   // more); one or two parts missing: what buying them costs against the set's price; where they drop.
+  import { keep, recall } from "$lib/remember.svelte";
   import { iconUrl } from "$lib/db";
   import { num, t, type Key } from "$lib/i18n/index.svelte";
   import Cur from "$lib/components/Cur.svelte";
@@ -11,7 +12,8 @@
   let { rows }: { rows: SetRow[] } = $props();
 
   type View = "ready" | "near" | "all";
-  let view = $state<View>("ready");
+  let view = $state<View>(recall("dwc.sets", { view: "ready" as View }).view);
+  keep("dwc.sets", () => ({ view }));
   const VIEWS: { id: View; label: Key }[] = [
     { id: "ready", label: "inv.sets.ready" },
     { id: "near", label: "inv.sets.near" },

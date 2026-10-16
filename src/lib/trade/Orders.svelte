@@ -4,6 +4,7 @@
   // "Save" for all changes, the item's order book and price chart on expand, new orders with the market
   // beside the price field, and a log of trades closed here. Every request is a click (WFM's rules):
   // no background refresh, no automatic repricing.
+  import { keep, recall } from "$lib/remember.svelte";
   import { t, num, locale } from "$lib/i18n/index.svelte";
   import { onMount, untrack } from "svelte";
   import { wfm, wfmStatus, trades, loadWfmItems, loadWfmNames, type MyOrder, type WfmItem, type ItemNames } from "$lib/wfm.svelte";
@@ -28,10 +29,11 @@
     if (!wfm.checked) void wfm.check();
   });
 
-  let side = $state<"sell" | "buy">("sell");
+  let side = $state<"sell" | "buy">(recall("dwc.orders", { side: "sell" as "sell" | "buy" }).side);
   let filter = $state("");
   type Sort = "attention" | "name" | "value" | "updated";
-  let sort = $state<Sort>("attention");
+  let sort = $state<Sort>(recall("dwc.orders", { sort: "attention" as Sort }).sort);
+  keep("dwc.orders", () => ({ side, sort }));
   let composer = $state<NewOrderAsk | null | false>(untrack(() => initial ?? false));
   let openId = $state<string | null>(null);
   let gear = $state(false);

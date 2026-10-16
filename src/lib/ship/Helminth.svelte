@@ -2,6 +2,7 @@
   // «Гельминт»: a big rank ring and the six secretions as tiles, this week's Invigorations as portrait cards, then
   // the warframes as a card grid — what subsuming each gives and costs, which are subsumed (their ability's
   // injection cost), which are missing.
+  import { keep, recall } from "$lib/remember.svelte";
   import { num, t, type Key } from "$lib/i18n/index.svelte";
   import { iconUrl } from "$lib/db";
   import { inventory } from "$lib/inventory.svelte";
@@ -27,7 +28,8 @@
   const week = $derived(db && inv && h ? offers(db, inv, h) : []);
 
   type Sub = "can" | "fed" | "missing";
-  let sub = $state<Sub>("can");
+  let sub = $state<Sub>(recall("dwc.helminth", { sub: "can" as Sub }).sub);
+  keep("dwc.helminth", () => ({ sub }));
   let q = $state("");
   const SUBS: { id: Sub; label: Key }[] = [
     { id: "can", label: "helm.can" },

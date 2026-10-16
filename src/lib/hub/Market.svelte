@@ -2,6 +2,7 @@
   // Hub tab "Рынок": prime sets and parts by the day's average trade price (WFInfo bulk file, no queue),
   // sortable by platinum or by ducats per platinum (what to sell to Baro). A row opens the detail
   // panel with live orders. Mods and arcanes are in the search.
+  import { keep, recall } from "$lib/remember.svelte";
   import { num, t, type Key } from "$lib/i18n/index.svelte";
   import { getDb, iconUrl, itemName, normalize } from "$lib/db";
   import { loadBulk, bulkSell } from "$lib/api";
@@ -13,8 +14,10 @@
 
   type What = "sets" | "parts";
   type Sort = "plat" | "ratio" | "ducats";
-  let what = $state<What>("sets");
-  let sort = $state<Sort>("plat");
+  const saved = recall("dwc.market", { what: "sets" as What, sort: "plat" as Sort });
+  let what = $state<What>(saved.what);
+  let sort = $state<Sort>(saved.sort);
+  keep("dwc.market", () => ({ what, sort }));
   let ready = $state(false);
   loadBulk().then(() => (ready = true));
 

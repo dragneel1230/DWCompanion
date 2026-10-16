@@ -2,6 +2,7 @@
   // Relic journal (section «Реликвии», app and hub): what each opened relic gave (EE.log, exact), totals for a period at current
   // market prices, a per-day chart, and the list grouped by day. When the overlay read the squad's
   // cards, the player can mark which one they took; otherwise the own relic's reward counts.
+  import { keep, recall } from "$lib/remember.svelte";
   import { locale, num, t, type Key } from "$lib/i18n/index.svelte";
   import { getDb, iconUrl, RARITY_RU, type Rarity } from "$lib/db";
   import { journal, startOfDay, DAY, type Entry } from "$lib/journal.svelte";
@@ -21,7 +22,8 @@
     { id: "month", label: "jr.month" },
     { id: "all", label: "jr.all" },
   ];
-  let period = $state<Period>("week");
+  let period = $state<Period>(recall("dwc.journal", { period: "week" as Period }).period);
+  keep("dwc.journal", () => ({ period }));
 
   const now = Date.now();
   const from = $derived(

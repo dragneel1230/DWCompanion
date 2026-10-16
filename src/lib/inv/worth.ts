@@ -31,6 +31,7 @@ export interface TradeRow {
   ducats: number; // of one piece (prime parts)
   kept?: "goal" | "set" | "copies";
   setId?: string;
+  done?: "owned" | "mastered"; // prime part whose item you already have (arsenal) or mastered: all copies can go
   mod?: Mod; // drawn as the game's card, not the bare art
   arcane?: Arcane;
 }
@@ -126,6 +127,7 @@ export function tradeRows(inv: InvData, frames: FramesDb, other: Record<string, 
       ducats: it.ducats ?? 0,
       kept: keep ? k!.why : undefined,
       setId: it.set,
+      done: it.set ? (inv.arsenal.includes(it.set) ? "owned" : inv.xp[it.set] != null ? "mastered" : undefined) : undefined,
     });
   }
 

@@ -30,6 +30,7 @@
   let type = $state<"sell" | "buy">("sell");
   let price = $state(0);
   let qty = $state(1);
+  let perTrade = $state(1);
   let rank = $state(0);
   let sub = $state("");
   let visible = $state(true);
@@ -60,6 +61,7 @@
     q = it.name;
     rank = 0;
     sub = it.subtypes[0] ?? "";
+    perTrade = 1;
     price = 0;
     if (side) type = side;
   }
@@ -96,6 +98,8 @@
       visible,
       ...(pick.maxRank ? { rank: Math.min(pick.maxRank, Math.max(0, rank)) } : {}),
       ...(sub ? { subtype: sub } : {}),
+      // Required by warframe.market (API 0.25): 1 unless the item trades in packs.
+      perTrade: pick.bulk ? Math.max(1, Math.round(perTrade)) : 1,
     });
     if (!wfm.error) onposted(type);
   }
@@ -161,6 +165,12 @@
         <span>{t("orders.qty")}</span>
         <input class="n" type="number" min="1" bind:value={qty} />
       </div>
+      {#if pick.bulk}
+        <div class="field" title={t("orders.perTradeHint")}>
+          <span>{t("orders.perTrade")}</span>
+          <input class="n" type="number" min="1" bind:value={perTrade} />
+        </div>
+      {/if}
       <div class="field">
         <span>{t("orders.price")}</span>
         <div class="stepper">
@@ -181,7 +191,7 @@
         <ItemMarket
           slug={pick.slug}
           item={nm}
-          spec={{ type, platinum: price || 0, rank: pick.maxRank ? rank : undefined, subtype: sub || undefined }}
+          spec={{ type, platinum: price || 0, rank: pick.maxRank ? rank : undefined, subtype: sub || undefined, perTrade: pick.bulk ? perTrade : undefined }}
           myName={wfm.user?.ingameName ?? ""}
           onprice={(v) => (price = v)}
         />
