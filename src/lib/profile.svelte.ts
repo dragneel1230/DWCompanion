@@ -219,7 +219,10 @@ class ProfileStore {
         name: cleanName(r.DisplayName ?? ""),
         mr: r.PlayerLevel ?? 0,
         xp: foldPairs(Object.fromEntries(xpInfo.map((x) => [x.ItemType, x.XP]))),
-        missions: (r.Missions ?? []).map((m: { Tag: string; Tier?: number }) => ({ tag: m.Tag, sp: m.Tier === 1 })),
+        missions: Object.entries((r.Missions ?? []).reduce((out: Record<string, boolean>, m: { Tag: string; Tier?: number; Completes?: number }) => {
+          if (m.Tag && (m.Completes == null || m.Completes > 0)) out[m.Tag] = out[m.Tag] || m.Tier === 1;
+          return out;
+        }, {} as Record<string, boolean>)).map(([tag, sp]) => ({ tag, sp: !!sp })),
         skills: r.PlayerSkills ?? {},
         created: Number(r.Created?.$date?.$numberLong) || undefined,
         clan: r.GuildName || undefined,

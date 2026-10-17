@@ -100,8 +100,18 @@ const JUNCTION_XP = 1000;
 // Each node also carries its planet (`p`, DE's systemIndex), name and mission type for the «Звёздная карта» list.
 const nodes = {};
 const systems = {};
+const chartNodes = {};
+// Activity entry points are not star-chart completion missions.
+const CHART_EXCLUDED_SYSTEMS = new Set([19, 24]);
+const CHART_EXCLUDED_NODES = new Set(["CrewBattleNode556"]); // Free flight
+
 for (const [tag, r] of Object.entries(regions)) {
   const isJ = r.missionType === "MT_JUNCTION";
+  if (!CHART_EXCLUDED_SYSTEMS.has(r.systemIndex) && !CHART_EXCLUDED_NODES.has(tag) && (r.nodeType === 0 || r.nodeType === 4 || isJ) && r.name && r.systemName) {
+    const chartSystem = r.systemIndex + (r.missionType === "MT_RAILJACK" ? 100 : 0);
+    chartNodes[tag] = { xp: r.masteryExp || (isJ ? JUNCTION_XP : 0), ...(isJ ? { j: 1 } : {}), p: chartSystem, n: clean((isJ ? words : unshout)(D[r.name] ?? en[r.name] ?? tag)), m: clean(unshout(D[r.missionName] ?? en[r.missionName] ?? "")), unknownXp: !isJ && !r.masteryExp && r.missionType !== "MT_RAILJACK", sp: true };
+    systems[chartSystem] ??= clean(D[r.systemName] ?? en[r.systemName] ?? String(r.systemIndex));
+  }
   if (!isJ && !r.masteryExp) continue;
   nodes[tag] = { xp: r.masteryExp || JUNCTION_XP, ...(isJ ? { j: 1 } : {}), p: r.systemIndex, n: clean((isJ ? words : unshout)(D[r.name] ?? en[r.name] ?? tag)), m: clean(unshout(D[r.missionName] ?? en[r.missionName] ?? "")) };
   systems[r.systemIndex] ??= clean(D[r.systemName] ?? en[r.systemName] ?? String(r.systemIndex));
@@ -150,7 +160,7 @@ for (const enName of order) {
 }
 
 mkdirSync(`static/data/${LANG}`, { recursive: true });
-writeFileSync(`static/data/${LANG}/mastery.json`, JSON.stringify({ builtAt, items, nodes, systems, quests }));
+writeFileSync(`static/data/${LANG}/mastery.json`, JSON.stringify({ builtAt, items, nodes, chartNodes, systems, quests }));
 const by = {};
 for (const it of Object.values(items)) by[it.cat] = (by[it.cat] ?? 0) + 1;
 console.log(`${LANG} mastery: ${Object.keys(items).length} items ${JSON.stringify(by)}, ${Object.keys(nodes).length} nodes, ${quests.length} quests`);

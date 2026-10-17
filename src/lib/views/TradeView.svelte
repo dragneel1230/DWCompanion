@@ -14,6 +14,7 @@
   import Market from "$lib/hub/Market.svelte";
   import Orders from "$lib/trade/Orders.svelte";
   import Deals from "$lib/trade/Deals.svelte";
+  import Ducanator from "$lib/trade/Ducanator.svelte";
   import Rivens from "$lib/trade/Rivens.svelte";
   import { subs, setTrade, type TradeSub } from "./sub.svelte";
 
@@ -31,6 +32,7 @@
     { id: "rivens", label: "riven.tab", inv: true },
     { id: "orders", label: "hub.tab.orders" },
     { id: "log", label: "inv.tab.log", inv: true },
+    { id: "ducats", label: "duc.tab", inv: true },
   ];
   // Without a snapshot the inventory sub-tabs have nothing to show: open the market instead.
   const sub = $derived(!inv && SUBS.find((s) => s.id === subs.trade)?.inv ? "market" : subs.trade);
@@ -88,6 +90,8 @@
     <div class="market-wrap"><Market bind:this={market} {onopen} /></div>
   {:else if sub === "deals"}
     <div class="market-wrap"><Deals {onopen} /></div>
+  {:else if sub === "ducats"}
+    <Ducanator {onopen} />
   {:else if sub === "rivens"}
     <Rivens />
   {:else if sub === "orders"}

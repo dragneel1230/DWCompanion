@@ -359,7 +359,10 @@ export function parseInventory(text: string): InvData {
     helminth,
     week,
     nodes: Object.fromEntries(
-      ((j.Missions ?? []) as Raw[]).filter((m) => typeof m?.Tag === "string" && m.Completes > 0).map((m) => [m.Tag, m.Tier === 1 ? 2 : 1]),
+      Object.entries(((j.Missions ?? []) as Raw[]).reduce((out: Record<string, 1 | 2>, m) => {
+        if (typeof m?.Tag === "string" && m.Completes > 0) out[m.Tag] = out[m.Tag] === 2 || m.Tier === 1 ? 2 : 1;
+        return out;
+      }, {})),
     ),
     quests: Object.fromEntries(
       ((j.QuestKeys ?? []) as Raw[])

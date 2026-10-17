@@ -158,7 +158,12 @@
 <div class="page">
   <h1>{t("nav.settings")}</h1>
 
+
   <div class="section-title first">{t("settings.app")}</div>
+  <label class="row switch">
+    <span><b>{t("settings.hideFounders")}</b></span>
+    <input type="checkbox" checked={appSettings.value.hideFounders} onchange={(e) => appSettings.set({ hideFounders: e.currentTarget.checked })} />
+  </label>
   <label class="row switch">
     <span>
       <b>{t("settings.autostart")}</b>

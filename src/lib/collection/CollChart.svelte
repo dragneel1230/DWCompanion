@@ -31,13 +31,14 @@
   const done = $derived(new Map(p.missions.map((m) => [m.tag, m.sp])));
   const isDone = (tag: string) => (mode === "sp" ? done.get(tag) === true : done.has(tag));
 
-  type Node = { tag: string; xp: number; j: boolean; n: string; m: string };
+  type Node = { tag: string; xp: number; j: boolean; n: string; m: string; unknownXp: boolean };
   const planets = $derived.by(() => {
     const by = new Map<number, { all: Node[]; left: Node[] }>();
-    for (const [tag, x] of Object.entries(mdb.nodes)) {
+    for (const [tag, x] of Object.entries(mdb.chartNodes ?? mdb.nodes)) {
+      if (mode === "sp" && "sp" in x && x.sp === false) continue;
       const g = by.get(x.p ?? -1) ?? { all: [], left: [] };
       by.set(x.p ?? -1, g);
-      const node = { tag, xp: x.xp, j: !!x.j, n: x.n ?? tag, m: x.m ?? "" };
+      const node = { tag, xp: x.xp, j: !!x.j, n: x.n ?? tag, m: x.m ?? "", unknownXp: "unknownXp" in x && !!x.unknownXp };
       g.all.push(node);
       if (!isDone(tag)) g.left.push(node);
     }
@@ -94,7 +95,7 @@
               <li class:j={n.j}>
                 <span class="n">{n.n}</span>
                 <span class="m">{n.m}</span>
-                <span class="xp" title={t("chart.xpHint")}>+{num(n.xp)}</span>
+                {#if n.unknownXp}<span class="xp" title={t("chart.unknownHint")}>{t("chart.unknownXp")}</span>{:else if n.xp}<span class="xp" title={t("chart.xpHint")}>+{num(n.xp)}</span>{/if}
               </li>
             {/each}
           </ul>

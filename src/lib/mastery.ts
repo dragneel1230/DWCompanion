@@ -1,7 +1,11 @@
 // Mastery math (wiki "Mastery Rank"): an item's rank from its affinity, the mastery XP it gives,
 // star chart and intrinsics mastery, MR thresholds. Item list: static/data/mastery.json.
 import type { Profile } from "$lib/profile.svelte";
+import type { CraftDb } from "$lib/craft";
+import type { InvFoundry } from "$lib/inventory.svelte";
 import { dataUrl, labels, t } from "$lib/i18n/index.svelte";
+
+export const FOUNDERS = new Set(["/Lotus/Powersuits/Excalibur/ExcaliburPrime","/Lotus/Weapons/Tenno/Pistol/LatoPrime","/Lotus/Weapons/Tenno/Melee/LongSword/SkanaPrime"]);
 
 export type MasteryCat =
   | "warframe" | "primary" | "secondary" | "melee" | "companion" | "companionweapon"
@@ -25,6 +29,7 @@ export interface MasteryDb {
   items: Record<string, MItem>;
   // Planet (DE's systemIndex), name and mission type: absent in files built before v0.2.7.
   nodes: Record<string, { xp: number; j?: 1; p?: number; n?: string; m?: string }>;
+  chartNodes?: Record<string, { xp: number; j?: 1; p?: number; n?: string; m?: string; sp?: boolean; unknownXp?: boolean }>;
   systems?: Record<string, string>; // systemIndex -> planet name
   quests?: Quest[];
 }
@@ -109,7 +114,7 @@ export interface Row {
   left: number; // mastery XP still to gain from it
 }
 
-export function summarize(db: MasteryDb, p: Profile) {
+export function summarize(db: MasteryDb, p: Profile, hideFounders = false) {
   const rows: Row[] = [];
   let itemXp = 0;
   const seen = new Set<string>();
@@ -120,6 +125,7 @@ export function summarize(db: MasteryDb, p: Profile) {
     const got = rank * perRank(it.fl);
     itemXp += got;
     seen.add(id);
+    if (hideFounders && FOUNDERS.has(id)) continue;
     rows.push({ id, it, xp, rank, gives, left: gives - got, status: rank >= it.max ? "mastered" : xp > 0 ? "progress" : "none" });
   }
   // Leveled items missing from the list still count toward MR.
@@ -130,14 +136,15 @@ export function summarize(db: MasteryDb, p: Profile) {
   }
 
   // Star chart: nodes and junctions, normal and Steel Path.
-  const chart = { normal: 0, normalAll: 0, junctions: 0, junctionsAll: 0, sp: 0, spJ: 0, xp: 0 };
-  for (const [tag, n] of Object.entries(db.nodes)) {
+  const chart = { normal: 0, normalAll: 0, junctions: 0, junctionsAll: 0, sp: 0, spJ: 0, xp: 0, unknown: 0 };
+  for (const n of Object.values(db.chartNodes ?? db.nodes)) {
+    if ("unknownXp" in n && n.unknownXp) chart.unknown++;
     if (n.j) chart.junctionsAll++;
     else chart.normalAll++;
   }
   // One entry per node: Tier 1 (sp) means done on the Steel Path as well, which gives its mastery again.
   for (const m of p.missions) {
-    const n = db.nodes[m.tag];
+    const n = (db.chartNodes ?? db.nodes)[m.tag];
     if (!n) continue;
     chart.xp += m.sp ? 2 * n.xp : n.xp;
     n.j ? chart.junctions++ : chart.normal++;
@@ -182,21 +189,35 @@ export function summarize(db: MasteryDb, p: Profile) {
 }
 
 // ---------- plan to the next rank
-// What gets the missing mastery soonest, from what the player surely has: items already leveled
-// (finish them), star chart nodes not done yet, Steel Path nodes. Rough minutes: an item 0→30
+// Mastery still available from the player's gear, largest gains first: items already leveled
+// (finish them), gear in the foundry, star chart nodes not done yet, Steel Path nodes. Rough minutes: an item 0→30
 // ≈ 60 min (scaled by the affinity left, 40-rank items by their bigger total), a node ≈ 5 min,
-// a Steel Path node ≈ 6 min. Greedy by mastery per minute until the gap is covered.
+// a Steel Path node ≈ 6 min. Pick by mastery gained, shorter leveling time breaks ties.
+export function masteryFoundry(craft: CraftDb | null, pending: InvFoundry[] = []): Map<string, number> {
+  const recipes = new Map<string, string>();
+  for (const [id, item] of Object.entries(craft?.items ?? {})) {
+    if (item.r) recipes.set(item.r, id);
+    if (item.bp) recipes.set(item.bp, id);
+  }
+  const out = new Map<string, number>();
+  for (const job of pending) {
+    const id = recipes.get(job.id);
+    if (id) out.set(id, Math.min(out.get(id) ?? Infinity, job.done));
+  }
+  return out;
+}
+
 export type PlanStep =
-  | { kind: "item"; row: Row; xp: number; min: number }
+  | { kind: "item"; row: Row; xp: number; min: number; foundry?: number }
   | { kind: "nodes"; sp: boolean; tags: string[]; xp: number; min: number };
 
-// `skip`: items the player put aside, `noSp`: leave out Steel Path nodes.
-export function mrPlan(db: MasteryDb, p: Profile, sum: ReturnType<typeof summarize>, skip?: (r: Row) => boolean, noSp = false) {
+// `skip`: items put aside; `foundry`: output id -> completion time. Minutes cover leveling, not craft waits.
+export function mrPlan(db: MasteryDb, p: Profile, sum: ReturnType<typeof summarize>, skip?: (r: Row) => boolean, noSp = false, foundry: ReadonlyMap<string, number> = new Map()) {
   const need = Math.max(0, sum.to - sum.total);
   type Cand = { xp: number; min: number; row?: Row; node?: string; sp?: boolean };
   const cands: Cand[] = [];
   for (const r of sum.rows) {
-    if (r.status !== "progress" || !r.left || skip?.(r)) continue;
+    if ((r.status !== "progress" && !(r.status === "none" && foundry.has(r.id))) || !r.left || skip?.(r)) continue;
     cands.push({ xp: r.left, min: Math.max(5, (60 * (r.it.max ** 2 - r.rank ** 2)) / 900), row: r });
   }
   const done = new Set(p.missions.map((m) => m.tag));
@@ -206,7 +227,7 @@ export function mrPlan(db: MasteryDb, p: Profile, sum: ReturnType<typeof summari
     if (!done.has(tag)) cands.push({ xp: n.xp, min: 5, node: tag, sp: false });
     else if (!noSp && !spDone.has(tag) && sum.chart.sp + sum.chart.spJ > 0) cands.push({ xp: n.xp, min: 6, node: tag, sp: true });
   }
-  cands.sort((a, b) => b.xp / b.min - a.xp / a.min);
+  cands.sort((a, b) => b.xp - a.xp || a.min - b.min);
   const picked: Cand[] = [];
   let got = 0;
   for (const c of cands) {
@@ -220,8 +241,8 @@ export function mrPlan(db: MasteryDb, p: Profile, sum: ReturnType<typeof summari
     const ns = picked.filter((c) => c.node && c.sp === sp);
     if (ns.length) steps.push({ kind: "nodes", sp, tags: ns.map((c) => c.node!), xp: ns.reduce((s, c) => s + c.xp, 0), min: ns.reduce((s, c) => s + c.min, 0) });
   }
-  for (const c of picked) if (c.row) steps.push({ kind: "item", row: c.row, xp: c.xp, min: c.min });
-  steps.sort((a, b) => b.xp / b.min - a.xp / a.min);
+  for (const c of picked) if (c.row) steps.push({ kind: "item", row: c.row, xp: c.xp, min: c.min, foundry: foundry.get(c.row.id) });
+  steps.sort((a, b) => b.xp - a.xp || a.min - b.min);
   return { need, got, short: Math.max(0, need - got), min: picked.reduce((s, c) => s + c.min, 0), steps };
 }
 

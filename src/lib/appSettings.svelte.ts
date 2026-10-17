@@ -4,11 +4,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { t } from "$lib/i18n/index.svelte";
 
 export interface AppSettings {
+  hideFounders: boolean;
   tray: boolean; // closing the main window hides it to the tray (the overlay hotkey keeps working)
 }
 
 const KEY = "dwc.app";
-const DEFAULTS: AppSettings = { tray: false };
+const DEFAULTS: AppSettings = { tray: false, hideFounders: false };
 
 function read(): AppSettings {
   try {
@@ -37,3 +38,7 @@ class Store {
 }
 
 export const appSettings = new Store();
+
+if (typeof window !== "undefined") window.addEventListener("storage", (e) => {
+  if (e.key === KEY) appSettings.value = read();
+});

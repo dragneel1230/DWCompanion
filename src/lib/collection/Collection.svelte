@@ -4,15 +4,17 @@
   // with filters; an item opens a card with its level and, for primes, parts and relics.
   // Used by the Collection tab and the hub (Alt+X); `onopen` shows a set / warframe page.
   import { labels, locale, num, t, type Key } from "$lib/i18n/index.svelte";
-  import { getDb, iconUrl, itemName, setParts } from "$lib/db";
+  import { getDb, iconUrl, itemName, setParts, RARITY_RU, type Rarity } from "$lib/db";
+  import { CHANCE, REFINE_RU, type Refine } from "$lib/relicValue";
   import { profile, ID_RE } from "$lib/profile.svelte";
-  import { loadMastery, summarize, mrPlan, duration, CAT_RU, CAT_ORDER, MR_NAME, perRank, type MasteryDb, type MasteryCat, type Row, type Status } from "$lib/mastery";
+  import { FOUNDERS, loadMastery, summarize, masteryFoundry, mrPlan, duration, CAT_RU, CAT_ORDER, MR_NAME, perRank, type MasteryDb, type MasteryCat, type Row, type Status } from "$lib/mastery";
   import { loadBulk, bulkSell } from "$lib/api";
   import Plat from "$lib/components/Plat.svelte";
   import OwnBadges from "$lib/components/OwnBadges.svelte";
   import CollSyndicates from "./CollSyndicates.svelte";
   import CollStats from "./CollStats.svelte";
   import CollChart from "./CollChart.svelte";
+  import { relicCoverage } from "./relicCoverage";
   import CollQuests from "./CollQuests.svelte";
   import { record, readHistory, type History } from "./history";
   import { skip, skipped, skipCount, toggleCat, toggleId, toggleSp } from "./skip.svelte";
@@ -22,6 +24,7 @@
   import { journal } from "$lib/journal.svelte";
   import { goals } from "$lib/goals/goals.svelte";
   import HowToGet from "$lib/goals/HowToGet.svelte";
+  import { appSettings } from "$lib/appSettings.svelte";
   import { inventory } from "$lib/inventory.svelte";
   import { relicsHeld } from "$lib/inv/worth";
   import type { Profile } from "$lib/profile.svelte";
@@ -61,7 +64,7 @@
     return { ...p, xp, missions, at: Math.max(p.at, inv.at) };
   }
   const pdata = $derived(withInventory(profile.data));
-  const sum = $derived(mdb && pdata ? summarize(mdb, pdata) : null);
+  const sum = $derived(mdb && pdata ? summarize(mdb, pdata, appSettings.value.hideFounders) : null);
 
   // Arsenal facts of a ranked item: forma and reactor / catalyst, or that it left the arsenal (sold, fed to Helminth).
   const FRAMEISH = new Set(["warframe", "archwing", "necramech", "companion", "modularcompanion"]);
@@ -126,7 +129,17 @@
   });
 
   // ---------- plan to the next rank
-  const plan = $derived(sum && mdb && pdata ? mrPlan(mdb, pdata, sum, skipped, skip.sp) : null);
+  let planCraft = $state<CraftDb | null>(null);
+  loadCraft().then(c => planCraft = c).catch(() => {});
+  const pendingMastery = $derived(masteryFoundry(planCraft, inventory.data?.foundry));
+  let planNow = $state(Date.now());
+  $effect(() => {
+    if (!pendingMastery.size) return;
+    planNow = Date.now();
+    const timer = setInterval(() => planNow = Date.now(), 15_000);
+    return () => clearInterval(timer);
+  });
+  const plan = $derived(sum && mdb && pdata ? mrPlan(mdb, pdata, sum, skipped, skip.sp, pendingMastery) : null);
   // "Put aside" panel: categories / Steel Path / single items the plan leaves out.
   let skipOpen = $state(false);
   const SKIP_CATS = [...CAT_ORDER, "other"] as MasteryCat[];
@@ -180,6 +193,9 @@
     const s = db.sets[id];
     return !!s && s.parts.some((p) => db.items[p]?.relics.some((r) => !db.relics[r.relic]?.vaulted));
   };
+  const relicStock = $derived(relicsHeld(inventory.data));
+  const coverage = $derived(new Map(Object.keys(db.sets).map(id => [id, relicCoverage(db, id, inventory.data, relicStock)])));
+  const coverageRank = (id: string) => coverage.get(id) === "parts" ? 2 : coverage.get(id) === "relics" ? 1 : 0;
   const ways = $derived.by(() => {
     if (!sum) return [];
     const mr = sum.mr;
@@ -196,9 +212,9 @@
       way === "finish"
         ? sum.rows.filter((r) => r.status === "progress")
         : way === "relics"
-          ? sum.rows.filter((r) => r.status === "none" && r.it.prime && setActive(r.id))
+          ? sum.rows.filter((r) => r.status === "none" && r.it.prime && (coverageRank(r.id) > 0 || setActive(r.id)))
           : sum.rows.filter((r) => r.status === "none" && (r.it.mr ?? 0) <= mr);
-    return list.filter((r) => !skipped(r)).sort((a, b) => b.left - a.left).slice(0, compact ? 8 : 12) as (Row & { price?: number })[];
+    return list.filter((r) => !skipped(r)).sort((a, b) => (way === "relics" ? coverageRank(b.id) - coverageRank(a.id) : 0) || b.left - a.left).slice(0, compact ? 8 : 12) as (Row & { price?: number })[];
   });
   const chartLeft = $derived.by(() => {
     if (!sum || !mdb || !pdata) return null;
@@ -258,6 +274,7 @@
     return sum.rows
       .filter(
         (r) =>
+          (!appSettings.value.hideFounders || !FOUNDERS.has(r.id)) &&
           (cat === "all" || r.it.cat === cat) &&
           (status === "all" || r.status === status) &&
           (kind === "all" || !!r.it.prime === (kind === "prime")) &&
@@ -317,12 +334,17 @@
   const openSet = $derived(open && db.sets[open.id] ? db.sets[open.id] : null);
   // Relics to open for a part: the ones held (vaulted too: they still open), then the ones that drop now.
   const held = $derived(relicsHeld(inventory.data));
+  const refinements: Refine[] = ["intact", "exceptional", "flawless", "radiant"];
+  const rewardOdds = (rarity: Rarity) => [
+    RARITY_RU[rarity],
+    ...refinements.map(refine => `${REFINE_RU[refine]}: ${t("unit.pct", { v: num(CHANCE[refine][rarity]) })}`),
+  ].join("\n");
   const partInfo = (pid: string) => {
     const it = db.items[pid];
     const active = it.relics.filter((r) => !db.relics[r.relic]?.vaulted);
     const mine = it.relics
       .filter((r) => db.relics[r.relic] && held.get(r.relic))
-      .map((r) => ({ s: db.relics[r.relic].s, n: held.get(r.relic)!, vaulted: !!db.relics[r.relic].vaulted }))
+      .map((r) => ({ s: db.relics[r.relic].s, n: held.get(r.relic)!, rarity: r.rarity, vaulted: !!db.relics[r.relic].vaulted }))
       .sort((a, b) => b.n - a.n);
     const rest = active.filter((r) => !held.get(r.relic)).map((r) => db.relics[r.relic].s);
     return { it, active, mine, rest };
@@ -402,6 +424,7 @@
   {#if sum && profile.data}
     {@const p = profile.data}
     {@const into = Math.max(0, Math.min(1, (sum.total - sum.from) / (sum.to - sum.from)))}
+    {#if sum.chart.unknown}<p class="muted">{t("chart.incomplete")}</p>{/if}
     <section class="top">
       <div class="ring" title={t("coll.ringHint")}>
         <svg viewBox="0 0 120 120">
@@ -512,7 +535,13 @@
                 <button class="step" onclick={() => (open = st.row)}>
                   <span class="n">{i + 1}</span>
                   <img src={iconUrl(st.row.it.icon)} alt="" loading="lazy" />
-                  <div><b>{t("coll.finishItem", { name: st.row.it.name })}</b><small>{t("coll.lvlFromTo", { a: st.row.rank, b: st.row.it.max })} · {duration(st.min)}</small></div>
+                  <div>
+                    <b>{st.row.it.name}</b>
+                    <small>{t("coll.lvlFromTo", { a: st.row.rank, b: st.row.it.max })} · {duration(st.min)}</small>
+                    {#if st.foundry !== undefined}
+                      <small class="in-foundry" class:ready={st.foundry <= planNow} title={t("coll.foundryTimeHint")}>{t(st.foundry <= planNow ? "coll.foundryReady" : "coll.foundryBuilding")}</small>
+                    {/if}
+                  </div>
                   <span class="plus">+{fmt(st.xp)}</span>
                 </button>
                 <button class="defer" title={t("coll.skip.one")} aria-label={t("coll.skip.one")} onclick={() => toggleId(st.row.id)}><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M6 18L18 6" /></svg></button>
@@ -601,6 +630,9 @@
                   {r.status === "progress" ? t("coll.lvl", { a: r.rank, b: r.it.max }) : `${CAT_RU[r.it.cat]}${r.it.mr ? ` · MR ${r.it.mr}` : ""}`}
                 {/if}
               </small>
+              {#if way === "relics" && coverageRank(r.id) > 0}
+                <small class="relic-ready" title={t(coverage.get(r.id) === "parts" ? "coll.way.partsReadyHint" : "coll.way.relicsReadyHint")}>✓ {t(coverage.get(r.id) === "parts" ? "coll.way.partsReady" : "coll.way.relicsReady")}</small>
+              {/if}
             </div>
           </button>
           <button class="defer" title={t("coll.skip.one")} aria-label={t("coll.skip.one")} onclick={() => toggleId(r.id)}><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" /><path d="M6 18L18 6" /></svg></button>
@@ -746,7 +778,12 @@
                   <span class="owned-relics">
                     {#if pi.mine.length}
                       <span>{t("coll.inv.relics")}</span>
-                      {#each pi.mine as m (m.s)}<b class:vaulted={m.vaulted} title={m.vaulted ? t("tag.inVault") : ""}>{m.s} ×{m.n}</b>{/each}
+                      {#each pi.mine as m (m.s)}
+                        <b class:vaulted={m.vaulted} title={`${t(m.vaulted ? "duc.vaulted" : "duc.active")}\n${rewardOdds(m.rarity)}`}>
+                          <svg class="reward-rarity {m.rarity}" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5 14.5 8 8 14.5 1.5 8Z" /><path class="shine" d="M8 4v8M4 8h8" /></svg>
+                          {m.s} ×{m.n}
+                        </b>
+                      {/each}
                     {:else}
                       <span>{t("coll.inv.noRelics")}</span>
                     {/if}
@@ -786,6 +823,9 @@
     font-size: 11px;
   }
   .owned-relics b {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     flex: none;
     padding: 2px 7px;
     border-radius: 6px;
@@ -797,6 +837,21 @@
   .owned-relics b.vaulted {
     background: var(--accent-soft);
     color: var(--accent);
+  }
+  .reward-rarity {
+    width: 12px;
+    height: 12px;
+    flex: none;
+    fill: currentColor;
+  }
+  .reward-rarity.COMMON { color: var(--common); }
+  .reward-rarity.UNCOMMON { color: var(--uncommon); }
+  .reward-rarity.RARE { color: var(--rare); }
+  .reward-rarity .shine {
+    fill: none;
+    stroke: var(--bg);
+    stroke-width: 1;
+    opacity: 0.5;
   }
   .inv-tag {
     color: var(--accent);
@@ -1166,6 +1221,12 @@
   .seg button.on {
     background: var(--surface-2);
     color: var(--text);
+  }
+  .step small.in-foundry { color: var(--accent); margin-top: 3px; }
+  .step small.in-foundry.ready { color: var(--good); }
+  .way small.relic-ready {
+    color: var(--good);
+    margin-top: 3px;
   }
   .way-grid {
     display: grid;

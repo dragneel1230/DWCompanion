@@ -1,6 +1,7 @@
 // What the player put aside for now (categories, single items, Steel Path): the MR plan and the
 // "fastest way" lists leave it out. localStorage `dwc.coll.skip`, shared by the app and the hub.
-import type { MasteryCat, Row } from "$lib/mastery";
+import { appSettings } from "$lib/appSettings.svelte";
+import { FOUNDERS, type MasteryCat, type Row } from "$lib/mastery";
 
 const KEY = "dwc.coll.skip";
 type Saved = { cats: MasteryCat[]; ids: string[]; sp: boolean };
@@ -31,7 +32,7 @@ if (typeof window !== "undefined")
     if (e.key === KEY) Object.assign(skip, read());
   });
 
-export const skipped = (r: Row) => skip.cats.includes(r.it.cat) || skip.ids.includes(r.id);
+export const skipped = (r: Row) => (appSettings.value.hideFounders && FOUNDERS.has(r.id)) || skip.cats.includes(r.it.cat) || skip.ids.includes(r.id);
 export const skipCount = () => skip.cats.length + skip.ids.length + (skip.sp ? 1 : 0);
 
 export function toggleCat(c: MasteryCat) {
