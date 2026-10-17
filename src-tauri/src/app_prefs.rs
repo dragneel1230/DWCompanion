@@ -7,6 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, WindowEvent};
+use tauri_plugin_window_state::AppHandleExt;
 
 const TRAY: &str = "main-tray";
 
@@ -26,6 +27,9 @@ fn show_main(app: &AppHandle) {
 // Main window: close -> hide (tray on) or quit.
 pub fn on_main_event(app: &AppHandle, e: &WindowEvent) {
     if let WindowEvent::CloseRequested { api, .. } = e {
+        if let Err(e) = app.save_window_state(crate::MAIN_WINDOW_STATE) {
+            eprintln!("save main window state: {e}");
+        }
         if app.state::<AppPrefs>().tray.load(Ordering::Relaxed) {
             api.prevent_close();
             if let Some(w) = app.get_webview_window("main") {

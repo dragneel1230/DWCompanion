@@ -17,6 +17,11 @@ mod wfm;
 mod wfm_status;
 
 use tauri::Manager;
+use tauri_plugin_window_state::{StateFlags, WindowExt};
+
+const MAIN_WINDOW_STATE: StateFlags = StateFlags::SIZE
+    .union(StateFlags::POSITION)
+    .union(StateFlags::MAXIMIZED);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -28,6 +33,11 @@ pub fn run() {
         // Updates: GitHub Releases (latest.json), signed with the key in %USERPROFILE%\.tauri (scripts/release.mjs).
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_window_state::Builder::default()
+            .with_state_flags(MAIN_WINDOW_STATE)
+            .with_filter(|label| label == "main")
+            .skip_initial_state("main")
+            .build())
         .plugin(hub::plugin())
         .on_window_event(|w, e| {
             if w.label() == "main" {
@@ -35,6 +45,13 @@ pub fn run() {
             }
         })
         .setup(|app| {
+            // Restore while hidden, then show on the saved monitor without a startup jump.
+            if let Some(window) = app.get_webview_window("main") {
+                if let Err(e) = window.restore_state(MAIN_WINDOW_STATE) {
+                    eprintln!("main window state: {e}");
+                }
+                window.show()?;
+            }
             app.manage(app_prefs::AppPrefs::default());
             app.manage(hub::Hub::default());
             app.manage(reward::init());
