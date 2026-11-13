@@ -52,11 +52,11 @@
       votes: 0,
     });
     savedAt = Date.now();
-    if (!own) goto(`/frame?id=${encodeURIComponent(id)}&build=${encodeURIComponent(bid)}`, { replaceState: true, noScroll: true });
+    if (!own) goto(`/frame?id=${encodeURIComponent(id)}&build=${encodeURIComponent(bid)}`, { replace: true, reset: false });
   }
 
   function reset() {
-    goto(`/frame?id=${encodeURIComponent(id)}`, { noScroll: true });
+    goto(`/frame?id=${encodeURIComponent(id)}`, { reset: false });
     if (!editId && frame) build = emptyBuild(id, frame);
   }
 

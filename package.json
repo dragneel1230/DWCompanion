@@ -16,24 +16,24 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-clipboard-manager": "~2.4.0",
-    "@tauri-apps/plugin-http": "~2.7.0",
-    "@tauri-apps/plugin-notification": "^2.5.1",
-    "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/plugin-clipboard-manager": "~2.5.0",
+    "@tauri-apps/plugin-http": "~2.9.0",
+    "@tauri-apps/plugin-notification": "^2.8.1",
+    "@tauri-apps/plugin-opener": "^2.7.3",
     "@tauri-apps/plugin-process": "^2.4.0",
-    "@tauri-apps/plugin-updater": "^2.13.1"
+    "@tauri-apps/plugin-updater": "^2.14.1"
   },
   "devDependencies": {
-    "@sveltejs/adapter-static": "^3.0.10",
-    "@sveltejs/kit": "^2.65.1",
-    "@sveltejs/vite-plugin-svelte": "^7.1.2",
-    "@tauri-apps/cli": "^2",
-    "@wfcd/items": "^1.1276.19",
-    "svelte": "^5.56.3",
-    "svelte-check": "^4.6.0",
+    "@sveltejs/adapter-static": "^4.0.1",
+    "@sveltejs/kit": "^3.2.0",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@tauri-apps/cli": "^2.12.4",
+    "@wfcd/items": "^1.1276.50",
+    "svelte": "^5.57.3",
+    "svelte-check": "^4.7.8",
     "typescript": "~6.0.3",
-    "vite": "^8.0.16",
+    "vite": "^8.3.8",
     "warframe-public-export-plus": "^0.6.12"
   }
 }

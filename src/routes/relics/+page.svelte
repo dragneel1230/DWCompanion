@@ -8,7 +8,7 @@
   $effect(() => {
     if (page.url.search) {
       followSection(page.url.pathname + page.url.search);
-      goto("/relics", { replaceState: true, keepFocus: true, noScroll: true });
+      goto("/relics", { replace: true, reset: false });
     }
   });
 </script>

@@ -44,12 +44,12 @@
     const bid = own ? editId! : `my-${Date.now()}`;
     gearBuilds.save(bid, { ...$state.snapshot(build), item: id, title: title.trim() || t("frame.myBuild"), author: t("frame.myBuildAuthor"), source: undefined });
     savedAt = Date.now();
-    if (!own) goto(`/gear?id=${encodeURIComponent(id)}&build=${encodeURIComponent(bid)}`, { replaceState: true, noScroll: true });
+    if (!own) goto(`/gear?id=${encodeURIComponent(id)}&build=${encodeURIComponent(bid)}`, { replace: true, reset: false });
   }
   function remove() {
     if (!own) return;
     gearBuilds.remove(editId!);
-    goto(`/gear?id=${encodeURIComponent(id)}`, { replaceState: true });
+    goto(`/gear?id=${encodeURIComponent(id)}`, { replace: true });
   }
   const back = $derived(gear ? `/frames?gear=${encodeURIComponent(id)}&kind=${gear.of && gear.kind !== "companion" ? "exalted" : gear.kind}${own ? `&build=${encodeURIComponent(editId!)}` : ""}` : "/frames");
 </script>

@@ -97,7 +97,7 @@ export function followSection(href: string): "trade" | "relics" | "builds" | "sh
   return null;
 }
 
-export function followBuilds(q: URLSearchParams) {
+export function followBuilds(q: Pick<URLSearchParams, "get">) {
   const id = q.get("id");
   const gear = q.get("gear");
   const kind = q.get("kind") as GearTab | null;

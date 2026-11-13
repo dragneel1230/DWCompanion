@@ -1,5 +1,5 @@
 {
- "fetchedAt": "2026-10-12T15:03:49.373Z",
+ "fetchedAt": "2026-11-13T20:10:02.975Z",
  "abilities": {
   "/Lotus/Powersuits/Ninja/Abilities/GlaiveAbility": {
    "title": "Shuriken",
@@ -6245,6 +6245,9 @@
      "unit": "",
      "label": ""
     }
+   ],
+   "helminth": [
+    "Subsumed Omamori creates between 10 to 20 charms, but cannot gain invulnerability."
    ]
   },
   "/Lotus/Powersuits/Koumei/Abilities/KoumeiPuppetAbility": {
@@ -6356,8 +6359,8 @@
      "label": ""
     },
     {
-     "v": "350 HP or Overguard per dagger hit",
-     "n": 350,
+     "v": "325 HP or Overguard per dagger hit",
+     "n": 325,
      "unit": "",
      "label": ""
     },
@@ -7510,7 +7513,7 @@
      "v": "40%×2",
      "n": 40,
      "unit": "%",
-     "label": "distance weapon damage"
+     "label": "ranged weapon damage"
     },
     {
      "v": "0.4x Modified Critical and Status Chance",
@@ -7645,7 +7648,7 @@
      "v": "200 %",
      "n": 200,
      "unit": "%",
-     "label": "damage bonus"
+     "label": "weapon and melee damage bonus"
     }
    ],
    "duration": [
@@ -7666,7 +7669,7 @@
     }
    ],
    "helminth": [
-    "However, Subsumed Eclipse's damage reduction caps at 75% and damage bonus is reduced to 2% / 9% / 15% / 30%."
+    "However, Subsumed Eclipse's damage reduction caps at 75%, and damage bonus is reduced to 2% / 9% / 15% / 30%."
    ]
   },
   "/Lotus/Powersuits/Harlequin/Abilities/Prism": {
@@ -7783,6 +7786,12 @@
      "n": 0.5,
      "unit": "%",
      "label": ""
+    },
+    {
+     "v": "4m lunge distance",
+     "n": 4,
+     "unit": "m",
+     "label": ""
     }
    ]
   },
@@ -7872,8 +7881,8 @@
      "label": ""
     },
     {
-     "v": "6 Cold status on landing",
-     "n": 6,
+     "v": "5 Cold status on landing",
+     "n": 5,
      "unit": "",
      "label": ""
     },
@@ -7967,13 +7976,13 @@
      "label": ""
     },
     {
-     "v": "60m Icy Slash Travel Distance",
-     "n": 60,
+     "v": "230m Icy Slash Travel Distance",
+     "n": 230,
      "unit": "m",
      "label": ""
     },
     {
-     "v": "50m Targeting Radius",
+     "v": "50m Marking range",
      "n": 50,
      "unit": "m",
      "label": ""
@@ -8232,6 +8241,9 @@
      "unit": "%",
      "label": "flame trail status cleanse"
     }
+   ],
+   "helminth": [
+    "This does not allow other Warframes to use Fire Walker's explosion on teleport. This is exclusively a synergy with Blazing Chakram."
    ]
   },
   "/Lotus/Powersuits/Nezha/Abilities/NezhaRingAbility": {
@@ -8983,6 +8995,12 @@
      "unit": "%",
      "label": "damage reduction cap"
     }
+   ],
+   "helminth": [
+    "Damage reduction caps at 75% instead of 90%.",
+    "If Garuda subsumes Null Star or Nova subsumes Blood Altar, then the particles will not target enemies currently impaled by Blood Altar.",
+    "If Chroma subsumes Null Star, Vex Armor's damage boost will apply to Null Stars.",
+    "If Limbo subsumes Null Star, Rift Torrent's damage boost will apply to Null Stars."
    ]
   },
   "/Lotus/Powersuits/AntiMatter/Abilities/AntiMatterDrop": {
@@ -12721,6 +12739,9 @@
      "unit": "s",
      "label": "revive cooldown"
     }
+   ],
+   "helminth": [
+    "However, Subsumed Well of Life's revive cooldown is increased to 120 seconds."
    ]
   },
   "/Lotus/Powersuits/Trinity/Abilities/EnergyVampireAbility": {
@@ -13994,6 +14015,9 @@
      "unit": "%",
      "label": "passive heavy attack efficiency"
     }
+   ],
+   "helminth": [
+    "However, Subsumed Lycath's Hunt orb drop rate is reduced to 50% and cannot activate the passive."
    ]
   },
   "/Lotus/Powersuits/Werewolf/Abilities/WerewolfHowlAbility": {
@@ -14815,6 +14839,10 @@
      "unit": "s",
      "label": ""
     }
+   ],
+   "helminth": [
+    "Subsumed abilities injected into Yareli via the Helminth system cannot be cast while aboard Merulina.",
+    "Developers noted that due to the amount of new custom animations required for this to function properly, this interaction will remain unchanged for the foreseeable future."
    ]
   },
   "/Lotus/Powersuits/Yareli/Abilities/YareliDisksAbility": {
@@ -15073,6 +15101,9 @@
      "unit": "s",
      "label": "pull force duration"
     }
+   ],
+   "helminth": [
+    "Subsumed Airburst includes the tap-cast for wind vacuum and hold-cast for wind explosion."
    ]
   },
   "/Lotus/Powersuits/Tengu/Abilities/TurbulenceAbility": {

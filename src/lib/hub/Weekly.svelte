@@ -33,7 +33,7 @@
     const out: { k: string; v: string; done: boolean | null; hue?: string }[] = [];
     if (w.archon) out.push({ k: wdb?.cq.title.archon ?? t("week.archon"), v: shard?.[3] ?? "", done: archonDone(inv, w), hue: shard ? SHARD_HUE[shard[2]] : undefined });
     out.push({ k: t("week.netra"), v: netra == null ? `${NETRA_MAX}` : `${NETRA_MAX - netra}/${NETRA_MAX}`, done: netra == null ? null : netra === 0 });
-    if (w.descent) out.push({ k: wdb?.cq.title.descent ?? t("week.descent"), v: dn == null ? t("week.floors", { n: floors }) : `${dn} · ${t("week.sp")} ${dh ?? 0} / ${floors}`, done: dn == null ? null : dn >= floors && (dh ?? 0) >= floors });
+    if (w.descent) out.push({ k: wdb?.cq.title.descent ?? t("week.descent"), v: dn == null && dh == null ? t("week.floors", { n: floors }) : `${dn ?? "—"} · ${t("week.sp")} ${dh ?? "—"} / ${floors}`, done: dn == null || dh == null ? null : dn >= floors && dh >= floors });
     if (w.calendar && calRows.length) out.push({ k: t("week.calendar"), v: calDone == null ? t("week.events", { n: calRows.length }) : `${calDone}/${calRows.length}`, done: calDone == null ? null : calDone >= calRows.length });
     if (w.nightwave.length) out.push({ k: t("week.nightwave"), v: nwDone == null ? t("week.events", { n: w.nightwave.length }) : `${nwDone}/${w.nightwave.length}`, done: nwDone == null ? null : nwDone >= w.nightwave.length });
     const clem = periodicDone(inv, "GetClem", now);

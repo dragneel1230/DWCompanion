@@ -16,9 +16,9 @@
   import ItemThumb from "$lib/components/ItemThumb.svelte";
   import { pageOf } from "$lib/itemRef.svelte";
   import {
-    loadWeekly, netraLeft, descentFloor, descentRewards, descentReward, archonDone, archonStage, calendarDay, nightwaveDone,
+    loadWeekly, netraLeft, descentExpiry, descentFloor, descentRewards, descentReward, archonDone, archonStage, calendarDay, nightwaveDone,
     nightwaveProgress, periodicDone, teshinOffer, circuitFrame, circuitIncarnon, rewardName, rewardIcon, untag, weekEnd, NETRA_MAX,
-    type WeeklyDb,
+    type DescentCategory, type WeeklyDb,
   } from "$lib/weekly";
   import type { Conquest } from "$lib/api";
 
@@ -164,7 +164,8 @@
   {#if done === true}<span class="st ok" title={t("week.done")}>✓</span>{:else if done === false}<span class="st no" title={t("week.notDone")}></span>{/if}
 {/snippet}
 
-{#snippet descentRoute(label: string, progress: number | null, rewards: Map<number, [string, number][]>) }
+{#snippet descentRoute(label: string, category: DescentCategory, progress: number | null, rewards: Map<number, [string, number][]>) }
+  {@const expiry = descentExpiry(inv, category)}
   <div class="descent-mode">
     <div class="descent-mode-head">
       <b>{label}</b>
@@ -229,6 +230,11 @@
         {/if}
       </div>
     </div>
+    {#if !rewards.size}
+      <p class="hint">{expiry > 0 && expiry <= now
+        ? t("week.descentRewardsExpired", { date: new Date(expiry).toLocaleDateString(locale(), { day: "numeric", month: "long", timeZone: "UTC" }) })
+        : t("week.descentRewardsUnavailable")}</p>
+    {/if}
   </div>
 {/snippet}
 
@@ -394,12 +400,13 @@
           <header>
             <h2>{T("descent", "week.descent")}</h2>
           </header>
+          <p class="hint">{t("week.descentRewardsHint")}</p>
           <div class="descent-modes">
-            {@render descentRoute(t("week.descentNormal"), dNormal, dNormalRewards)}
-            {@render descentRoute(t("week.sp"), dHard, dHardRewards)}
+            {@render descentRoute(t("week.descentNormal"), "DM_COH_NORMAL", dNormal, dNormalRewards)}
+            {@render descentRoute(t("week.sp"), "DM_COH_HARD", dHard, dHardRewards)}
           </div>
-          {#if !dNormalRewards.size && !dHardRewards.size}
-            <p class="hint">{t("week.descentRewardsNeedInv")}</p>
+          {#if !dNormalRewards.size || !dHardRewards.size}
+            <p class="hint"><a href="https://www.warframe.com/droptables#thedescendia:infernum20triplearcanerewards" target="_blank" rel="noreferrer">{t("week.descentDropTables")}</a></p>
           {/if}
         </section>
       {/if}

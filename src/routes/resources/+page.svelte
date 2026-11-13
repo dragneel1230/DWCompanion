@@ -17,7 +17,7 @@
     return null;
   });
   const PARAM = { resource: "id", craft: "craft", prime: "prime" } as const;
-  const select = (s: FarmSel) => goto(`/resources?${PARAM[s.kind]}=${encodeURIComponent(s.id)}`, { keepFocus: true, noScroll: true });
+  const select = (s: FarmSel) => goto(`/resources?${PARAM[s.kind]}=${encodeURIComponent(s.id)}`, { reset: false });
 </script>
 
 <div class="page wide">

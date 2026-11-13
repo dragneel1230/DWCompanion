@@ -62,16 +62,21 @@ export function netraLeft(inv: InvData | null, now: number): number | null {
   return NETRA_MAX - (n && live(n[1], now) ? Math.min(NETRA_MAX, n[0]) : 0);
 }
 
-// Descendia: floors claimed this week (normal / Steel Path); null without an inventory.
-export function descentFloor(inv: InvData | null, cat: "DM_COH_NORMAL" | "DM_COH_HARD", now: number): number | null {
-  if (!inv?.week) return null;
-  const d = inv.week.descent[cat];
-  return d && live(d[1], now) ? d[0] : 0;
+export type DescentCategory = "DM_COH_NORMAL" | "DM_COH_HARD";
+
+export function descentExpiry(inv: InvData | null, cat: DescentCategory): number {
+  return inv?.week?.descent?.[cat]?.[1] ?? 0;
+}
+
+// Descendia: floors claimed in the active period (normal / Steel Path).
+export function descentFloor(inv: InvData | null, cat: DescentCategory, now: number): number | null {
+  const d = inv?.week?.descent?.[cat];
+  return d && live(d[1], now) ? d[0] : null;
 }
 
 export type DescentReward = [number, [string, number][]];
-export function descentRewards(inv: InvData | null, cat: "DM_COH_NORMAL" | "DM_COH_HARD", now: number): DescentReward[] {
-  const d = inv?.week?.descent[cat];
+export function descentRewards(inv: InvData | null, cat: DescentCategory, now: number): DescentReward[] {
+  const d = inv?.week?.descent?.[cat];
   return d && live(d[1], now) ? (d[2] ?? []) : [];
 }
 

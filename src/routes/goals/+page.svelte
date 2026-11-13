@@ -11,7 +11,7 @@
     const a = page.url.searchParams.get("add");
     if (!a) return;
     add = a;
-    goto("/goals", { replaceState: true, noScroll: true });
+    goto("/goals", { replace: true, reset: false });
   });
 </script>
 

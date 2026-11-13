@@ -10,7 +10,7 @@
   $effect(() => {
     if (page.url.search) {
       followSection(page.url.pathname + page.url.search);
-      goto("/trade", { replaceState: true, keepFocus: true, noScroll: true });
+      goto("/trade", { replace: true, reset: false });
     }
   });
   const open = (v: View) => goto(appPath(v));
